@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="kinesis_background">#FF121520</color>
-    <color name="kinesis_accent">#FF2DE0A5</color>
+    <color name="kinesis_accent">#FF4C8DFF</color>
     <color name="ic_launcher_background">#FF0B0A2B</color>
 </resources>

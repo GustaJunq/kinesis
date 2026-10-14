@@ -2,6 +2,11 @@ package dev.kinesis.editor.ui.editor
 
 import android.opengl.GLSurfaceView
 import androidx.compose.foundation.Canvas
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -45,6 +50,7 @@ import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerTree
 import dev.kinesis.core.model.LayerType
+import dev.kinesis.core.model.LightKind
 import dev.kinesis.core.model.updateShape
 import dev.kinesis.core.scene.FrameScene
 import dev.kinesis.core.scene.SceneEvaluator
@@ -140,6 +146,8 @@ fun Viewport(
     val currentTool by rememberUpdatedState(tool3D)
     val touchSlop = LocalViewConfiguration.current.touchSlop
     val handleRadius = with(density) { 28.dp.toPx() }
+    val lightMargin = with(density) { 22.dp.toPx() }
+    val bulb = rememberVectorPainter(Icons.Filled.Lightbulb)
 
     Box(modifier.onSizeChanged { sizeW = it.width; sizeH = it.height }) {
         AndroidView(factory = { glView }, modifier = Modifier.fillMaxSize())
@@ -153,6 +161,11 @@ fun Viewport(
                         val p0 = vm.current
                         val s = v.width / p0.composition.width
                         fun toComp(o: Offset) = Vec2((o.x - v.left) / s - p0.composition.width / 2f, (o.y - v.top) / s - p0.composition.height / 2f)
+                        val lightHit = lightHandles(p0, currentScene)
+                            .map { it to compToViewClamped(it.comp, v, p0.composition.width, p0.composition.height, size.width, size.height, lightMargin) }
+                            .minByOrNull { (_, o) -> hypot(o.x - down.position.x, o.y - down.position.y) }
+                            ?.takeIf { (_, o) -> hypot(o.x - down.position.x, o.y - down.position.y) <= handleRadius }
+                            ?.first
                         var gesture: Gesture? = null
                         var moved = false
                         var pan = Offset.Zero
@@ -166,7 +179,9 @@ fun Viewport(
                             rotation += event.calculateRotation()
                             if (!moved && (pan.getDistance() > touchSlop || abs(zoom - 1f) > 0.02f || abs(rotation) > 2f || event.changes.size > 1)) {
                                 moved = true
-                                if (vm.selection.value == null) {
+                                if (lightHit != null) {
+                                    vm.select(lightHit.layerId)
+                                } else if (vm.selection.value == null) {
                                     geometry.hitTest(currentScene, toComp(down.position), null)?.let { vm.select(it) }
                                 }
                                 gesture = startGesture(vm, currentScene, toComp(down.position), s, handleRadius, currentTool, geometry)
@@ -179,7 +194,7 @@ fun Viewport(
                         if (moved) {
                             vm.endGesture()
                         } else {
-                            vm.select(geometry.hitTest(currentScene, toComp(down.position), vm.selection.value))
+                            vm.select(lightHit?.layerId ?: geometry.hitTest(currentScene, toComp(down.position), vm.selection.value))
                         }
                     }
                 },
@@ -191,6 +206,20 @@ fun Viewport(
                 size = androidx.compose.ui.geometry.Size(vp.width, vp.height),
                 style = Stroke(1f),
             )
+            // Light indicators: a bulb you can drag with a finger (kept inside the view when the light is far away).
+            lightHandles(vm.current, scene).forEach { h ->
+                val c = compToViewClamped(h.comp, vp, project.composition.width, project.composition.height, size.width.toInt(), size.height.toInt(), lightMargin)
+                val picked = h.layerId == selection
+                if (picked && h.kind == LightKind.DIRECTIONAL && h.target != null) {
+                    drawLine(KColors.Keyframe.copy(alpha = 0.6f), c, toView(h.target), strokeWidth = 2f * density.density, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f)))
+                }
+                val r = 17.dp.toPx()
+                drawCircle(Color(0xE6121520), r, c)
+                drawCircle(if (picked) KColors.Accent else KColors.Keyframe, r, c, style = Stroke(2.dp.toPx()))
+                translate(c.x - r * 0.62f, c.y - r * 0.62f) {
+                    with(bulb) { draw(androidx.compose.ui.geometry.Size(r * 1.24f, r * 1.24f), colorFilter = ColorFilter.tint(KColors.Keyframe)) }
+                }
+            }
             val sel = selection ?: return@Canvas
             val node = geometry.findNode(scene, sel)
             val outline = node?.let { geometry.outline(it, scene.camera) }
@@ -226,6 +255,29 @@ fun Viewport(
             }
         }
     }
+}
+
+/** A point or directional light on screen. [comp] is in composition pixels (may lie outside the frame). */
+private class LightHandle(val layerId: String, val comp: Vec2, val target: Vec2?, val kind: LightKind)
+
+private fun lightHandles(project: KnsProject, scene: FrameScene): List<LightHandle> {
+    val out = ArrayList<LightHandle>()
+    LayerTree.walk(project.layers) { l, _ ->
+        val light = l.light
+        if (l.type != LayerType.LIGHT || light == null || light.kind == LightKind.AMBIENT || !l.visible) return@walk
+        val local = scene.time - LayerTree.containerOffset(project, l.id) - l.start
+        if (local < 0.0 || local >= l.duration) return@walk
+        val parent = SceneEvaluator.parentSpace3D(project, l.id, scene.time) ?: return@walk
+        val comp = scene.camera.project(parent.transformPoint(light.position.at(local))) ?: return@walk
+        out += LightHandle(l.id, comp, scene.camera.project(parent.transformPoint(light.target.at(local))), light.kind)
+    }
+    return out
+}
+
+private fun compToViewClamped(c: Vec2, v: ViewportRect, compW: Int, compH: Int, w: Int, h: Int, margin: Float): Offset {
+    val s = v.width / compW
+    val o = Offset(v.left + (c.x + compW / 2f) * s, v.top + (c.y + compH / 2f) * s)
+    return Offset(o.x.coerceIn(margin, w - margin), o.y.coerceIn(margin, h - margin))
 }
 
 /** One drag/pinch interaction on the viewport. */
@@ -295,7 +347,26 @@ private fun startGesture(
         layer.type == LayerType.LIGHT -> {
             val prop = LayerProps.typed<Vec3>(LayerProps.find(layer, "light.position") ?: return null)
             val start = prop.valueAt(layer, local)
-            return Gesture { pan, _, _ -> vm.setProperty(id, prop, Vec3(start.x + pan.x, start.y + pan.y, start.z), key) }
+            val parent = SceneEvaluator.parentSpace3D(project, id, vm.time.value) ?: Mat4.identity()
+            val cam = scene.camera
+            val unit = 100f
+            val o = cam.project(parent.transformPoint(start))
+            val ax = cam.project(parent.transformPoint(start + Vec3(unit, 0f, 0f)))
+            val ay = cam.project(parent.transformPoint(start + Vec3(0f, unit, 0f)))
+            return Gesture { pan, _, _ ->
+                var dx = pan.x
+                var dy = pan.y
+                if (o != null && ax != null && ay != null) {
+                    val a = ax - o
+                    val b = ay - o
+                    val det = a.x * b.y - a.y * b.x
+                    if (abs(det) > 1e-3f) {
+                        dx = (pan.x * b.y - pan.y * b.x) / det * unit
+                        dy = (a.x * pan.y - a.y * pan.x) / det * unit
+                    }
+                }
+                vm.setProperty(id, prop, Vec3(start.x + dx, start.y + dy, start.z), key)
+            }
         }
         layer.type.isRendered3D -> return start3D(vm, layer, scene, downComp, viewScale, handleRadiusPx, tool, key, local)
         layer.type.is2DVisual && pathVertexAt(project, id, scene, geometry, downComp, handleRadiusPx / viewScale) != null -> {

@@ -3,7 +3,9 @@ package dev.kinesis.editor.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -15,8 +17,8 @@ object KColors {
     val SurfaceHigh = Color(0xFF232736)
     val SurfaceHighest = Color(0xFF2D3244)
     val Outline = Color(0xFF363B52)
-    val Accent = Color(0xFF2DE0A5)
-    val AccentSoft = Color(0xFF0F5B45)
+    val Accent = Color(0xFF4C8DFF)
+    val AccentSoft = Color(0xFF1C3D75)
     val Teal = Color(0xFF4FD1C5)
     val Keyframe = Color(0xFFFFC857)
     val Danger = Color(0xFFFF5C7A)
@@ -72,5 +74,8 @@ private val typography = Typography(
 
 @Composable
 fun KinesisTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+    MaterialTheme(colorScheme = scheme, typography = typography) {
+        // Icons and text outside a Surface would otherwise default to black on the dark background.
+        CompositionLocalProvider(LocalContentColor provides KColors.TextPrimary, content = content)
+    }
 }
