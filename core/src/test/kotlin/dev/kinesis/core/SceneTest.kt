@@ -155,6 +155,16 @@ class SceneTest {
     }
 
     @Test
+    fun wipeOnGroupsFallsBackToFade() {
+        val g = Layer(
+            "g", LayerType.GROUP, duration = 4.0, layers = listOf(shape("c")),
+            transitionIn = Transition(TransitionType.WIPE_LEFT, 1.0, easing = dev.kinesis.core.anim.Easing.LINEAR),
+        )
+        val node = SceneEvaluator.evaluate(project(g), 0.25).nodes.single() as GroupNode
+        assertEquals(0.25f, node.opacity, 1e-4f)
+    }
+
+    @Test
     fun textAnimatorsStaggerUnits() {
         val a = TextAnimator(TextAnimatorType.FADE, TextAnimatorMode.IN, TextUnit.CHARACTER, start = 0.0, stagger = 1.0, unitDuration = 1.0, easing = dev.kinesis.core.anim.Easing.LINEAR)
         val s = TextAnimation.evaluate("ab c", listOf(a), 1.5)

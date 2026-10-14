@@ -373,7 +373,7 @@ instante, mattes `alpha`/`luma` escondem a camada e os invertidos a mostram inte
 ```
 
 `type`: `fade`, `slideLeft`, `slideRight`, `slideUp`, `slideDown` (deslizam e esmaecem; `distance` padrão = 25% da
-composição), `zoomIn`, `zoomOut`, `spin`, `blur`, `wipeLeft`, `wipeRight` (cortina; só camadas 2D de conteúdo).
+composição), `zoomIn`, `zoomOut`, `spin`, `blur`, `wipeLeft`, `wipeRight` (cortina sobre o conteúdo de camadas 2D; em grupos e camadas 3D viram um fade).
 A direção descreve o movimento na tela: `slideLeft` entra vindo da direita e sai pela esquerda.
 `transitionIn` ocupa os primeiros `duration` segundos da camada e `transitionOut` os últimos.
 

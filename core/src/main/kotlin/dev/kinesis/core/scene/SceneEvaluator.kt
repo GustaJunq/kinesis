@@ -100,7 +100,7 @@ object SceneEvaluator {
                 GroupNode(
                     layerId = layer.id,
                     matrix = matrix,
-                    opacity = (layer.transform.opacity.at(t) * transition.opacity).clamp(0f, 1f),
+                    opacity = (layer.transform.opacity.at(t) * transition.opacity * wipeFallback(transition)).clamp(0f, 1f),
                     blendMode = layer.blendMode,
                     effects = effects,
                     motionBlur = layer.motionBlur,
@@ -166,7 +166,7 @@ object SceneEvaluator {
             primitive = primitive,
             modelAssetId = assetId,
             material = material,
-            opacity = (layer.transform3d.opacity.at(t) * transition.opacity).clamp(0f, 1f),
+            opacity = (layer.transform3d.opacity.at(t) * transition.opacity * wipeFallback(transition)).clamp(0f, 1f),
             blendMode = layer.blendMode,
             effects = effects,
             motionBlur = layer.motionBlur,
@@ -174,6 +174,9 @@ object SceneEvaluator {
             post = containerMatrix * transition.matrix(pivot),
         )
     }
+
+    /** Wipes need content bounds; groups and 3D layers fade instead. */
+    private fun wipeFallback(t: TransitionState): Float = t.wipe?.progress ?: 1f
 
     private data class Quad(val primitive: Primitive?, val asset: String?, val size: Float, val material: ResolvedMaterial?)
 
