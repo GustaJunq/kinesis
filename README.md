@@ -37,7 +37,7 @@ pelo **Claude Code** com a skill [`/knsproj`](.claude/skills/knsproj/SKILL.md) i
 | **Preview** | tempo real via OpenGL ES 3.0, play/pause, loop, quadro a quadro, navegação entre keyframes, áudio sincronizado |
 | **Texto** | fontes do sistema ou importadas (TTF/OTF), peso, itálico, alinhamento, entrelinha, quebra, contorno; animadores por caractere/palavra/linha (máquina de escrever, fade, slide, escala, rotação, onda) |
 | **Formas** | retângulo (cantos arredondados), elipse, polígono, estrela, linha/caminho Bézier (vértices arrastáveis no viewport, pontos suaves ou de canto); preenchimento sólido ou gradiente linear/radial; traço com ponta e junção; **trim paths** |
-| **Mídia** | imagens (com orientação EXIF), vídeo (decodificação por hardware com seek preciso, velocidade, ponto de entrada), áudio (volume animável, fades, mudo) |
+| **Mídia** | imagens (com orientação EXIF), vídeo (decodificação por hardware com seek preciso, velocidade, ponto de entrada), áudio (volume animável, fades, mudo, forma de onda na timeline) |
 | **Animação** | keyframes em todas as propriedades numéricas, de vetor e de cor; 36 presets de easing + **editor de curvas Bézier**; loops `cycle`/`pingpong` |
 | **Composição** | parenting (com compensação para a camada não "pular"), grupos, modos de mesclagem (normal, adição, multiplicação, tela), opacidade |
 | **Efeitos** | desfoque gaussiano, ajuste de cor, colorizar, sombra, brilho (glow), inverter, pixelizar, aberração cromática, vinheta |
@@ -221,7 +221,7 @@ Funcionalidades fora desta beta, documentadas em vez de simuladas:
 - **Interpolação espacial** (trajetórias curvas de posição com tangentes) — a posição interpola em linha reta com easing temporal.
 - **Máscaras de forma livre** (só retângulo/elipse) e **modos de mesclagem** além de normal/adição/multiplicação/tela.
 - **Rotoscopia, chroma key, estabilização, velocidade variável (rampas) e reprodução reversa** de vídeo.
-- **Áudio:** sem forma de onda na timeline, sem efeitos de áudio; velocidade diferente de 1× altera o tom.
+- **Áudio:** sem efeitos de áudio (equalização, compressão) nem ducking automático; velocidade diferente de 1× altera o tom.
 - **Motion blur em camadas de vídeo** (o vídeo usa o quadro central) e **wipe** em grupos/3D (cai para fade).
 - **Exportação** de GIF, PNG sequence, WebM ou com canal alfa.
 - **Pré-composições** reutilizáveis (grupos funcionam como pré-composições locais) e biblioteca de materiais compartilhada.

@@ -39,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -103,6 +104,7 @@ fun Timeline(
     var scrollPx by remember { mutableFloatStateOf(0f) }
     val expanded = remember { mutableStateMapOf<String, Boolean>() }
     val duration = project.composition.duration
+    val audioRevision by vm.audioRevision.collectAsState()
 
     val rows = remember(project, expanded.toMap()) {
         val out = ArrayList<Row>()
@@ -190,6 +192,8 @@ fun Timeline(
                             onToggleExpand = { expanded[row.layer.id] = !(expanded[row.layer.id] ?: false) },
                             pxPerSecond = pxPerSecond,
                             scrollPx = scrollPx,
+                            trackWidthPx = trackWidthPx,
+                            audioRevision = audioRevision,
                             onScroll = { dx -> scrollPx = clampScroll(scrollPx - dx) },
                         )
                     }
@@ -260,6 +264,8 @@ private fun LayerRow(
     onToggleExpand: () -> Unit,
     pxPerSecond: Float,
     scrollPx: Float,
+    trackWidthPx: Float,
+    audioRevision: Int,
     onScroll: (Float) -> Unit,
 ) {
     val layer = row.layer
@@ -344,7 +350,7 @@ private fun LayerRow(
                 }
                 .pointerInput(layer.id) { detectTapGestures { vm.select(layer.id) } },
         ) {
-            ClipView(vm, project, row, selected, inMulti, pxPerSecond, scrollPx, currentPx)
+            ClipView(vm, project, row, selected, inMulti, pxPerSecond, scrollPx, currentPx, trackWidthPx, audioRevision)
         }
     }
 }
@@ -359,6 +365,8 @@ private fun ClipView(
     pxPerSecond: Float,
     scrollPx: Float,
     pxNow: Float,
+    trackWidthPx: Float,
+    audioRevision: Int,
 ) {
     val layer = row.layer
     val density = LocalDensity.current
@@ -432,6 +440,11 @@ private fun ClipView(
                 }
             },
     ) {
+        val media = layer.media
+        val pcm = remember(media?.asset, audioRevision) { media?.let { vm.pcmOf(it.asset) } }
+        if (media != null && pcm != null && !media.muted) {
+            Waveform(pcm, media.sourceStart, media.speed, pxPerSecond, visibleFrom = -x, visibleTo = trackWidthPx - x)
+        }
         Text(
             layerDisplayName(layer), fontSize = 11.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.CenterStart).padding(horizontal = 16.dp),
@@ -445,6 +458,35 @@ private fun ClipView(
                 if (kt < -1e-6 || kt > layer.duration + 1e-6) continue
                 KeyframeDiamond(vm, layer, kt, pxPerSecond = pxPerSecond, absLayerStart = absStart)
             }
+        }
+    }
+}
+
+/** Peak envelope of decoded audio, drawn only for the visible part of the clip. */
+@Composable
+private fun Waveform(pcm: java.nio.ShortBuffer, sourceStart: Double, speed: Double, pxPerSecond: Float, visibleFrom: Float, visibleTo: Float) {
+    Canvas(Modifier.fillMaxSize()) {
+        val total = pcm.limit() / 2
+        if (total <= 0) return@Canvas
+        val mid = size.height / 2
+        val from = visibleFrom.coerceAtLeast(0f).toInt()
+        val to = visibleTo.coerceAtMost(size.width).toInt()
+        val color = Color.White.copy(alpha = 0.35f)
+        for (x in from until to step 2) {
+            val t0 = sourceStart + x / pxPerSecond * speed
+            val t1 = sourceStart + (x + 2) / pxPerSecond * speed
+            val f0 = (t0 * dev.kinesis.editor.media.MIX_RATE).toInt().coerceIn(0, total - 1)
+            val f1 = (t1 * dev.kinesis.editor.media.MIX_RATE).toInt().coerceIn(f0 + 1, total)
+            val step = ((f1 - f0) / 48).coerceAtLeast(1)
+            var peak = 0
+            var f = f0
+            while (f < f1) {
+                val v = kotlin.math.abs(pcm.get(f * 2).toInt())
+                if (v > peak) peak = v
+                f += step
+            }
+            val h = peak / 32768f * mid
+            if (h > 0.5f) drawLine(color, Offset(x.toFloat(), mid - h), Offset(x.toFloat(), mid + h), strokeWidth = 1.5f)
         }
     }
 }

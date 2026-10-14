@@ -89,6 +89,10 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     private val _mediaRevision = MutableStateFlow(0)
     val mediaRevision: StateFlow<Int> = _mediaRevision.asStateFlow()
 
+    /** Bumped when decoded audio becomes available (timeline waveforms). */
+    private val _audioRevision = MutableStateFlow(0)
+    val audioRevision: StateFlow<Int> = _audioRevision.asStateFlow()
+
     private val _notices = MutableSharedFlow<Notice>(extraBufferCapacity = 8)
     val notices: SharedFlow<Notice> = _notices
 
@@ -130,7 +134,10 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         pcm = PcmCache(File(app.cacheDir, "pcm/$projectId"), files)
         mixer = AudioMixer(pcm).also { it.setProject(loaded) }
         previewAudio = PreviewAudio(mixer)
-        viewModelScope.launch(Dispatchers.IO) { runCatching { pcm.prepare(loaded) } }
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { pcm.prepare(loaded) }
+            _audioRevision.value++
+        }
     }
 
     val current: KnsProject get() = _project.value
@@ -222,6 +229,9 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     private fun notify(text: String, error: Boolean = false) {
         _notices.tryEmit(Notice(text, error))
     }
+
+    /** Decoded 48 kHz stereo PCM of an asset, or null while it is not ready. */
+    fun pcmOf(assetId: String): java.nio.ShortBuffer? = pcm.get(assetId)
 
     // ------------------------------------------------------------------ time & playback
 
@@ -414,6 +424,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
                 onImported(asset)
                 if (type == AssetType.VIDEO || type == AssetType.AUDIO) {
                     withContext(Dispatchers.IO) { runCatching { pcm.ensure(asset.id) } }
+                    _audioRevision.value++
                 }
             } catch (e: Exception) {
                 Log.w("Kinesis", "import failed", e)
