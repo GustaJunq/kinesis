@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -109,9 +110,11 @@ fun Viewport(
         }
     }
 
-    // Push state to the GL thread.
-    renderer.state = PreviewState(project, time, playing, mediaRevision)
-    glView.requestRender()
+    // Push state to the GL thread after every successful composition.
+    SideEffect {
+        renderer.state = PreviewState(project, time, playing, mediaRevision)
+        glView.requestRender()
+    }
 
     // Refresh the home-screen thumbnail a moment after edits settle.
     LaunchedEffect(project) {
