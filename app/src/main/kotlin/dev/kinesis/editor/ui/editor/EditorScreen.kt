@@ -47,6 +47,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material.icons.filled.AutoAwesome
+import dev.kinesis.core.model.Effect
+import dev.kinesis.core.model.EffectShortcut
+import dev.kinesis.core.model.Mask
 import dev.kinesis.editor.ui.common.TextInputDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -131,6 +135,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var showSettings by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var showAdd by remember { mutableStateOf(false) }
+    var showEffects by remember { mutableStateOf(false) }
+    var propsFocus by remember { mutableStateOf<String?>(null) }
     var showExport by remember { mutableStateOf(false) }
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
     var renderError by remember { mutableStateOf<String?>(null) }
@@ -313,7 +319,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    ActionButton(Icons.Filled.Tune, stringResource(R.string.tab_properties), true, highlight = true) { vm.pause(); showProps = true }
+                    ActionButton(Icons.Filled.Tune, stringResource(R.string.tab_properties), true, highlight = true) { vm.pause(); propsFocus = null; showProps = true }
+                    ActionButton(Icons.Filled.AutoAwesome, stringResource(R.string.effects), selectedLayer.type.isVisual) { vm.pause(); showEffects = true }
                     ActionButton(Icons.Filled.ContentCut, stringResource(R.string.split), true) { vm.splitSelected() }
                     ActionButton(Icons.Filled.ContentCopy, stringResource(R.string.duplicate), true) { vm.duplicateSelected() }
                     ActionButton(Icons.Filled.CreateNewFolder, stringResource(R.string.group), true) { vm.groupSelection() }
@@ -324,7 +331,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp))
 
         if (showProps || showSettings) {
-            ModalBottomSheet(onDismissRequest = { showProps = false; showSettings = false }, containerColor = KColors.Surface) {
+            ModalBottomSheet(onDismissRequest = { showProps = false; showSettings = false; propsFocus = null }, containerColor = KColors.Surface) {
                 Box(Modifier.fillMaxWidth().height(sheetHeight)) {
                     PropertiesPanel(
                         vm, project, time, if (showSettings) null else selection,
@@ -332,6 +339,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                         onPickTexture = { id -> textureTarget = id; pickTexture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         onPickFont = { pickFont.launch(arrayOf("font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream", "*/*")) },
                         modifier = Modifier.fillMaxSize(),
+                        onAddEffect = { showProps = false; showEffects = true },
+                        focusSection = propsFocus,
                     )
                 }
             }
@@ -347,6 +356,32 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         TextInputDialog(stringResource(R.string.rename), project.meta.title, onDismiss = { renaming = false }) { vm.rename(it.ifBlank { project.meta.title }); renaming = false }
     }
     if (showAdd) AddSheet(onDismiss = { showAdd = false }, onAdd = ::handleAdd)
+    val effectsTarget = selection?.let { LayerTree.find(project, it) }
+    if (showEffects && effectsTarget != null) {
+        AddEffectSheet(
+            effectsTarget,
+            onDismiss = { showEffects = false },
+            onAdd = { type ->
+                vm.updateLayer(effectsTarget.id) { it.copy(effects = it.effects + Effect.create(type)) }
+                showEffects = false
+                propsFocus = "effects"
+                showProps = true
+            },
+            onShortcut = { shortcut ->
+                showEffects = false
+                if (shortcut == EffectShortcut.MASK && effectsTarget.masks.isEmpty()) {
+                    vm.updateLayer(effectsTarget.id) { it.copy(masks = listOf(Mask())) }
+                }
+                propsFocus = when (shortcut) {
+                    EffectShortcut.MASK -> "masks"
+                    EffectShortcut.TRACK_MATTE -> "matte"
+                    EffectShortcut.TRANSITIONS -> "transitions"
+                    EffectShortcut.TEXT_ANIMATORS -> "animators"
+                }
+                showProps = true
+            },
+        )
+    }
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })
     curveTarget?.let { target ->
         val layer = LayerTree.find(project, target.layerId)
@@ -366,7 +401,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
 @Composable
 private fun ActionButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, highlight: Boolean = false, onClick: () -> Unit) {
     Column(
-        Modifier.width(64.dp).clickable(enabled = enabled, onClick = onClick).padding(vertical = 4.dp),
+        Modifier.width(56.dp).clickable(enabled = enabled, onClick = onClick).padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val tint = when {

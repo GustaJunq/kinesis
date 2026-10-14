@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.kinesis.core.anim.EasingPreset
 import dev.kinesis.core.model.BlendMode
-import dev.kinesis.core.model.Effect
 import dev.kinesis.core.model.LayerType
 import dev.kinesis.core.model.LightKind
 import dev.kinesis.core.model.MaskMode
@@ -84,23 +83,6 @@ fun layerTypeRes(type: LayerType): Int = when (type) {
     LayerType.LIGHT -> R.string.layer_light
 }
 
-fun effectNameRes(e: Effect): Int = when (e) {
-    is Effect.Blur -> R.string.effect_blur
-    is Effect.ColorAdjust -> R.string.effect_color_adjust
-    is Effect.Tint -> R.string.effect_tint
-    is Effect.DropShadow -> R.string.effect_drop_shadow
-    is Effect.Glow -> R.string.effect_glow
-    is Effect.Invert -> R.string.effect_invert
-    is Effect.Pixelate -> R.string.effect_pixelate
-    is Effect.ChromaticAberration -> R.string.effect_chromatic
-    is Effect.Vignette -> R.string.effect_vignette
-}
-
-val ALL_EFFECTS: List<() -> Effect> = listOf(
-    { Effect.Blur() }, { Effect.ColorAdjust() }, { Effect.Tint() }, { Effect.DropShadow() }, { Effect.Glow() },
-    { Effect.Invert() }, { Effect.Pixelate() }, { Effect.ChromaticAberration() }, { Effect.Vignette() },
-)
-
 fun shapeKindRes(k: ShapeKind): Int = when (k) {
     ShapeKind.RECTANGLE -> R.string.shape_rectangle
     ShapeKind.ELLIPSE -> R.string.shape_ellipse
@@ -175,4 +157,4 @@ fun textAnimatorRes(t: TextAnimatorType): Int = when (t) {
 fun easingLabel(p: EasingPreset): String = p.id.replaceFirstChar { it.uppercase() }
 
 @Composable
-fun propLabel(key: String): String = stringResource(propLabelRes(key))
+fun propLabel(key: String): String = effectParamLabel(key, isPortuguese()) ?: stringResource(propLabelRes(key))

@@ -53,6 +53,20 @@ class UiSmokeTest {
         click("Duplicate")
         click("Group")
         shot("ui-editor-after-ops")
+
+        // Effect picker: categories, one category, add an effect (opens its parameters).
+        click("Effects")
+        Thread.sleep(3000) // previews render in the background
+        shot("ui-effects-categories")
+        click("Distort")
+        Thread.sleep(3000)
+        shot("ui-effects-distort")
+        click("Pinch/Bulge")
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Distortion", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        shot("ui-effects-params")
+        InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+        rule.waitForIdle()
+        Thread.sleep(500)
         click("Properties")
         shot("ui-editor-properties")
         rule.onNodeWithContentDescription("Undo").assertExists()
