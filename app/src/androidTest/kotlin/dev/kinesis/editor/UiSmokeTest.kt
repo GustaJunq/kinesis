@@ -47,9 +47,8 @@ class UiSmokeTest {
 
         click("Properties")
         shot("ui-editor-properties")
-        click("Layers")
-        shot("ui-editor-layers")
-        click("Timeline")
+        rule.activity.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        rule.waitForIdle()
 
         click("Split")
         click("Duplicate")

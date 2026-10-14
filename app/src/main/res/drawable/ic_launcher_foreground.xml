@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Kinesis mark: a "K" built from a stem and two motion strokes. -->
+<!-- Kinesis mark: a "K" drawn as a Bézier curve with its handle (bar, arc, tail, anchor square). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M38,32h9v44h-9z" />
+        android:fillColor="#E2B3FF"
+        android:pathData="M34,40 L36.6,40.2 L35.1,51.4 L32.5,51.1 Z" />
     <path
-        android:fillColor="#FF7C5CFF"
-        android:pathData="M49,54l18,-22h11l-18,22z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#DDA9FF"
+        android:strokeWidth="3.1"
+        android:strokeLineCap="round"
+        android:pathData="M56.4,46 C44,45 33,52 34.5,60 C35,62.5 35.5,64 35.2,66" />
     <path
-        android:fillColor="#FF4FD1C5"
-        android:pathData="M49,54l18,22h11l-18,-22z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#CC8CFF"
+        android:strokeWidth="3.1"
+        android:strokeLineCap="round"
+        android:pathData="M40.2,57.2 C44,62 56,65 71.5,67.2" />
+    <path
+        android:fillColor="#E2B3FF"
+        android:pathData="M72.4,65.8 L75.9,65.8 L75.9,68.5 L72.4,68.5 Z" />
 </vector>
