@@ -1,0 +1,364 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Slideshow com música",
+    "description": "Quatro slides em grupos com transições diferentes, barra de progresso e trilha sintética em fade."
+  },
+  "composition": {"width": 1080, "height": 1920, "fps": 30, "duration": 12, "background": "#000000"},
+  "assets": [
+    {
+      "id": "music",
+      "type": "audio",
+      "path": "assets/music.m4a",
+      "name": "music.m4a",
+      "mimeType": "audio/mp4",
+      "duration": 12
+    }
+  ],
+  "layers": [
+    {
+      "id": "slide-praia",
+      "type": "group",
+      "start": 0.0,
+      "duration": 3.6,
+      "layers": [
+        {
+          "id": "praia-bg",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.6,
+          "transform": {"scale": {"keyframes": [{"time": 0, "value": [1, 1]}, {"time": 3.6, "value": [1.1, 1.1]}]}},
+          "shape": {
+            "kind": "rectangle",
+            "size": [1080, 1920],
+            "fill": {
+              "gradient": {
+                "type": "linear",
+                "start": [0, -960],
+                "end": [0, 960],
+                "stops": [{"offset": 0, "color": "#F6A85C"}, {"offset": 1, "color": "#E4572E"}]
+              }
+            }
+          }
+        },
+        {
+          "id": "praia-orb",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.6,
+          "transform": {
+            "position": [0, -250],
+            "scale": {
+              "keyframes": [{"time": 0, "value": [0.8, 0.8], "easing": "easeOutCubic"}, {"time": 1.2, "value": [1, 1]}]
+            }
+          },
+          "shape": {"kind": "ellipse", "size": [520, 520], "fill": {"color": "#FFFFFF33"}}
+        },
+        {
+          "id": "praia-title",
+          "type": "text",
+          "start": 0.4,
+          "duration": 3.2,
+          "transform": {"position": [0, 250]},
+          "text": {
+            "content": "PRAIA",
+            "font": {"family": "sans-serif", "weight": 900},
+            "fontSize": 130,
+            "color": "#FFFFFF",
+            "maxWidth": 900,
+            "animators": [
+              {
+                "type": "slideUp",
+                "unit": "word",
+                "stagger": 0.15,
+                "unitDuration": 0.5,
+                "easing": "easeOutCubic",
+                "amount": 70
+              }
+            ]
+          }
+        },
+        {
+          "id": "praia-sub",
+          "type": "text",
+          "start": 0.8,
+          "duration": 2.8,
+          "transform": {"position": [0, 400]},
+          "text": {
+            "content": "Dias de sol",
+            "font": {"family": "sans-serif", "weight": 500},
+            "fontSize": 56,
+            "color": "#FFFFFFCC",
+            "animators": [{"type": "fade", "unit": "word", "stagger": 0.12, "unitDuration": 0.4}]
+          }
+        }
+      ]
+    },
+    {
+      "id": "slide-cidade",
+      "type": "group",
+      "start": 2.8,
+      "duration": 3.6,
+      "layers": [
+        {
+          "id": "cidade-bg",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.6,
+          "transform": {"scale": {"keyframes": [{"time": 0, "value": [1, 1]}, {"time": 3.6, "value": [1.1, 1.1]}]}},
+          "shape": {
+            "kind": "rectangle",
+            "size": [1080, 1920],
+            "fill": {
+              "gradient": {
+                "type": "linear",
+                "start": [0, -960],
+                "end": [0, 960],
+                "stops": [{"offset": 0, "color": "#4C8DFF"}, {"offset": 1, "color": "#1C3D75"}]
+              }
+            }
+          }
+        },
+        {
+          "id": "cidade-orb",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.6,
+          "transform": {
+            "position": [0, -250],
+            "scale": {
+              "keyframes": [{"time": 0, "value": [0.8, 0.8], "easing": "easeOutCubic"}, {"time": 1.2, "value": [1, 1]}]
+            }
+          },
+          "shape": {"kind": "ellipse", "size": [520, 520], "fill": {"color": "#FFFFFF33"}}
+        },
+        {
+          "id": "cidade-title",
+          "type": "text",
+          "start": 0.4,
+          "duration": 3.2,
+          "transform": {"position": [0, 250]},
+          "text": {
+            "content": "CIDADE",
+            "font": {"family": "sans-serif", "weight": 900},
+            "fontSize": 130,
+            "color": "#FFFFFF",
+            "maxWidth": 900,
+            "animators": [
+              {
+                "type": "slideUp",
+                "unit": "word",
+                "stagger": 0.15,
+                "unitDuration": 0.5,
+                "easing": "easeOutCubic",
+                "amount": 70
+              }
+            ]
+          }
+        },
+        {
+          "id": "cidade-sub",
+          "type": "text",
+          "start": 0.8,
+          "duration": 2.8,
+          "transform": {"position": [0, 400]},
+          "text": {
+            "content": "Noites acesas",
+            "font": {"family": "sans-serif", "weight": 500},
+            "fontSize": 56,
+            "color": "#FFFFFFCC",
+            "animators": [{"type": "fade", "unit": "word", "stagger": 0.12, "unitDuration": 0.4}]
+          }
+        }
+      ],
+      "transitionIn": {"type": "slideLeft", "duration": 0.8, "easing": "easeOutCubic", "distance": 700}
+    },
+    {
+      "id": "slide-montanha",
+      "type": "group",
+      "start": 5.6,
+      "duration": 3.6,
+      "layers": [
+        {
+          "id": "montanha-bg",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.6,
+          "transform": {"scale": {"keyframes": [{"time": 0, "value": [1, 1]}, {"time": 3.6, "value": [1.1, 1.1]}]}},
+          "shape": {
+            "kind": "rectangle",
+            "size": [1080, 1920],
+            "fill": {
+              "gradient": {
+                "type": "linear",
+                "start": [0, -960],
+                "end": [0, 960],
+                "stops": [{"offset": 0, "color": "#4FD1C5"}, {"offset": 1, "color": "#13525A"}]
+              }
+            }
+          }
+        },
+        {
+          "id": "montanha-orb",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.6,
+          "transform": {
+            "position": [0, -250],
+            "scale": {
+              "keyframes": [{"time": 0, "value": [0.8, 0.8], "easing": "easeOutCubic"}, {"time": 1.2, "value": [1, 1]}]
+            }
+          },
+          "shape": {"kind": "ellipse", "size": [520, 520], "fill": {"color": "#FFFFFF33"}}
+        },
+        {
+          "id": "montanha-title",
+          "type": "text",
+          "start": 0.4,
+          "duration": 3.2,
+          "transform": {"position": [0, 250]},
+          "text": {
+            "content": "MONTANHA",
+            "font": {"family": "sans-serif", "weight": 900},
+            "fontSize": 130,
+            "color": "#FFFFFF",
+            "maxWidth": 900,
+            "animators": [
+              {
+                "type": "slideUp",
+                "unit": "word",
+                "stagger": 0.15,
+                "unitDuration": 0.5,
+                "easing": "easeOutCubic",
+                "amount": 70
+              }
+            ]
+          }
+        },
+        {
+          "id": "montanha-sub",
+          "type": "text",
+          "start": 0.8,
+          "duration": 2.8,
+          "transform": {"position": [0, 400]},
+          "text": {
+            "content": "Ar puro",
+            "font": {"family": "sans-serif", "weight": 500},
+            "fontSize": 56,
+            "color": "#FFFFFFCC",
+            "animators": [{"type": "fade", "unit": "word", "stagger": 0.12, "unitDuration": 0.4}]
+          }
+        }
+      ],
+      "transitionIn": {"type": "zoomIn", "duration": 0.8, "easing": "easeOutCubic"}
+    },
+    {
+      "id": "slide-final",
+      "type": "group",
+      "start": 8.4,
+      "duration": 3.6,
+      "layers": [
+        {
+          "id": "final-bg",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.6,
+          "transform": {"scale": {"keyframes": [{"time": 0, "value": [1, 1]}, {"time": 3.6, "value": [1.1, 1.1]}]}},
+          "shape": {
+            "kind": "rectangle",
+            "size": [1080, 1920],
+            "fill": {
+              "gradient": {
+                "type": "linear",
+                "start": [0, -960],
+                "end": [0, 960],
+                "stops": [{"offset": 0, "color": "#B779FF"}, {"offset": 1, "color": "#3B1C75"}]
+              }
+            }
+          }
+        },
+        {
+          "id": "final-orb",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.6,
+          "transform": {
+            "position": [0, -250],
+            "scale": {
+              "keyframes": [{"time": 0, "value": [0.8, 0.8], "easing": "easeOutCubic"}, {"time": 1.2, "value": [1, 1]}]
+            }
+          },
+          "shape": {"kind": "ellipse", "size": [520, 520], "fill": {"color": "#FFFFFF33"}}
+        },
+        {
+          "id": "final-title",
+          "type": "text",
+          "start": 0.4,
+          "duration": 3.2,
+          "transform": {"position": [0, 250]},
+          "text": {
+            "content": "ATÉ A PRÓXIMA",
+            "font": {"family": "sans-serif", "weight": 900},
+            "fontSize": 130,
+            "color": "#FFFFFF",
+            "maxWidth": 900,
+            "animators": [
+              {
+                "type": "slideUp",
+                "unit": "word",
+                "stagger": 0.15,
+                "unitDuration": 0.5,
+                "easing": "easeOutCubic",
+                "amount": 70
+              }
+            ]
+          }
+        },
+        {
+          "id": "final-sub",
+          "type": "text",
+          "start": 0.8,
+          "duration": 2.8,
+          "transform": {"position": [0, 400]},
+          "text": {
+            "content": "obrigado por assistir",
+            "font": {"family": "sans-serif", "weight": 500},
+            "fontSize": 56,
+            "color": "#FFFFFFCC",
+            "animators": [{"type": "fade", "unit": "word", "stagger": 0.12, "unitDuration": 0.4}]
+          }
+        }
+      ],
+      "transitionIn": {"type": "slideUp", "duration": 0.8, "easing": "easeOutCubic", "distance": 800}
+    },
+    {
+      "id": "progress-track",
+      "type": "shape",
+      "start": 0,
+      "duration": 12,
+      "transform": {"position": [0, -860]},
+      "shape": {"kind": "rectangle", "size": [800, 8], "fill": {"color": "#FFFFFF44"}, "roundness": 4}
+    },
+    {
+      "id": "progress",
+      "type": "shape",
+      "start": 0,
+      "duration": 12,
+      "transform": {
+        "anchor": [-400, 0],
+        "position": [-400, -860],
+        "scale": {"keyframes": [{"time": 0, "value": [0, 1]}, {"time": 12, "value": [1, 1]}]}
+      },
+      "shape": {"kind": "rectangle", "size": [800, 8], "fill": {"color": "#FFFFFF"}, "roundness": 4}
+    },
+    {
+      "id": "music",
+      "type": "audio",
+      "start": 0,
+      "duration": 12,
+      "audio": {"asset": "music", "volume": 0.8, "fadeIn": 1.0, "fadeOut": 2.0}
+    }
+  ]
+}

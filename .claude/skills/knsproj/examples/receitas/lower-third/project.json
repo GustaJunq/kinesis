@@ -1,0 +1,73 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Lower third",
+    "description": "Tarja de identificação para vídeo 16:9: placa que desliza, barra de destaque e texto em duas linhas."
+  },
+  "composition": {"width": 1920, "height": 1080, "fps": 30, "duration": 6, "background": "#1B2433"},
+  "layers": [
+    {
+      "id": "plate",
+      "type": "shape",
+      "start": 0,
+      "duration": 6,
+      "transform": {"position": [-520, 360]},
+      "shape": {"kind": "rectangle", "size": [720, 150], "fill": {"color": "#101820D9"}, "roundness": 12},
+      "transitionIn": {"type": "slideRight", "duration": 0.5, "easing": "easeOutCubic", "distance": 400},
+      "transitionOut": {"type": "slideLeft", "duration": 0.4, "easing": "easeInCubic", "distance": 400}
+    },
+    {
+      "id": "accent-bar",
+      "type": "shape",
+      "start": 0.15,
+      "duration": 5.7,
+      "transform": {
+        "position": [-880, 360],
+        "scale": {"keyframes": [{"time": 0, "value": [1, 0], "easing": "easeOutExpo"}, {"time": 0.4, "value": [1, 1]}]}
+      },
+      "shape": {"kind": "rectangle", "size": [12, 150], "fill": {"color": "#4C8DFF"}},
+      "transitionOut": {"type": "fade", "duration": 0.2}
+    },
+    {
+      "id": "name",
+      "type": "text",
+      "start": 0.35,
+      "duration": 5.45,
+      "transform": {"position": [-520, 337]},
+      "text": {
+        "content": "Marina Alves",
+        "font": {"family": "sans-serif", "weight": 800},
+        "fontSize": 64,
+        "color": "#FFFFFF",
+        "animators": [
+          {
+            "type": "slideUp",
+            "unit": "character",
+            "stagger": 0.03,
+            "unitDuration": 0.4,
+            "easing": "easeOutCubic",
+            "amount": 30
+          }
+        ]
+      },
+      "transitionOut": {"type": "fade", "duration": 0.2}
+    },
+    {
+      "id": "role",
+      "type": "text",
+      "start": 0.7,
+      "duration": 5.1,
+      "transform": {"position": [-520, 396]},
+      "text": {
+        "content": "Diretora de arte",
+        "font": {"family": "sans-serif", "weight": 500},
+        "fontSize": 38,
+        "color": "#9EC1FF",
+        "animators": [{"type": "fade", "unit": "word", "stagger": 0.12, "unitDuration": 0.4}]
+      },
+      "transitionOut": {"type": "fade", "duration": 0.2}
+    }
+  ]
+}

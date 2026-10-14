@@ -1,0 +1,142 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Vídeo vertical com legenda por palavra",
+    "description": "Fundo e legendas para vídeo vertical: cada palavra entra com um pop, uma frase por vez."
+  },
+  "composition": {"width": 1080, "height": 1920, "fps": 30, "duration": 9, "background": "#101522"},
+  "layers": [
+    {
+      "id": "backdrop",
+      "type": "shape",
+      "start": 0,
+      "duration": 9,
+      "shape": {
+        "kind": "rectangle",
+        "size": [1080, 1920],
+        "fill": {
+          "gradient": {
+            "type": "linear",
+            "start": [0, -960],
+            "end": [0, 960],
+            "stops": [{"offset": 0, "color": "#1B1F3B"}, {"offset": 1, "color": "#4A1C5E"}]
+          }
+        }
+      }
+    },
+    {
+      "id": "topic",
+      "type": "text",
+      "start": 0,
+      "duration": 9,
+      "transform": {"position": [0, -640]},
+      "text": {
+        "content": "DICA RÁPIDA",
+        "font": {"family": "sans-serif", "weight": 800},
+        "fontSize": 56,
+        "color": "#FFC857",
+        "animators": [{"type": "fade", "unit": "character", "stagger": 0.04, "unitDuration": 0.3}]
+      }
+    },
+    {
+      "id": "progress-track",
+      "type": "shape",
+      "start": 0,
+      "duration": 9,
+      "transform": {"position": [0, -760]},
+      "shape": {"kind": "rectangle", "size": [800, 10], "fill": {"color": "#FFFFFF33"}, "roundness": 5}
+    },
+    {
+      "id": "progress",
+      "type": "shape",
+      "start": 0,
+      "duration": 9,
+      "transform": {
+        "anchor": [-400, 0],
+        "position": [-400, -760],
+        "scale": {"keyframes": [{"time": 0, "value": [0, 1]}, {"time": 9, "value": [1, 1]}]}
+      },
+      "shape": {"kind": "rectangle", "size": [800, 10], "fill": {"color": "#FFC857"}, "roundness": 5}
+    },
+    {
+      "id": "cap-1",
+      "type": "text",
+      "start": 0.5,
+      "duration": 2.4,
+      "transform": {"position": [0, 480]},
+      "text": {
+        "content": "ISSO MUDA TUDO",
+        "font": {"family": "sans-serif", "weight": 900},
+        "fontSize": 130,
+        "color": "#FFFFFF",
+        "maxWidth": 940,
+        "animators": [
+          {
+            "type": "scale",
+            "unit": "word",
+            "stagger": 0.28,
+            "unitDuration": 0.35,
+            "easing": "easeOutBack",
+            "amount": 0
+          }
+        ],
+        "stroke": {"color": "#000000", "width": 8}
+      },
+      "transitionOut": {"type": "fade", "duration": 0.2}
+    },
+    {
+      "id": "cap-2",
+      "type": "text",
+      "start": 3.1,
+      "duration": 2.4,
+      "transform": {"position": [0, 480]},
+      "text": {
+        "content": "EM TRÊS SEGUNDOS",
+        "font": {"family": "sans-serif", "weight": 900},
+        "fontSize": 130,
+        "color": "#FFFFFF",
+        "maxWidth": 940,
+        "animators": [
+          {
+            "type": "scale",
+            "unit": "word",
+            "stagger": 0.28,
+            "unitDuration": 0.35,
+            "easing": "easeOutBack",
+            "amount": 0
+          }
+        ],
+        "stroke": {"color": "#000000", "width": 8}
+      },
+      "transitionOut": {"type": "fade", "duration": 0.2}
+    },
+    {
+      "id": "cap-3",
+      "type": "text",
+      "start": 5.7,
+      "duration": 2.8,
+      "transform": {"position": [0, 480]},
+      "text": {
+        "content": "SEM COMPLICAR",
+        "font": {"family": "sans-serif", "weight": 900},
+        "fontSize": 130,
+        "color": "#FFFFFF",
+        "maxWidth": 940,
+        "animators": [
+          {
+            "type": "scale",
+            "unit": "word",
+            "stagger": 0.28,
+            "unitDuration": 0.35,
+            "easing": "easeOutBack",
+            "amount": 0
+          }
+        ],
+        "stroke": {"color": "#000000", "width": 8}
+      },
+      "transitionOut": {"type": "fade", "duration": 0.2}
+    }
+  ]
+}
