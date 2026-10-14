@@ -16,7 +16,11 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0-beta"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+
+    // Instrumented tests render and export the shipped example projects.
+    sourceSets.getByName("androidTest").assets.srcDir("../examples")
 
     buildTypes {
         release {
@@ -75,4 +79,12 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
