@@ -117,7 +117,13 @@ object Factory {
         LayerProps.withExplicitCameraPosition(base(project, LayerType.CAMERA, name, start).copy(camera = CameraContent()), project.composition.height)
 
     fun light(project: KnsProject, start: Double, kind: LightKind, name: String) =
-        base(project, LayerType.LIGHT, name, start).copy(light = LightContent(kind = kind, intensity = anim(if (kind == LightKind.AMBIENT) 0.3f else 1f)))
+        base(project, LayerType.LIGHT, name, start).copy(light = LightContent(
+                kind = kind,
+                intensity = anim(if (kind == LightKind.AMBIENT) 0.3f else 1f),
+                // Close to the frame so the on-screen light handle starts within reach.
+                position = anim(Vec3(-project.composition.width * 0.3f, -project.composition.height * 0.18f, -500f)),
+            ),
+        )
 
     fun fitScale(project: KnsProject, asset: Asset): Vec2 {
         val w = asset.width ?: return Vec2.ONE
