@@ -169,7 +169,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onOpen: (String) -> Unit) {
+fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandled: () -> Unit = {}) {
     val app = LocalContext.current.applicationContext as Application
     val vm: HomeViewModel = viewModel(factory = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.getInstance(app))
     val projects by vm.projects.collectAsState()
@@ -180,6 +180,12 @@ fun HomeScreen(onOpen: (String) -> Unit) {
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) { vm.refresh() }
+    LaunchedEffect(incoming) {
+        if (incoming != null) {
+            vm.import(incoming, onOpen)
+            onIncomingHandled()
+        }
+    }
     LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
