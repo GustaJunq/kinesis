@@ -331,20 +331,267 @@ e composta como uma imagem.
 
 ## 7. Efeitos
 
-Lista em `effects`, aplicada em ordem sobre a camada já transformada. Todos têm `type` e `enabled` (padrão `true`);
-os parâmetros são animáveis.
+Lista em `effects`, aplicada **em ordem** sobre a imagem da camada já transformada (em pixels da composição).
+Todo efeito tem `type` e `enabled` (padrão `true`); os demais campos são os parâmetros abaixo, e os omitidos valem o
+padrão. Todos os efeitos são procedurais e determinísticos (shaders, sem IA nem modelos de ML): o mesmo projeto
+sempre gera o mesmo quadro.
 
-| `type` | Parâmetros (padrão) |
-|---|---|
-| `blur` | `radius` (12 px) |
-| `colorAdjust` | `brightness` (0), `contrast` (0), `saturation` (0) em −1..1, `hue` (0°) |
-| `tint` | `color` (#7D5CFF), `amount` (1) |
-| `dropShadow` | `color` (#000000), `opacity` (0.6), `angle` (90° = para baixo), `distance` (16), `softness` (16) |
-| `glow` | `color` (#FFFFFF), `radius` (24), `intensity` (1) |
-| `invert` | `amount` (1) |
-| `pixelate` | `size` (16 px) |
-| `chromaticAberration` | `amount` (6 px), `angle` (0°) |
-| `vignette` | `amount` (0.5), `softness` (0.5) |
+- **Animáveis:** todo parâmetro numérico, de cor ou de ponto aceita keyframes (seção 4). Escolhas (`mode`, `axis`…),
+  liga/desliga e `stops` são estáticos.
+- **Aleatoriedade:** efeitos com sorteio têm `seed` inteiro; o sorteio depende só de `seed` e do tempo local da
+  camada (ex.: o glitch troca de padrão `rate` vezes por segundo).
+- **Pontos** (`center`, `position`, `start`…): `[x, y]` em pixels relativos à origem (pivô) da camada, no espaço da
+  própria camada — acompanham a camada quando ela se move. Em camadas 3D, relativos ao pivô projetado.
+- **Comprimentos** (`radius`, `length`, `amplitude`…): pixels da composição.
+- **Faixas:** valores fora da faixa são limitados ao renderizar e o validador acusa `effect.range`.
+
+Categorias (na ordem do app): Todos os efeitos · Cor e luz · Desfoque e nitidez · Distorção · Movimentar e
+transformar · Estilizar · Glitch · Desenho e borda · Procedimental · Fosco, máscara e chave · Tempo e transição ·
+Texto · Utilitário e expressão. As categorias "Fosco, máscara e chave", "Tempo e transição" e "Texto" também têm
+**atalhos** no app para recursos que não ficam em `effects` — máscaras (seção 8), track mattes (seção 8), transições
+(`transitionIn`/`transitionOut`, seção 9) e animadores de texto (`text.animators`, seção 5.2).
+
+Comportamentos especiais:
+
+- **Movimentar e transformar** (`autoShake`, `spin`, `oscillate`, `float`, `pulse`): movem a imagem já renderizada
+  da camada em torno da origem dela (ou de `center`); não alteram `transform`.
+- **Procedimental** (`fractalNoise`, `gradientRamp`, `checkerboard`, `grid`): ignoram as cores da camada e combinam
+  o padrão gerado com ela por `mode` (`replace`, `add`, `multiply`, `screen`, `overlay`) e `mix`, mantendo o alfa da
+  camada. Para cobrir o quadro inteiro, aplique em um retângulo do tamanho da composição.
+- **`glass`**: renderiza a camada como vidro. A forma vem do alfa (com bisel `bevel`); opcionalmente a luminância vira
+  mapa de altura (`useLuminanceAsHeight`, `heightScale`, `heightSoftness`). O vidro refrata o que está **atrás** da
+  camada — o composto das camadas abaixo dentro do mesmo contêiner (dentro de um grupo, só o que está no grupo) — com
+  índice `refraction`, contorno brilhante (`edgeGlow*`) e aberração cromática por dispersão: o espectro visível é
+  dividido em 7 bandas, cada uma refratada com índice ligeiramente diferente (`dispersion` = 0 desliga).
+  Implementação própria; o conceito foi inspirado no Omino Glass (Omino Suite, de David Van Brink).
+- **`depthMap`**: só em camadas `object3d`/`model3d`; mostra a distância à câmera entre `near` (branco) e `far`
+  (preto). Substitui as cores da camada; em camadas 2D é ignorado e o validador avisa `effect.layerKind`.
+- **`echo`**: desenha atrás da camada `count` cópias dela em `t − k·delay`, com opacidade `decay^k`; as cópias levam
+  só os efeitos que vêm antes do `echo` na lista.
+- **`posterizeTime`**: a camada inteira (transformação, conteúdo e efeitos) é avaliada no início do seu quadro em
+  `fps`, criando um visual de stop-motion. A posição na lista não importa.
+- No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
+  usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
+
+Migração da versão 1: `colorAdjust` vira `hueShift` (`hue`), `brightnessContrast` (`brightness`, `contrast`) e
+`saturation` (`saturation`), nessa ordem, preservando valores e keyframes; os demais efeitos não mudam.
+
+Tabela completa (gerada a partir do registro de efeitos do core):
+
+<!-- BEGIN effects-table: gerado a partir do EffectRegistry (RegistryArtifactsTest) -->
+| `type` | Categoria | Parâmetro | Padrão | Faixa |
+|---|---|---|---|---|
+| `gradientMap` (Mapa de gradiente) | Cor e luz | `stops` | `#000000`@0 → `#FFFFFF`@1 | 2 a 8 stops `{offset, color}` (estático) |
+|  |  | `amount` | `1` | 0..1 % |
+| `exposure` (Exposição) | Cor e luz | `exposure` | `0` | -10..10 EV |
+|  |  | `offset` | `0` | -1..1 |
+|  |  | `gamma` | `1` | 0.1..5 |
+| `brightnessContrast` (Brilho e contraste) | Cor e luz | `brightness` | `0` | -1..1 % |
+|  |  | `contrast` | `0` | -1..1 % |
+| `saturation` (Saturação) | Cor e luz | `saturation` | `0` | -1..1 % |
+| `hueShift` (Matiz) | Cor e luz | `hue` | `0` | -3600..3600 ° |
+| `invert` (Inverter cores) | Cor e luz | `amount` | `1` | 0..1 % |
+| `fill` (Preenchimento) | Cor e luz | `color` | `#FFFFFF` | cor |
+|  |  | `amount` | `1` | 0..1 % |
+| `deepGlow` (Brilho profundo) | Cor e luz | `threshold` | `0.6` | 0..1 % |
+|  |  | `radius` | `60` | 0..1000 px |
+|  |  | `intensity` | `1.5` | 0..10 × |
+|  |  | `falloff` | `0.5` | 0..1 % |
+|  |  | `color` | `#FFFFFF` | cor |
+| `lensFlare` (Lens flare) | Cor e luz | `position` | `[-200, -200]` | `[x, y]` px relativos à origem da camada |
+|  |  | `intensity` | `1` | 0..5 × |
+|  |  | `color` | `#FFD9A1` | cor |
+|  |  | `rings` | `4` | inteiro 0..12 |
+| `tint` (Tingir) | Cor e luz | `color` | `#7D5CFF` | cor |
+|  |  | `amount` | `1` | 0..1 % |
+| `glow` (Brilho simples) | Cor e luz | `color` | `#FFFFFF` | cor |
+|  |  | `radius` | `24` | 0..500 px |
+|  |  | `intensity` | `1` | 0..10 × |
+| `colorBalance` (Equilíbrio de cor) | Cor e luz | `shadows` | `#808080` | cor |
+|  |  | `midtones` | `#808080` | cor |
+|  |  | `highlights` | `#808080` | cor |
+|  |  | `preserveLuminosity` | `true` | `true`/`false` (estático) |
+| `vibrance` (Vibração) | Cor e luz | `vibrance` | `0.5` | -1..1 % |
+| `blur` (Desfoque gaussiano) | Desfoque e nitidez | `radius` | `12` | 0..500 px |
+| `sharpen` (Nitidez) | Desfoque e nitidez | `amount` | `0.5` | 0..5 × |
+|  |  | `radius` | `1.5` | 0.5..20 px |
+| `lensBlur` (Desfoque de lente) | Desfoque e nitidez | `radius` | `12` | 0..200 px |
+|  |  | `blades` | `6` | inteiro 0..12 |
+|  |  | `rotation` | `0` | -3600..3600 ° |
+|  |  | `brightness` | `0.5` | 0..5 × |
+| `directionalBlur` (Desfoque direcional) | Desfoque e nitidez | `angle` | `0` | -3600..3600 ° |
+|  |  | `length` | `30` | 0..1000 px |
+| `radialBlur` (Desfoque radial) | Desfoque e nitidez | `mode` | `"zoom"` | `spin`, `zoom` (estático) |
+|  |  | `amount` | `10` | 0..100 |
+|  |  | `center` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
+| `pinchBulge` (Pinçar/Estufar) | Distorção | `amount` | `0.5` | -1..1 % |
+|  |  | `center` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
+|  |  | `radius` | `300` | 0..8000 px |
+|  |  | `falloff` | `0.5` | 0..1 % |
+| `glass` (Glass) | Distorção | `refraction` | `1.5` | 1..3 |
+|  |  | `dispersion` | `0.3` | 0..1 % |
+|  |  | `edgeGlow` | `0.6` | 0..5 × |
+|  |  | `edgeGlowWidth` | `6` | 0..200 px |
+|  |  | `edgeGlowColor` | `#FFFFFF` | cor |
+|  |  | `bevel` | `24` | 0..400 px |
+|  |  | `useLuminanceAsHeight` | `false` | `true`/`false` (estático) |
+|  |  | `heightScale` | `20` | 0..400 px |
+|  |  | `heightSoftness` | `4` | 0..100 px |
+| `warp` (Deformar) | Distorção | `mode` | `"wave"` | `wave`, `fractal` (estático) |
+|  |  | `amplitude` | `20` | 0..1000 px — com `mode: "wave"` |
+|  |  | `frequency` | `3` | 0..100 — com `mode: "wave"` |
+|  |  | `direction` | `0` | -3600..3600 ° — com `mode: "wave"` |
+|  |  | `phase` | `0` | -3600..3600 ° — com `mode: "wave"` |
+|  |  | `amount` | `20` | 0..1000 px — com `mode: "fractal"` |
+|  |  | `scale` | `200` | 1..4000 px — com `mode: "fractal"` |
+|  |  | `complexity` | `3` | inteiro 1..8 — com `mode: "fractal"` |
+|  |  | `evolution` | `0` | -3600..3600 ° — com `mode: "fractal"` |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `mirror` (Espelhar) | Distorção | `axis` | `"horizontal"` | `horizontal`, `vertical`, `both` (estático) |
+|  |  | `center` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
+|  |  | `angle` | `0` | -3600..3600 ° |
+| `twirl` (Redemoinho) | Distorção | `angle` | `180` | -3600..3600 ° |
+|  |  | `radius` | `300` | 0..8000 px |
+|  |  | `center` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
+| `ripple` (Ondulação) | Distorção | `amplitude` | `10` | 0..500 px |
+|  |  | `wavelength` | `60` | 1..4000 px |
+|  |  | `phase` | `0` | -3600..3600 ° |
+|  |  | `radius` | `600` | 0..8000 px |
+|  |  | `center` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
+| `autoShake` (Tremor automático) | Movimentar e transformar | `amplitude` | `10` | 0..1000 px |
+|  |  | `frequency` | `8` | 0..60 Hz |
+|  |  | `axes` | `"xy"` | `xy`, `x`, `y` (estático) |
+|  |  | `rotation` | `2` | 0..180 ° |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `spin` (Girar) | Movimentar e transformar | `speed` | `90` | -36000..36000 °/s |
+|  |  | `center` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
+| `oscillate` (Oscilante) | Movimentar e transformar | `frequency` | `1` | 0..60 Hz |
+|  |  | `amount` | `20` | 0..2000 px |
+|  |  | `scaleAmount` | `0.05` | 0..2 % |
+|  |  | `rotationAmount` | `5` | 0..360 ° |
+|  |  | `phase` | `0` | -3600..3600 ° |
+| `float` (Flutuar) | Movimentar e transformar | `amplitude` | `12` | 0..1000 px |
+|  |  | `frequency` | `0.5` | 0..20 Hz |
+|  |  | `phase` | `0` | -3600..3600 ° |
+| `pulse` (Pulsar) | Movimentar e transformar | `amount` | `0.08` | 0..2 % |
+|  |  | `frequency` | `1` | 0..60 Hz |
+|  |  | `phase` | `0` | -3600..3600 ° |
+| `pixelate` (Pixelizar) | Estilizar | `size` | `16` | 1..1000 px |
+| `dropShadow` (Sombra) | Estilizar | `color` | `#000000` | cor |
+|  |  | `opacity` | `0.6` | 0..1 % |
+|  |  | `angle` | `90` | -3600..3600 ° |
+|  |  | `distance` | `16` | 0..2000 px |
+|  |  | `softness` | `16` | 0..500 px |
+| `vignette` (Vinheta) | Estilizar | `amount` | `0.5` | 0..1 % |
+|  |  | `softness` | `0.5` | 0.01..1 % |
+| `halftone` (Retícula) | Estilizar | `dotSize` | `8` | 2..400 px |
+|  |  | `angle` | `45` | -3600..3600 ° |
+|  |  | `monochrome` | `false` | `true`/`false` (estático) |
+| `posterize` (Posterizar) | Estilizar | `levels` | `6` | inteiro 2..64 |
+| `filmGrain` (Granulação) | Estilizar | `amount` | `0.15` | 0..1 % |
+|  |  | `size` | `1.5` | 0.5..20 px |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `scanlines` (Scanlines/CRT) | Estilizar | `spacing` | `4` | 2..200 px |
+|  |  | `intensity` | `0.4` | 0..1 % |
+|  |  | `curvature` | `0` | 0..1 % |
+| `blockGlitch` (Glitch em blocos) | Glitch | `blockSize` | `48` | 4..2000 px |
+|  |  | `intensity` | `0.5` | 0..1 % |
+|  |  | `rate` | `8` | 0..60 Hz |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `lineGlitch` (Glitch em linhas) | Glitch | `lineHeight` | `6` | 1..500 px |
+|  |  | `offset` | `40` | 0..2000 px |
+|  |  | `density` | `0.25` | 0..1 % |
+|  |  | `rate` | `12` | 0..60 Hz |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `vhs` (Fita VHS) | Glitch | `tracking` | `0.3` | 0..1 % |
+|  |  | `jitter` | `0.3` | 0..1 % |
+|  |  | `colorBleed` | `4` | 0..100 px |
+|  |  | `noise` | `0.2` | 0..1 % |
+|  |  | `scanlines` | `0.3` | 0..1 % |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `chromaticAberration` (Aberração cromática) | Glitch | `amount` | `6` | 0..500 px |
+|  |  | `angle` | `0` | -3600..3600 ° |
+| `rgbSplit` (Separação RGB) | Glitch | `amount` | `8` | 0..500 px |
+|  |  | `angle` | `0` | -3600..3600 ° |
+|  |  | `rate` | `0` | 0..60 Hz |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `staticNoise` (Chuvisco) | Glitch | `amount` | `0.5` | 0..1 % |
+|  |  | `size` | `1` | 0.5..40 px |
+|  |  | `rate` | `24` | 0..120 Hz |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `findEdges` (Encontrar bordas) | Desenho e borda | `strength` | `1` | 0..5 × |
+|  |  | `invert` | `false` | `true`/`false` (estático) |
+| `outline` (Contorno) | Desenho e borda | `color` | `#FFFFFF` | cor |
+|  |  | `width` | `4` | 0..200 px |
+|  |  | `opacity` | `1` | 0..1 % |
+|  |  | `position` | `"outside"` | `outside`, `inside`, `center` (estático) |
+| `emboss` (Relevo) | Desenho e borda | `angle` | `135` | -3600..3600 ° |
+|  |  | `strength` | `1` | 0..5 × |
+|  |  | `distance` | `2` | 0.5..50 px |
+| `sketch` (Esboço) | Desenho e borda | `strength` | `1` | 0..5 × |
+|  |  | `colored` | `false` | `true`/`false` (estático) |
+| `fractalNoise` (Ruído fractal) | Procedimental | `scale` | `200` | 1..4000 px |
+|  |  | `complexity` | `4` | inteiro 1..8 |
+|  |  | `evolution` | `0` | -3600..3600 ° |
+|  |  | `contrast` | `1` | 0..5 × |
+|  |  | `brightness` | `0` | -1..1 % |
+|  |  | `colorA` | `#000000` | cor |
+|  |  | `colorB` | `#FFFFFF` | cor |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+|  |  | `mode` | `"replace"` | `replace`, `add`, `multiply`, `screen`, `overlay` (estático) |
+|  |  | `mix` | `1` | 0..1 % |
+| `gradientRamp` (Rampa de gradiente) | Procedimental | `shape` | `"linear"` | `linear`, `radial` (estático) |
+|  |  | `start` | `[0, -300]` | `[x, y]` px relativos à origem da camada |
+|  |  | `end` | `[0, 300]` | `[x, y]` px relativos à origem da camada |
+|  |  | `startColor` | `#000000` | cor |
+|  |  | `endColor` | `#FFFFFF` | cor |
+|  |  | `mode` | `"replace"` | `replace`, `add`, `multiply`, `screen`, `overlay` (estático) |
+|  |  | `mix` | `1` | 0..1 % |
+| `checkerboard` (Xadrez) | Procedimental | `size` | `64` | 1..4000 px |
+|  |  | `angle` | `0` | -3600..3600 ° |
+|  |  | `colorA` | `#FFFFFF` | cor |
+|  |  | `colorB` | `#000000` | cor |
+|  |  | `offset` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
+|  |  | `mode` | `"replace"` | `replace`, `add`, `multiply`, `screen`, `overlay` (estático) |
+|  |  | `mix` | `1` | 0..1 % |
+| `grid` (Grade) | Procedimental | `spacing` | `64` | 2..4000 px |
+|  |  | `width` | `2` | 0..200 px |
+|  |  | `color` | `#FFFFFF` | cor |
+|  |  | `angle` | `0` | -3600..3600 ° |
+|  |  | `offset` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
+|  |  | `mode` | `"replace"` | `replace`, `add`, `multiply`, `screen`, `overlay` (estático) |
+|  |  | `mix` | `1` | 0..1 % |
+| `chromaKey` (Chroma key) | Fosco, máscara e chave | `color` | `#00FF00` | cor |
+|  |  | `tolerance` | `0.3` | 0..1 % |
+|  |  | `softness` | `0.1` | 0..1 % |
+|  |  | `spill` | `0.5` | 0..1 % |
+|  |  | `choke` | `0` | -50..50 px |
+| `lumaKey` (Luma key) | Fosco, máscara e chave | `threshold` | `0.1` | 0..1 % |
+|  |  | `tolerance` | `0.1` | 0..1 % |
+|  |  | `softness` | `0.05` | 0..1 % |
+|  |  | `invert` | `false` | `true`/`false` (estático) |
+| `spillSuppressor` (Supressor de spill) | Fosco, máscara e chave | `color` | `#00FF00` | cor |
+|  |  | `amount` | `1` | 0..1 % |
+| `matteChoker` (Ajuste de fosco) | Fosco, máscara e chave | `choke` | `2` | -100..100 px |
+|  |  | `softness` | `1` | 0..100 px |
+| `echo` (Eco) | Tempo e transição | `delay` | `0.1` | 0.01..5 s |
+|  |  | `count` | `4` | inteiro 1..16 |
+|  |  | `decay` | `0.6` | 0..1 % |
+| `posterizeTime` (Posterizar tempo) | Tempo e transição | `fps` | `8` | 1..120 fps |
+| `strobe` (Estroboscópio) | Tempo e transição | `frequency` | `4` | 0..60 Hz |
+|  |  | `duty` | `0.5` | 0..1 % |
+|  |  | `mode` | `"flash"` | `flash`, `hide` (estático) |
+|  |  | `color` | `#FFFFFF` | cor — com `mode: "flash"` |
+| `depthMap` (Mapa de profundidade) | Utilitário e expressão | `near` | `500` | 0..200000 px |
+|  |  | `far` | `5000` | 0..200000 px |
+|  |  | `gamma` | `1` | 0.1..5 |
+|  |  | `invert` | `false` | `true`/`false` (estático) |
+| `channelShuffle` (Trocar canais) | Utilitário e expressão | `red` | `"red"` | `red`, `green`, `blue`, `alpha`, `luma`, `zero`, `one` (estático) |
+|  |  | `green` | `"green"` | `red`, `green`, `blue`, `alpha`, `luma`, `zero`, `one` (estático) |
+|  |  | `blue` | `"blue"` | `red`, `green`, `blue`, `alpha`, `luma`, `zero`, `one` (estático) |
+|  |  | `alpha` | `"alpha"` | `red`, `green`, `blue`, `alpha`, `luma`, `zero`, `one` (estático) |
+| `alphaFromLuma` (Alfa pela luminância) | Utilitário e expressão | `invert` | `false` | `true`/`false` (estático) |
+<!-- END effects-table -->
 
 ## 8. Máscaras e track mattes
 

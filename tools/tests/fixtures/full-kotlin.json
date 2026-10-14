@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "generator": "tests",
   "meta": {
     "title": "Everything",
@@ -115,6 +115,56 @@
         },
         {
           "type": "dropShadow"
+        },
+        {
+          "type": "pinchBulge",
+          "amount": -0.3,
+          "center": [10, 20]
+        },
+        {
+          "type": "gradientMap",
+          "stops": [
+            {
+              "offset": 0,
+              "color": "#000000"
+            },
+            {
+              "offset": 0.5,
+              "color": "#FF4D33"
+            },
+            {
+              "offset": 1,
+              "color": "#FFFFFF"
+            }
+          ]
+        },
+        {
+          "type": "warp",
+          "mode": "fractal",
+          "amount": {
+            "keyframes": [
+              {
+                "time": 0,
+                "value": 0
+              },
+              {
+                "time": 1,
+                "value": 40
+              }
+            ]
+          },
+          "complexity": 5,
+          "seed": 7
+        },
+        {
+          "type": "channelShuffle",
+          "red": "blue",
+          "blue": "red"
+        },
+        {
+          "type": "glass",
+          "enabled": false,
+          "useLuminanceAsHeight": true
         }
       ],
       "transitionIn": {

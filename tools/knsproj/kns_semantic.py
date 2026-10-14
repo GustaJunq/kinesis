@@ -5,6 +5,9 @@ so problems reported by this CLI match what the Android app reports when importi
 Runs on the raw JSON (after schema validation) and applies the format defaults itself.
 """
 
+import json
+import os
+
 KEYFRAME_EPSILON = 1e-4
 MAX_MASKS = 4
 MAX_LIGHTS = 4
@@ -16,6 +19,11 @@ CONTENT_KEY = {
 IS_3D = {"object3d", "model3d", "camera", "light"}
 IS_VISUAL = {"text", "shape", "image", "video", "group", "object3d", "model3d"}
 IS_2D_VISUAL = {"text", "shape", "image", "video", "group"}
+
+# Effect registry exported from the core (EffectRegistry.kt) by RegistryArtifactsTest.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "effects.json"), encoding="utf-8") as _f:
+    REGISTRY = json.load(_f)
+EFFECTS = {e["id"]: e for e in REGISTRY["effects"]}
 
 
 class Issue:
@@ -122,6 +130,34 @@ def validate(project, available_files=None):
             err("layer.missingAsset", path, f"asset '{aid}' does not exist")
         elif t != expected:
             err("layer.assetType", path, f"asset '{aid}' is a {t}, expected {expected}")
+
+    def check_effect(e, ep, ltype, d):
+        spec = EFFECTS.get(e.get("type"))
+        if spec is None:
+            return
+        if spec["target"] == "layer_3d" and ltype in IS_VISUAL and ltype not in ("object3d", "model3d"):
+            warn("effect.layerKind", f"{ep}.type", f"{spec['id']} only works on object3d and model3d layers; it is ignored here")
+        for param in spec["params"]:
+            name = param["name"]
+            v = e.get(name)
+            if v is None:
+                continue
+            if param["type"] in ("number", "integer", "color", "point"):
+                check_anim(v, f"{ep}.{name}", d)
+            if param["type"] not in ("number", "integer"):
+                continue
+            lo, hi = param.get("min"), param.get("max")
+
+            def outside(x):
+                return isinstance(x, (int, float)) and ((lo is not None and x < lo) or (hi is not None and x > hi))
+
+            rng = f"{lo if lo is not None else '-inf'}..{hi if hi is not None else 'inf'}"
+            if _is_animated(v):
+                for k, kf in enumerate(v.get("keyframes", [])):
+                    if outside(kf.get("value")):
+                        err("effect.range", f"{ep}.{name}.keyframes[{k}].value", f"{name} must be in {rng}")
+            elif outside(v):
+                err("effect.range", f"{ep}.{name}", f"{name} must be in {rng}")
 
     def visit(layers, base, depth):
         if depth > 16:
@@ -244,9 +280,7 @@ def validate(project, available_files=None):
             if ltype not in IS_VISUAL and effects:
                 warn("layer.effects", f"{p}.effects", f"effects have no visible result on {ltype} layers")
             for ei, e in enumerate(effects):
-                radius = e.get("radius")
-                if e.get("type") == "blur" and isinstance(radius, (int, float)) and radius < 0:
-                    err("effect.range", f"{p}.effects[{ei}].radius", "radius must be >= 0")
+                check_effect(e, f"{p}.effects[{ei}]", ltype, d)
             for name in ("transitionIn", "transitionOut"):
                 t = layer.get(name)
                 if t is not None and not t.get("duration", 0.5) > 0:

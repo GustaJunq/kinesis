@@ -9,6 +9,7 @@ import dev.kinesis.core.geom.GltfLoader
 import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.format.ProjectValidator
 import dev.kinesis.core.format.Severity
+import dev.kinesis.core.model.FORMAT_VERSION
 import dev.kinesis.core.model.LayerTree
 import dev.kinesis.core.scene.SceneEvaluator
 import kotlinx.serialization.json.Json
@@ -28,12 +29,17 @@ class CrossLanguageTest {
     private val root = TestProjects.repoRoot
     private val mapper = ObjectMapper()
 
-    private val schema: JsonSchema by lazy {
-        JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
-            .getSchema(File(root, "schema/knsproj-v1.schema.json").readText())
-    }
+    private val schemas = HashMap<Int, JsonSchema>()
 
-    private fun schemaErrors(json: String) = schema.validate(mapper.readTree(json)).map { it.message }
+    /** Validates against the schema of the document's own format version. */
+    private fun schemaErrors(json: String): List<String> {
+        val tree = mapper.readTree(json)
+        val version = tree.path("formatVersion").asInt(FORMAT_VERSION)
+        val schema = schemas.getOrPut(version) {
+            JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012).getSchema(File(root, "schema/knsproj-v$version.schema.json").readText())
+        }
+        return schema.validate(tree).map { it.message }
+    }
 
     @Test
     fun kotlinOutputConformsToTheSchema() {

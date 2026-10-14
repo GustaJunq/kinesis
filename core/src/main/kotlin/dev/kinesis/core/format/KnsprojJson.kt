@@ -5,6 +5,7 @@ import dev.kinesis.core.model.FORMAT_VERSION
 import dev.kinesis.core.model.KnsProject
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -123,10 +124,10 @@ object JsonPretty {
 
 /**
  * Upgrades older documents to [FORMAT_VERSION], one version at a time. Each step receives a document of
- * version N and returns one of version N + 1. Version 1 is the first public version, so there are no steps yet.
+ * version N and returns one of version N + 1.
  */
 object Migrations {
-    private val steps: Map<Int, (JsonObject) -> JsonObject> = emptyMap()
+    private val steps: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to ::v1ToV2)
 
     fun migrate(root: JsonObject, fromVersion: Int): JsonObject {
         var doc = root
@@ -137,5 +138,44 @@ object Migrations {
             v++
         }
         return JsonObject(doc + ("formatVersion" to JsonPrimitive(FORMAT_VERSION)))
+    }
+
+    /**
+     * Version 2 replaces the v1 `colorAdjust` effect by `hueShift`, `brightnessContrast` and `saturation` (in the
+     * order v1 applied them), keeping static values and keyframes as they are. Every other effect is unchanged.
+     */
+    fun v1ToV2(doc: JsonObject): JsonObject {
+        fun effects(list: JsonArray): JsonArray = JsonArray(list.flatMap { e ->
+            val o = e as? JsonObject
+            if (o == null || (o["type"] as? JsonPrimitive)?.content != "colorAdjust") return@flatMap listOf(e)
+            val enabled = o["enabled"]
+            fun part(type: String, vararg keys: String): JsonObject? {
+                val present = keys.filter { it in o }
+                if (present.isEmpty()) return null
+                val m = LinkedHashMap<String, JsonElement>()
+                m["type"] = JsonPrimitive(type)
+                if (enabled != null) m["enabled"] = enabled
+                for (k in present) m[k] = o.getValue(k)
+                return JsonObject(m)
+            }
+            val parts = listOfNotNull(part("hueShift", "hue"), part("brightnessContrast", "brightness", "contrast"), part("saturation", "saturation"))
+            parts.ifEmpty {
+                // A colorAdjust with only defaults: keep a (neutral) entry so the effect list keeps its length.
+                listOf(JsonObject(buildMap { put("type", JsonPrimitive("brightnessContrast")); if (enabled != null) put("enabled", enabled) }))
+            }
+        })
+
+        fun layer(l: JsonElement): JsonElement {
+            val o = l as? JsonObject ?: return l
+            val m = LinkedHashMap(o)
+            (o["effects"] as? JsonArray)?.let { m["effects"] = effects(it) }
+            (o["layers"] as? JsonArray)?.let { children -> m["layers"] = JsonArray(children.map(::layer)) }
+            return JsonObject(m)
+        }
+
+        val m = LinkedHashMap(doc)
+        (doc["layers"] as? JsonArray)?.let { m["layers"] = JsonArray(it.map(::layer)) }
+        m["formatVersion"] = JsonPrimitive(2)
+        return JsonObject(m)
     }
 }

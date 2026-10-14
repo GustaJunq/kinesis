@@ -20,6 +20,7 @@ CLI_DIR = os.path.join(ROOT, "tools", "knsproj")
 sys.path.insert(0, CLI_DIR)
 
 import kns_archive  # noqa: E402
+import kns_migrate  # noqa: E402
 import kns_schema  # noqa: E402
 import kns_semantic  # noqa: E402
 
@@ -43,7 +44,7 @@ def run_cli(*args):
 
 
 def minimal(**overrides):
-    p = {"format": "knsproj", "formatVersion": 1,
+    p = {"format": "knsproj", "formatVersion": cli.FORMAT_VERSION,
          "composition": {"width": 1080, "height": 1920, "fps": 30, "duration": 10}, "layers": []}
     p.update(overrides)
     return p
@@ -101,13 +102,15 @@ class SemanticParityTests(unittest.TestCase):
     def test_invalid_fixtures_report_expected_codes(self):
         with open(os.path.join(FIXTURES, "invalid", "expected.json")) as f:
             expected = json.load(f)
-        schema_validator = kns_schema.Validator(cli.load_schema())
         for name, codes in sorted(expected.items()):
             with self.subTest(fixture=name):
                 with open(os.path.join(FIXTURES, "invalid", name)) as f:
                     project = json.load(f)
+                # The fixtures are format v1: schema of their version, semantics after migration (like the app).
+                schema_validator = kns_schema.Validator(cli.load_schema(project["formatVersion"]))
                 self.assertEqual([], schema_validator.validate(project), "fixtures must be schema-valid")
-                found = sorted({i.code for i in kns_semantic.validate(project, None) if i.severity == "error"})
+                migrated = kns_migrate.migrate(project, cli.FORMAT_VERSION)
+                found = sorted({i.code for i in kns_semantic.validate(migrated, None) if i.severity == "error"})
                 self.assertEqual(sorted(codes), found)
 
 
@@ -201,7 +204,7 @@ class ArchiveTests(unittest.TestCase):
         self.assertIn("cube [object3d]", stdout)
 
     def test_version_and_header_checks(self):
-        result = cli.validate_project(minimal(formatVersion=2), None)
+        result = cli.validate_project(minimal(formatVersion=cli.FORMAT_VERSION + 1), None)
         self.assertEqual(["format.version"], [i["code"] for i in result.errors])
         result = cli.validate_project({"format": "zip"}, None)
         self.assertEqual(["format.header"], [i["code"] for i in result.errors])
@@ -209,6 +212,54 @@ class ArchiveTests(unittest.TestCase):
     def test_pretty_printer_matches_kotlin_style(self):
         text = kns_archive.dumps_project({"a": [1.0, 2.5], "b": {"c": []}, "d": [{"e": 1}]})
         self.assertEqual('{\n  "a": [1, 2.5],\n  "b": {\n    "c": []\n  },\n  "d": [\n    {\n      "e": 1\n    }\n  ]\n}\n', text)
+
+
+class EffectTests(unittest.TestCase):
+    """The effect registry exported from the core drives the schema and the semantic checks."""
+
+    def setUp(self):
+        self.validator = kns_schema.Validator(cli.load_schema())
+
+    def layer(self, *effects, ltype="shape"):
+        content = {"shape": {}} if ltype == "shape" else {"object3d": {}}
+        return minimal(layers=[dict({"id": "s", "type": ltype, "effects": list(effects)}, **content)])
+
+    def test_every_registry_effect_with_defaults_is_valid(self):
+        for spec in kns_semantic.REGISTRY["effects"]:
+            with self.subTest(effect=spec["id"]):
+                values = {p["name"]: p["default"] for p in spec["params"]}
+                doc = self.layer(dict({"type": spec["id"]}, **values), ltype="object3d" if spec["target"] == "layer_3d" else "shape")
+                result = cli.validate_project(doc, None)
+                self.assertEqual([], result.errors + result.warnings)
+
+    def test_thirteen_categories_in_order(self):
+        names = [c["pt"] for c in kns_semantic.REGISTRY["categories"]]
+        self.assertEqual(13, len(names))
+        self.assertEqual(["Todos os efeitos", "Cor e luz"], names[:2])
+        self.assertEqual("Utilitário e expressão", names[-1])
+
+    def test_ranges_choices_and_layer_kind(self):
+        codes = lambda doc: [i["code"] for i in cli.validate_project(doc, None).issues]
+        self.assertIn("effect.range", codes(self.layer({"type": "pinchBulge", "amount": 1.5})))
+        animated = {"type": "vignette", "amount": {"keyframes": [{"time": 0, "value": 0}, {"time": 1, "value": 3}]}}
+        self.assertIn("effect.range", codes(self.layer(animated)))
+        self.assertEqual(["schema"], codes(self.layer({"type": "warp", "mode": "spiral"}))[:1])
+        self.assertIn("effect.layerKind", codes(self.layer({"type": "depthMap"})))
+        self.assertEqual([], codes(self.layer({"type": "depthMap"}, ltype="object3d")))
+        self.assertEqual(["schema"], codes(self.layer({"type": "colorAdjust"}))[:1], "colorAdjust no longer exists in v2")
+
+    def test_v1_color_adjust_is_migrated(self):
+        v1 = minimal(formatVersion=1, layers=[{"id": "s", "type": "shape", "shape": {}, "effects": [
+            {"type": "colorAdjust", "enabled": False, "hue": {"keyframes": [{"time": 0, "value": 0}, {"time": 1, "value": 90}]}, "contrast": 0.3},
+            {"type": "blur"}]}])
+        self.assertEqual([], cli.validate_project(v1, None).issues)
+        v2 = kns_migrate.migrate(v1, 2)
+        effects = v2["layers"][0]["effects"]
+        self.assertEqual(["hueShift", "brightnessContrast", "blur"], [e["type"] for e in effects])
+        self.assertEqual({"type": "brightnessContrast", "enabled": False, "contrast": 0.3}, effects[1])
+        self.assertEqual(90, effects[0]["hue"]["keyframes"][1]["value"])
+        self.assertEqual([], cli.validate_project(v2, None).issues)
+        self.assertEqual(1, v1["formatVersion"], "migration must not modify its input")
 
 
 def example_dirs(group):

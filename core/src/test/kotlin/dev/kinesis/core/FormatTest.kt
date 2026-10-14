@@ -235,7 +235,7 @@ class FormatTest {
         val badComp = base.copy(composition = base.composition.copy(fps = 0.0, width = 4))
         assertTrue(codes(badComp).containsAll(listOf("composition.fps", "composition.size")))
 
-        val badEffect = base.copy(layers = listOf(Layer("s", LayerType.SHAPE, shape = ShapeContent(), effects = listOf(Effect.Blur(radius = dev.kinesis.core.anim.anim(-3f))))))
+        val badEffect = base.copy(layers = listOf(Layer("s", LayerType.SHAPE, shape = ShapeContent(), effects = listOf(Effect.of("blur", "radius" to -3f)))))
         assertTrue("effect.range" in codes(badEffect))
     }
 

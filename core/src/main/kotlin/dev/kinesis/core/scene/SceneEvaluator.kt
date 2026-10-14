@@ -10,6 +10,8 @@ import dev.kinesis.core.math.clamp
 import dev.kinesis.core.model.CameraContent
 import dev.kinesis.core.model.Composition
 import dev.kinesis.core.model.Effect
+import dev.kinesis.core.model.EffectRegistry
+import dev.kinesis.core.model.ParamType
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerType
@@ -21,9 +23,9 @@ import dev.kinesis.core.model.Material
 import dev.kinesis.core.model.Primitive
 import dev.kinesis.core.model.ShapeContent
 import dev.kinesis.core.model.TextContent
-import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.pow
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlin.math.tan
 
 /**
@@ -80,17 +82,26 @@ object SceneEvaluator {
     private fun evaluateLayer(
         layer: Layer,
         siblings: Map<String, Layer>,
-        containerTime: Double,
+        containerTime0: Double,
         containerMatrix: Affine2D,
         camera: CameraState,
         comp: Composition,
         matte: MatteRef?,
     ): RenderNode? {
+        val containerTime = posterized(layer, containerTime0)
         val t = layer.localTime(containerTime)
         val transition = Transitions.evaluate(layer, t, comp)
-        val effects = resolveEffects(layer.effects, t)
+        fun effects(toComp: Affine2D) = resolveEffects(layer.effects, t, toComp) { index, delay, count, decay ->
+            // Echo copies: the layer at earlier times, with only the effects placed before the echo.
+            val base = layer.copy(effects = layer.effects.take(index))
+            (1..count).mapNotNull { k ->
+                val ct = containerTime - k * delay
+                if (!layer.isActiveAt(ct)) return@mapNotNull null
+                evaluateLayer(base, siblings, ct, containerMatrix, camera, comp, null)?.let { EchoSample(it, decay.toDouble().pow(k).toFloat()) }
+            }
+        }
         return when {
-            layer.type.isRendered3D -> evaluate3D(layer, siblings, containerTime, containerMatrix, camera, transition, effects)
+            layer.type.isRendered3D -> evaluate3D(layer, siblings, containerTime, containerMatrix, camera, transition, ::effects)
             layer.type == LayerType.GROUP -> {
                 val parent = parentMatrix2D(layer, siblings, containerTime)
                 val world = containerMatrix * parent * localMatrix2D(layer, t)
@@ -102,7 +113,7 @@ object SceneEvaluator {
                     matrix = matrix,
                     opacity = (layer.transform.opacity.at(t) * transition.opacity * wipeFallback(transition)).clamp(0f, 1f),
                     blendMode = layer.blendMode,
-                    effects = effects,
+                    effects = effects(matrix),
                     motionBlur = layer.motionBlur,
                     transitionBlur = transition.blur,
                     masks = resolveMasks(layer.masks, t),
@@ -115,13 +126,14 @@ object SceneEvaluator {
                 val parent = parentMatrix2D(layer, siblings, containerTime)
                 val world = containerMatrix * parent * localMatrix2D(layer, t)
                 val pivot = world.apply(layer.transform.anchor.at(t))
+                val matrix = transition.matrix(pivot) * world
                 Node2D(
                     layerId = layer.id,
                     layerType = layer.type,
-                    matrix = transition.matrix(pivot) * world,
+                    matrix = matrix,
                     opacity = (layer.transform.opacity.at(t) * transition.opacity).clamp(0f, 1f),
                     blendMode = layer.blendMode,
-                    effects = effects,
+                    effects = effects(matrix),
                     motionBlur = layer.motionBlur,
                     transitionBlur = transition.blur,
                     masks = resolveMasks(layer.masks, t),
@@ -141,7 +153,7 @@ object SceneEvaluator {
         containerMatrix: Affine2D,
         camera: CameraState,
         transition: TransitionState,
-        effects: List<ResolvedEffect>,
+        effects: (Affine2D) -> List<ResolvedEffect>,
     ): RenderNode? {
         val t = layer.localTime(containerTime)
         val world = parentMatrix3D(layer, siblings, containerTime) * localMatrix3D(layer, t)
@@ -168,7 +180,7 @@ object SceneEvaluator {
             material = material,
             opacity = (layer.transform3d.opacity.at(t) * transition.opacity * wipeFallback(transition)).clamp(0f, 1f),
             blendMode = layer.blendMode,
-            effects = effects,
+            effects = effects(containerMatrix * Affine2D.translate(pivot)),
             motionBlur = layer.motionBlur,
             transitionBlur = transition.blur,
             post = containerMatrix * transition.matrix(pivot),
@@ -275,32 +287,50 @@ object SceneEvaluator {
         textureAssetId = m.texture,
     )
 
-    fun resolveEffects(effects: List<Effect>, t: Double): List<ResolvedEffect> = effects.filter { it.enabled }.map { e ->
-        when (e) {
-            is Effect.Blur -> ResolvedEffect.Blur(e.radius.at(t).coerceAtLeast(0f))
-            is Effect.ColorAdjust -> ResolvedEffect.ColorAdjust(
-                e.brightness.at(t).clamp(-1f, 1f), e.contrast.at(t).clamp(-1f, 1f),
-                e.saturation.at(t).clamp(-1f, 1f), e.hue.at(t),
-            )
-            is Effect.Tint -> ResolvedEffect.Tint(e.color.at(t), e.amount.at(t).clamp(0f, 1f))
-            is Effect.DropShadow -> {
-                val a = Math.toRadians(e.angle.at(t).toDouble())
-                val d = e.distance.at(t)
-                ResolvedEffect.DropShadow(
-                    e.color.at(t), e.opacity.at(t).clamp(0f, 1f),
-                    Vec2((cos(a) * d).toFloat(), (sin(a) * d).toFloat()), e.softness.at(t).coerceAtLeast(0f),
-                )
+    /**
+     * Evaluates the enabled effects at layer-local time [t]. [toComp] maps layer-local pixels to composition pixels
+     * (used for `point` parameters). [echoes] produces the copies of the `echo` effect at [index] in the list.
+     */
+    fun resolveEffects(
+        effects: List<Effect>,
+        t: Double,
+        toComp: Affine2D = Affine2D.IDENTITY,
+        echoes: (index: Int, delay: Double, count: Int, decay: Float) -> List<EchoSample> = { _, _, _, _ -> emptyList() },
+    ): List<ResolvedEffect> {
+        val origin = toComp.apply(Vec2.ZERO)
+        val out = ArrayList<ResolvedEffect>()
+        effects.forEachIndexed { index, e ->
+            if (!e.enabled) return@forEachIndexed
+            val spec = EffectRegistry.get(e.type) ?: return@forEachIndexed
+            val values = HashMap<String, Any>()
+            for (p in spec.params) {
+                values[p.name] = when (p.type) {
+                    ParamType.NUMBER -> p.clamp(e.number(p.name).at(t))
+                    ParamType.INTEGER -> p.clamp(e.number(p.name).at(t).roundToInt().toFloat())
+                    ParamType.COLOR -> e.color(p.name).at(t)
+                    ParamType.POINT -> toComp.apply(e.point(p.name).at(t))
+                    ParamType.BOOLEAN -> e.flag(p.name)
+                    ParamType.CHOICE -> e.choice(p.name)
+                    ParamType.STOPS -> e.stops(p.name).sortedBy { it.offset }
+                }
             }
-            is Effect.Glow -> ResolvedEffect.Glow(e.color.at(t), e.radius.at(t).coerceAtLeast(0f), e.intensity.at(t).coerceAtLeast(0f))
-            is Effect.Invert -> ResolvedEffect.Invert(e.amount.at(t).clamp(0f, 1f))
-            is Effect.Pixelate -> ResolvedEffect.Pixelate(e.size.at(t).coerceAtLeast(1f))
-            is Effect.ChromaticAberration -> {
-                val a = Math.toRadians(e.angle.at(t).toDouble())
-                val d = e.amount.at(t)
-                ResolvedEffect.ChromaticAberration(Vec2((cos(a) * d).toFloat(), (sin(a) * d).toFloat()))
+            var r = ResolvedEffect(e.type, values, t, origin)
+            when (e.type) {
+                "echo" -> r = ResolvedEffect(e.type, values, t, origin, echoes = echoes(index, r.f("delay").toDouble(), r.i("count"), r.f("decay")))
+                else -> EffectMotion.transform(r)?.let { m -> r = ResolvedEffect(e.type, values, t, origin, transform = m) }
             }
-            is Effect.Vignette -> ResolvedEffect.Vignette(e.amount.at(t).clamp(0f, 1f), e.softness.at(t).clamp(0.01f, 1f))
+            out += r
         }
+        return out
+    }
+
+    /** `posterizeTime`: the whole layer is evaluated at the start of its current low-frame-rate frame. */
+    private fun posterized(layer: Layer, containerTime: Double): Double {
+        val e = layer.effects.firstOrNull { it.enabled && it.type == "posterizeTime" } ?: return containerTime
+        val t = layer.localTime(containerTime)
+        val fps = EffectRegistry.require("posterizeTime").param("fps").clamp(e.number("fps").at(t)).toDouble()
+        val quantized = floor(t * fps + 1e-6) / fps
+        return containerTime - (t - quantized)
     }
 
     private fun resolveMasks(masks: List<Mask>, t: Double): List<ResolvedMask> =
