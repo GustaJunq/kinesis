@@ -122,7 +122,9 @@ completa está em **[docs/knsproj.md](docs/knsproj.md)** e o schema oficial em
 
 Exemplos prontos em [`.claude/skills/knsproj/examples/`](.claude/skills/knsproj/examples): `basicos/` (um recurso por
 pasta, com README), `receitas/` (composições completas como lower third e intro de logo) e `erros/` (projetos
-inválidos de propósito, com o código de erro esperado e o conserto).
+inválidos de propósito, com o código de erro esperado e o conserto). Para instalar a skill fora deste repositório,
+use [`knsproj-skill.zip`](.claude/skills/knsproj/knsproj-skill.zip) (traz a skill, os exemplos, a CLI e o schema; regere com
+`python3 tools/pack_skill.py`).
 
 ## Gerar projetos com o Claude Code (`/knsproj`)
 

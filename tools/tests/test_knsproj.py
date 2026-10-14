@@ -272,6 +272,17 @@ class ExampleTests(unittest.TestCase):
                 code, _, _ = run_cli("validate", path)
                 self.assertEqual(1, code)
 
+    def test_skill_zip_is_up_to_date(self):
+        sys.path.insert(0, os.path.join(ROOT, "tools"))
+        import pack_skill
+        self.assertTrue(pack_skill.is_up_to_date(), "run: python3 tools/pack_skill.py")
+        with zipfile.ZipFile(pack_skill.ZIP_PATH) as z:
+            names = z.namelist()
+        self.assertIn("knsproj/SKILL.md", names)
+        self.assertIn("knsproj/tools/knsproj/__main__.py", names)
+        self.assertIn("knsproj/schema/knsproj-v1.schema.json", names)
+        self.assertFalse([n for n in names if "__pycache__" in n or n.endswith(".pyc")])
+
 
 if __name__ == "__main__":
     unittest.main()

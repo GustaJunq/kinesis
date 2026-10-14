@@ -13,7 +13,43 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
 - Schema oficial: `schema/knsproj-v1.schema.json`
-- Exemplos: `.claude/skills/knsproj/examples/` (`basicos/`, `receitas/`, `erros/`)
+- Exemplos: `.claude/skills/knsproj/examples/` (veja "Exemplos" abaixo)
+
+## Exemplos (comece por aqui)
+
+**Antes de escrever o `project.json`, leia o `README.md` do exemplo mais próximo do pedido** (e abra o `project.json`
+dele) e adapte em vez de começar do zero. **Sempre rode `validate` antes de empacotar** — nunca entregue um projeto
+que não validou.
+
+Tudo em `.claude/skills/knsproj/examples/`; cada pasta tem `project.json` e `README.md` (o que demonstra, quando usar, armadilhas):
+
+| Pasta | Use quando o pedido envolve |
+|---|---|
+| `basicos/texto-animators` | texto aparecendo por caractere/palavra, typewriter, onda |
+| `basicos/shape-trim-path` | linha que se desenha, círculo de loading |
+| `basicos/keyframes-easing` | overshoot (`cubicBezier`), bounce, loops `pingpong` |
+| `basicos/parent-anchor` | pivô fora do centro, camada filha herdando rotação |
+| `basicos/mascara-feather` | revelar uma forma/imagem com máscara de borda suave |
+| `basicos/track-matte` | texto revelado por forma (`alpha`), degradê de opacidade (`luma`) |
+| `basicos/transicoes` | `transitionIn`/`transitionOut` em camadas e grupos |
+| `basicos/efeitos` | glow, sombra, glitch (`chromaticAberration`) |
+| `basicos/video-audio` | trecho de vídeo (`sourceStart`, `speed`), fade de volume, trilha |
+| `basicos/grupo` | tempo relativo, efeito aplicado a um conjunto |
+| `basicos/3d-camera-orbita` | cena 3D com 3 luzes e câmera orbitando (pai `empty`) |
+| `basicos/model3d` | modelo GLB com câmera girando |
+| `receitas/lower-third` | tarja de nome/cargo em 16:9 |
+| `receitas/intro-logo-glow` | abertura de logo com brilho |
+| `receitas/titulo-cinetico` | título animado com matte e motion blur |
+| `receitas/slideshow-transicoes-musica` | sequência de slides com transições e música |
+| `receitas/video-vertical-legenda-por-palavra` | 1080x1920 com legendas palavra a palavra |
+| `erros/*` | quando o `validate` acusar `keyframe.order`, `layer.parentKind`, `layer.matteMissing` ou `layer.missingAsset`: o README mostra a causa e o conserto |
+
+Para usar um exemplo como ponto de partida: copie a pasta para `generated/<slug>`, ajuste textos, cores, tempos e
+mídias, e valide. Os exemplos de `basicos/` e `receitas/` validam com 0 erros e 0 avisos; os de `erros/` falham de propósito.
+
+**Instalação por .zip:** `knsproj-skill.zip` (nesta pasta) é uma cópia autônoma da skill — traz `SKILL.md`, os exemplos,
+a CLI (`tools/knsproj`), o schema e a especificação. Descompacte em `~/.claude/skills/` (resultado: `~/.claude/skills/knsproj/`)
+e rode a CLI de dentro dessa pasta (`python3 tools/knsproj validate …`). Regere-o com `python3 tools/pack_skill.py`.
 
 ## Fluxo
 
@@ -30,7 +66,7 @@ Referências (leia quando precisar de detalhes):
    python3 tools/knsproj add-asset generated/<slug> caminho/do/arquivo.png   # imprime o id do asset
    ```
    Sem arquivos do usuário, construa o visual com texto, formas, gradientes, efeitos e primitivas 3D.
-4. **Escrever as camadas** editando `generated/<slug>/project.json` (seção "Referência rápida").
+4. **Escrever as camadas** editando `generated/<slug>/project.json` (seção "Referência rápida"), partindo do exemplo mais próximo (leia o README dele antes).
 5. **Validar** e corrigir até não haver erros:
    ```bash
    python3 tools/knsproj validate generated/<slug>
