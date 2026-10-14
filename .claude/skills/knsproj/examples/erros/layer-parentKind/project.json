@@ -1,0 +1,19 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Erro: layer.parentKind"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {"id": "cube", "type": "object3d", "duration": 4, "object3d": {"primitive": "cube", "size": 400}},
+    {
+      "id": "badge",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 0]},
+      "shape": {"kind": "rectangle", "size": [240, 240], "fill": {"color": "#FFC857"}},
+      "parent": "cube"
+    }
+  ]
+}

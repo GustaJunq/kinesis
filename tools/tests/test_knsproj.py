@@ -7,6 +7,7 @@ Run: python3 -m unittest discover -s tools/tests -v
 import io
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -30,7 +31,8 @@ cli = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cli)
 
 FIXTURES = os.path.join(ROOT, "tools", "tests", "fixtures")
-EXAMPLES = os.path.join(ROOT, ".claude", "skills", "knsproj", "examples")
+SKILL_DIR = os.path.join(ROOT, ".claude", "skills", "knsproj")
+EXAMPLES = os.path.join(SKILL_DIR, "examples")
 
 
 def run_cli(*args):
@@ -58,16 +60,6 @@ class SchemaTests(unittest.TestCase):
         # Property names inside "properties"/"$defs" are not keywords; collect_keywords only walks keyword positions.
         unsupported = used - kns_schema.SUPPORTED_KEYWORDS
         self.assertEqual(set(), unsupported)
-
-    def test_examples_are_valid(self):
-        for name in sorted(os.listdir(EXAMPLES)):
-            path = os.path.join(EXAMPLES, name)
-            if not os.path.isdir(path):
-                continue
-            with self.subTest(example=name):
-                project, files, _ = cli.load_target(path)
-                result = cli.validate_project(project, files)
-                self.assertEqual([], result.errors, result.errors)
 
     def test_kotlin_output_is_valid(self):
         """full-kotlin.json is written by the Kotlin serializer (see CrossLanguageTest.kt)."""
@@ -217,6 +209,68 @@ class ArchiveTests(unittest.TestCase):
     def test_pretty_printer_matches_kotlin_style(self):
         text = kns_archive.dumps_project({"a": [1.0, 2.5], "b": {"c": []}, "d": [{"e": 1}]})
         self.assertEqual('{\n  "a": [1, 2.5],\n  "b": {\n    "c": []\n  },\n  "d": [\n    {\n      "e": 1\n    }\n  ]\n}\n', text)
+
+
+def example_dirs(group):
+    base = os.path.join(EXAMPLES, group)
+    return sorted(os.path.join(base, n) for n in os.listdir(base) if os.path.isfile(os.path.join(base, n, "project.json")))
+
+
+def all_layers(layers):
+    for layer in layers:
+        yield layer
+        yield from all_layers(layer.get("layers", []) or [])
+
+
+class ExampleTests(unittest.TestCase):
+    """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
+
+    VALID_GROUPS = ("basicos", "receitas")
+    README_SECTIONS = ("## O que demonstra", "## Quando usar", "## Armadilhas")
+    EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
+
+    def test_expected_examples_exist(self):
+        self.assertEqual(12, len(example_dirs("basicos")))
+        self.assertGreaterEqual(len(example_dirs("receitas")), 5)
+        self.assertGreaterEqual(len(example_dirs("erros")), 4)
+
+    def test_basicos_and_receitas_validate_without_errors_or_warnings(self):
+        for group in self.VALID_GROUPS:
+            for path in example_dirs(group):
+                with self.subTest(example=f"{group}/{os.path.basename(path)}"):
+                    project, files, _ = cli.load_target(path)
+                    result = cli.validate_project(project, files)
+                    self.assertEqual([], result.errors, result.errors)
+                    self.assertEqual([], result.warnings, result.warnings)
+                    code, stdout, _ = run_cli("validate", path)
+                    self.assertEqual(0, code, stdout)
+
+    def test_every_example_has_a_readme_and_readable_layer_ids(self):
+        for group in self.VALID_GROUPS + ("erros",):
+            for path in example_dirs(group):
+                name = f"{group}/{os.path.basename(path)}"
+                with self.subTest(example=name):
+                    with open(os.path.join(path, "README.md"), encoding="utf-8") as f:
+                        readme = f.read()
+                    if group != "erros":
+                        for section in self.README_SECTIONS:
+                            self.assertIn(section, readme)
+                    project, _, _ = cli.load_target(path)
+                    for layer in all_layers(project.get("layers", [])):
+                        self.assertIsNone(re.fullmatch(r"(layer|camada|l)[-_]?\d+", layer["id"]), f"generic layer id {layer['id']!r}")
+
+    def test_error_examples_fail_with_exactly_the_documented_code(self):
+        for path in example_dirs("erros"):
+            name = os.path.basename(path)
+            with self.subTest(example=name):
+                with open(os.path.join(path, "README.md"), encoding="utf-8") as f:
+                    match = self.EXPECTED.search(f.read())
+                self.assertIsNotNone(match, "README must state **C\u00f3digo esperado:** `code`")
+                project, files, _ = cli.load_target(path)
+                result = cli.validate_project(project, files)
+                self.assertEqual([match.group(1)], [i["code"] for i in result.errors], result.errors)
+                code, _, _ = run_cli("validate", path)
+                self.assertEqual(1, code)
 
 
 if __name__ == "__main__":

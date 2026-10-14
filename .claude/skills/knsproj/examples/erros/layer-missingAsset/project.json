@@ -1,0 +1,8 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Erro: layer.missingAsset"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [{"id": "logo", "type": "image", "duration": 4, "image": {"asset": "logo"}}]
+}

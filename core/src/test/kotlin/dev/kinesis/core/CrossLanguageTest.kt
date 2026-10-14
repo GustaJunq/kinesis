@@ -5,6 +5,8 @@ import com.networknt.schema.JsonSchema
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
 import dev.kinesis.core.format.KnsprojJson
+import dev.kinesis.core.geom.GltfLoader
+import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.format.ProjectValidator
 import dev.kinesis.core.format.Severity
 import dev.kinesis.core.model.LayerTree
@@ -62,11 +64,31 @@ class CrossLanguageTest {
             val files = dir.walkTopDown().filter { it.isFile }.map { it.relativeTo(dir).invariantSeparatorsPath }.toSet()
             val report = ProjectValidator.validate(project, files)
             assertTrue("${dir.name}: ${report.issues}", report.issues.isEmpty())
+            // Bundled 3D models must load with the glTF reader.
+            for (asset in project.assets.filter { it.type == AssetType.MODEL }) {
+                val model = GltfLoader.load(File(dir, asset.path).readBytes())
+                assertTrue("${dir.name}: ${asset.path} has geometry", model.triangleCount > 0)
+            }
             // Re-encoding keeps the document valid.
             assertEquals(emptyList<String>(), schemaErrors(KnsprojJson.encode(project)))
             // Every frame evaluates.
             for (f in 0 until project.composition.frameCount step 5) SceneEvaluator.evaluate(project, project.composition.frameTime(f))
             assertTrue(LayerTree.all(project).isNotEmpty())
+        }
+    }
+
+    @Test
+    fun invalidExamplesReportTheDocumentedCode() {
+        val expected = Regex("""\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`""")
+        val dirs = File(root, ".claude/skills/knsproj/examples/erros").listFiles { f -> f.isDirectory }!!.sortedBy { it.name }
+        assertTrue("error examples present", dirs.size >= 4)
+        for (dir in dirs) {
+            val code = expected.find(File(dir, "README.md").readText())!!.groupValues[1]
+            val text = File(dir, "project.json").readText()
+            assertEquals("${dir.name} must be schema-valid", emptyList<String>(), schemaErrors(text))
+            val files = dir.walkTopDown().filter { it.isFile }.map { it.relativeTo(dir).invariantSeparatorsPath }.toSet()
+            val found = ProjectValidator.validate(KnsprojJson.decode(text), files).issues.filter { it.severity == Severity.ERROR }.map { it.code }
+            assertEquals(dir.name, listOf(code), found)
         }
     }
 
