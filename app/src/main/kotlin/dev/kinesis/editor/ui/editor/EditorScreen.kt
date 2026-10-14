@@ -225,7 +225,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     val selectedLayer = selection?.let { LayerTree.find(project, it) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(KColors.Background)) {
-        val sheetHeight = maxHeight * 0.62f
+        val boxMaxHeight = maxHeight
+        val sheetHeight = boxMaxHeight * 0.62f
         Column(Modifier.fillMaxSize()) {
             // Top bar: back, project name, settings, export
             Row(Modifier.fillMaxWidth().height(56.dp).background(KColors.Surface).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -293,7 +294,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
             }
 
             // Timeline (always visible) with the add button floating over it
-            Box(Modifier.fillMaxWidth().height(maxHeight * 0.34f)) {
+            Box(Modifier.fillMaxWidth().height(boxMaxHeight * 0.34f)) {
                 Timeline(vm, project, time, playing, selection, multi, Modifier.fillMaxSize())
                 FloatingActionButton(
                     onClick = { vm.pause(); showAdd = true },
