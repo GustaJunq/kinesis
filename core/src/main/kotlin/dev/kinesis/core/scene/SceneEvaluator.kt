@@ -366,7 +366,8 @@ object SceneEvaluator {
             val intensity = light.intensity.at(t).coerceAtLeast(0f)
             val parent = parentMatrix3D(layer, siblings, containerTime)
             if (light.kind == LightKind.AMBIENT) {
-                ar += c.r * intensity; ag += c.g * intensity; ab += c.b * intensity
+                val lin = c.toLinear()
+                ar += lin.r * intensity; ag += lin.g * intensity; ab += lin.b * intensity
                 continue
             }
             if (lights.size >= LightContent.MAX_LIGHTS) continue
@@ -374,7 +375,8 @@ object SceneEvaluator {
             val target = parent.transformPoint(light.target.at(t))
             lights += LightState(
                 kind = light.kind,
-                radiance = Color(c.r * intensity, c.g * intensity, c.b * intensity),
+                color = c,
+                intensity = intensity,
                 position = pos,
                 direction = (target - pos).normalized(),
                 radius = light.radius.at(t).coerceAtLeast(1f),
@@ -383,10 +385,11 @@ object SceneEvaluator {
         return Color(ar, ag, ab) to lights
     }
 
-    val DEFAULT_AMBIENT = Color(0.32f, 0.33f, 0.36f)
+    /** Linear ambient used when the project has no light layers. */
+    val DEFAULT_AMBIENT = Color(0.22f, 0.23f, 0.26f)
     val DEFAULT_LIGHTS = listOf(
-        LightState(LightKind.DIRECTIONAL, Color(1.0f, 0.97f, 0.92f), Vec3(-800f, -1000f, -1200f), Vec3(800f, 1000f, 1200f).normalized(), 1f),
-        LightState(LightKind.DIRECTIONAL, Color(0.35f, 0.4f, 0.5f), Vec3(1000f, 200f, -600f), Vec3(-1000f, -200f, 600f).normalized(), 1f),
+        LightState(LightKind.DIRECTIONAL, Color(1.0f, 0.97f, 0.92f), 1.1f, Vec3(-800f, -1000f, -1200f), Vec3(800f, 1000f, 1200f).normalized(), 1f),
+        LightState(LightKind.DIRECTIONAL, Color(0.6f, 0.7f, 0.85f), 0.45f, Vec3(1000f, 200f, -600f), Vec3(-1000f, -200f, 600f).normalized(), 1f),
     )
 
     // ------------------------------------------------------------------ queries for editors

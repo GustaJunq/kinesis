@@ -22,6 +22,11 @@ data class Color(val r: Float, val g: Float, val b: Float, val a: Float = 1f) {
         return if (a >= 0.9999f) rgb else rgb + c(a)
     }
 
+    /** Approximate sRGB → linear conversion (gamma 2.2), alpha unchanged. */
+    fun toLinear() = Color(gamma(r), gamma(g), gamma(b), a)
+
+    private fun gamma(v: Float) = Math.pow(v.coerceAtLeast(0f).toDouble(), 2.2).toFloat()
+
     /** Rec. 709 luma of the straight colour. */
     fun luma(): Float = 0.2126f * r + 0.7152f * g + 0.0722f * b
 

@@ -31,6 +31,7 @@ class FrameScene(
     val height: Int,
     val background: Color,
     val camera: CameraState,
+    /** Sum of ambient lights in linear RGB (colour converted from sRGB, times intensity). */
     val ambient: Color,
     val lights: List<LightState>,
     val nodes: List<RenderNode>,
@@ -60,8 +61,9 @@ class CameraState(
 
 class LightState(
     val kind: LightKind,
-    /** Colour × intensity. */
-    val radiance: Color,
+    /** sRGB colour of the light. */
+    val color: Color,
+    val intensity: Float,
     val position: Vec3,
     /** Unit vector the light travels along (directional lights). */
     val direction: Vec3,

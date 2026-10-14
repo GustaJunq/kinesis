@@ -42,7 +42,7 @@ jobs:
             app/build/reports/tests/
 
   cli:
-    name: knsproj CLI tests
+    name: CLI and shader checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,5 +50,9 @@ jobs:
         with:
           python-version: "3.11"
       - name: CLI tests
-        if: hashFiles('tools/tests/*.py') != ''
         run: python3 -m unittest discover -s tools/tests -v
+      - name: Validate GLSL shaders
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq glslang-tools
+          python3 tools/check_shaders.py
