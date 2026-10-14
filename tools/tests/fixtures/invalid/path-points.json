@@ -1,0 +1,30 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "composition": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "duration": 10
+  },
+  "assets": [],
+  "layers": [
+    {
+      "id": "p",
+      "type": "shape",
+      "shape": {
+        "kind": "path",
+        "path": {
+          "points": [
+            {
+              "point": [
+                0,
+                0
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

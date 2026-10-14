@@ -1,0 +1,1573 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gustajunq/kinesis/schema/knsproj-v1.schema.json",
+  "title": "Kinesis project (.knsproj) — project.json, format version 1",
+  "description": "See docs/knsproj.md. Coordinates are pixels with the origin at the composition centre (+x right, +y down, +z away from the viewer). Keyframe times are seconds relative to the owning layer's start. Layers are listed bottom to top.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "format": {
+      "const": "knsproj"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "generator": {
+      "type": "string"
+    },
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "composition": {
+      "$ref": "#/$defs/composition"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/layer"
+      },
+      "description": "Top-level layers in painter's order (first = bottom)."
+    }
+  },
+  "required": [
+    "format",
+    "formatVersion",
+    "composition",
+    "layers"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "number": {
+      "type": "number"
+    },
+    "vec2": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "[x, y] in pixels; origin at the composition centre, +y down."
+    },
+    "vec3": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "[x, y, z] in pixels; +y down, +z away from the viewer."
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+      "description": "#RRGGBB or #RRGGBBAA (sRGB, straight alpha)."
+    },
+    "easing": {
+      "description": "Easing of the segment that starts at this keyframe.",
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "linear",
+            "hold",
+            "ease",
+            "easeIn",
+            "easeOut",
+            "easeInOut",
+            "easeInSine",
+            "easeOutSine",
+            "easeInOutSine",
+            "easeInQuad",
+            "easeOutQuad",
+            "easeInOutQuad",
+            "easeInCubic",
+            "easeOutCubic",
+            "easeInOutCubic",
+            "easeInQuart",
+            "easeOutQuart",
+            "easeInOutQuart",
+            "easeInQuint",
+            "easeOutQuint",
+            "easeInOutQuint",
+            "easeInExpo",
+            "easeOutExpo",
+            "easeInOutExpo",
+            "easeInCirc",
+            "easeOutCirc",
+            "easeInOutCirc",
+            "easeInBack",
+            "easeOutBack",
+            "easeInOutBack",
+            "easeInBounce",
+            "easeOutBounce",
+            "easeInOutBounce",
+            "easeInElastic",
+            "easeOutElastic",
+            "easeInOutElastic"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "cubicBezier": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4,
+              "description": "[x1, y1, x2, y2] like CSS cubic-bezier(); x1 and x2 within 0..1."
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "cubicBezier"
+          ]
+        }
+      ]
+    },
+    "animFloat": {
+      "description": "A number, or {\"keyframes\": [...]} to animate it.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/number"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "keyframes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "number",
+                    "description": "Seconds from the start of the layer that owns the property."
+                  },
+                  "value": {
+                    "$ref": "#/$defs/number"
+                  },
+                  "easing": {
+                    "$ref": "#/$defs/easing"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "time",
+                  "value"
+                ]
+              }
+            },
+            "loop": {
+              "type": "string",
+              "enum": [
+                "none",
+                "cycle",
+                "pingpong"
+              ],
+              "description": "Repeat the keyframed range after the last keyframe."
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "keyframes"
+          ]
+        }
+      ]
+    },
+    "animVec2": {
+      "description": "[x, y], or {\"keyframes\": [...]} to animate it.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/vec2"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "keyframes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "number",
+                    "description": "Seconds from the start of the layer that owns the property."
+                  },
+                  "value": {
+                    "$ref": "#/$defs/vec2"
+                  },
+                  "easing": {
+                    "$ref": "#/$defs/easing"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "time",
+                  "value"
+                ]
+              }
+            },
+            "loop": {
+              "type": "string",
+              "enum": [
+                "none",
+                "cycle",
+                "pingpong"
+              ],
+              "description": "Repeat the keyframed range after the last keyframe."
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "keyframes"
+          ]
+        }
+      ]
+    },
+    "animVec3": {
+      "description": "[x, y, z], or {\"keyframes\": [...]} to animate it.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/vec3"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "keyframes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "number",
+                    "description": "Seconds from the start of the layer that owns the property."
+                  },
+                  "value": {
+                    "$ref": "#/$defs/vec3"
+                  },
+                  "easing": {
+                    "$ref": "#/$defs/easing"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "time",
+                  "value"
+                ]
+              }
+            },
+            "loop": {
+              "type": "string",
+              "enum": [
+                "none",
+                "cycle",
+                "pingpong"
+              ],
+              "description": "Repeat the keyframed range after the last keyframe."
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "keyframes"
+          ]
+        }
+      ]
+    },
+    "animColor": {
+      "description": "A colour, or {\"keyframes\": [...]} to animate it.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/color"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "keyframes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "number",
+                    "description": "Seconds from the start of the layer that owns the property."
+                  },
+                  "value": {
+                    "$ref": "#/$defs/color"
+                  },
+                  "easing": {
+                    "$ref": "#/$defs/easing"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "time",
+                  "value"
+                ]
+              }
+            },
+            "loop": {
+              "type": "string",
+              "enum": [
+                "none",
+                "cycle",
+                "pingpong"
+              ],
+              "description": "Repeat the keyframed range after the last keyframe."
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "keyframes"
+          ]
+        }
+      ]
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO-8601 timestamp."
+        },
+        "modifiedAt": {
+          "type": "string",
+          "description": "ISO-8601 timestamp."
+        }
+      },
+      "additionalProperties": false
+    },
+    "motionBlur": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "shutterAngle": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 720,
+          "description": "Degrees (180 = half a frame)."
+        },
+        "samples": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Sub-frames per frame."
+        }
+      },
+      "additionalProperties": false
+    },
+    "composition": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 8192
+        },
+        "fps": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 3600,
+          "description": "Seconds."
+        },
+        "background": {
+          "$ref": "#/$defs/color"
+        },
+        "motionBlur": {
+          "$ref": "#/$defs/motionBlur"
+        }
+      },
+      "additionalProperties": false
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "image",
+            "video",
+            "audio",
+            "model",
+            "font"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^assets/[^\\\\:]+$",
+          "description": "Relative path inside the container, under assets/."
+        },
+        "name": {
+          "type": "string"
+        },
+        "mimeType": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hasAudio": {
+          "type": "boolean"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "path"
+      ]
+    },
+    "transform2d": {
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "position": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "scale": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "rotation": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "opacity": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false,
+      "description": "2D transform: position of the anchor in the parent space; scale 1 = 100%; rotation in degrees clockwise; opacity 0..1."
+    },
+    "transform3d": {
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "position": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "rotation": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "scale": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "opacity": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false,
+      "description": "3D transform: rotation in degrees applied X, then Y, then Z."
+    },
+    "effect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "blur"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "Gaussian blur (radius in px)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "colorAdjust"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "brightness": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "contrast": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "saturation": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "hue": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "Brightness/contrast/saturation -1..1, hue in degrees."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "tint"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "Colourize with amount 0..1."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "dropShadow"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "opacity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "distance": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "softness": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "Angle in degrees (90 = down)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "glow"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "intensity": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "Soft glow around bright/opaque areas."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "invert"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "Invert colours."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "pixelate"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "size": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "Mosaic cell size in px."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "chromaticAberration"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "RGB split in px."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "vignette"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "softness": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "description": "Darken edges (0..1)."
+        }
+      ]
+    },
+    "mask": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "type": "string",
+          "enum": [
+            "rectangle",
+            "ellipse"
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "add",
+            "subtract",
+            "intersect"
+          ]
+        },
+        "position": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "size": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "roundness": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "feather": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "opacity": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "inverted": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Shape mask in layer-local pixels (max 4 per layer)."
+    },
+    "matte": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "alpha",
+            "alphaInverted",
+            "luma",
+            "lumaInverted"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "layer"
+      ],
+      "description": "Track matte: the layer is visible where the sibling layer 'layer' is opaque/bright. The matte source is hidden automatically."
+    },
+    "transition": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "fade",
+            "slideLeft",
+            "slideRight",
+            "slideUp",
+            "slideDown",
+            "zoomIn",
+            "zoomOut",
+            "spin",
+            "blur",
+            "wipeLeft",
+            "wipeRight"
+          ]
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Seconds."
+        },
+        "easing": {
+          "$ref": "#/$defs/easing"
+        },
+        "distance": {
+          "type": "number",
+          "description": "Slide distance in px (default: 25% of the composition)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "font": {
+      "type": "object",
+      "properties": {
+        "family": {
+          "type": "string",
+          "description": "System family: sans-serif, serif, monospace, sans-serif-condensed, cursive, casual..."
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 900
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "asset": {
+          "type": "string",
+          "description": "Id of a font asset."
+        }
+      },
+      "additionalProperties": false
+    },
+    "stroke": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "width": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "cap": {
+          "type": "string",
+          "enum": [
+            "butt",
+            "round",
+            "square"
+          ]
+        },
+        "join": {
+          "type": "string",
+          "enum": [
+            "miter",
+            "round",
+            "bevel"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "textAnimator": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "typewriter",
+            "fade",
+            "slideUp",
+            "slideDown",
+            "slideLeft",
+            "slideRight",
+            "scale",
+            "rotate",
+            "wave"
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "in",
+            "out"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "character",
+            "word",
+            "line"
+          ]
+        },
+        "start": {
+          "type": "number",
+          "description": "Layer-local seconds."
+        },
+        "stagger": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Delay between units (s)."
+        },
+        "unitDuration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Seconds each unit animates."
+        },
+        "easing": {
+          "$ref": "#/$defs/easing"
+        },
+        "amount": {
+          "type": "number",
+          "description": "px for slides/wave, degrees for rotate, starting scale % for scale."
+        },
+        "order": {
+          "type": "string",
+          "enum": [
+            "forward",
+            "backward",
+            "center",
+            "random"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "textContent": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "font": {
+          "$ref": "#/$defs/font"
+        },
+        "fontSize": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "lineHeight": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "letterSpacing": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "maxWidth": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Wrap width in px; 0 = no wrapping."
+        },
+        "stroke": {
+          "$ref": "#/$defs/stroke"
+        },
+        "animators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/textAnimator"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "gradient": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "linear",
+            "radial"
+          ]
+        },
+        "start": {
+          "$ref": "#/$defs/vec2"
+        },
+        "end": {
+          "$ref": "#/$defs/vec2"
+        },
+        "stops": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "offset",
+              "color"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "fill": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "gradient": {
+          "$ref": "#/$defs/gradient"
+        }
+      },
+      "additionalProperties": false
+    },
+    "trim": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "end": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "offset": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false
+    },
+    "pathPoint": {
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/vec2"
+        },
+        "in": {
+          "$ref": "#/$defs/vec2"
+        },
+        "out": {
+          "$ref": "#/$defs/vec2"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "point"
+      ]
+    },
+    "path": {
+      "type": "object",
+      "properties": {
+        "closed": {
+          "type": "boolean"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pathPoint"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "shapeContent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "rectangle",
+            "ellipse",
+            "polygon",
+            "star",
+            "path"
+          ]
+        },
+        "size": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "roundness": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "sides": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "innerRatio": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "fill": {
+          "$ref": "#/$defs/fill"
+        },
+        "stroke": {
+          "$ref": "#/$defs/stroke"
+        },
+        "trim": {
+          "$ref": "#/$defs/trim"
+        }
+      },
+      "additionalProperties": false
+    },
+    "imageContent": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "asset"
+      ]
+    },
+    "mediaContent": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0
+        },
+        "speed": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "volume": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "muted": {
+          "type": "boolean"
+        },
+        "fadeIn": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fadeOut": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "asset"
+      ]
+    },
+    "material": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "metallic": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "roughness": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "emissive": {
+          "$ref": "#/$defs/animColor"
+        },
+        "texture": {
+          "type": "string",
+          "description": "Id of an image asset."
+        }
+      },
+      "additionalProperties": false
+    },
+    "object3dContent": {
+      "type": "object",
+      "properties": {
+        "primitive": {
+          "type": "string",
+          "enum": [
+            "cube",
+            "sphere",
+            "cylinder",
+            "cone",
+            "torus",
+            "plane",
+            "empty"
+          ]
+        },
+        "size": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "material": {
+          "$ref": "#/$defs/material"
+        }
+      },
+      "additionalProperties": false
+    },
+    "model3dContent": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "material": {
+          "$ref": "#/$defs/material"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "asset"
+      ]
+    },
+    "cameraContent": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "target": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "fov": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false
+    },
+    "lightContent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ambient",
+            "directional",
+            "point"
+          ]
+        },
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "intensity": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "position": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "target": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "radius": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false
+    },
+    "layer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "shape",
+            "image",
+            "video",
+            "audio",
+            "group",
+            "object3d",
+            "model3d",
+            "camera",
+            "light"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "start": {
+          "type": "number",
+          "description": "Seconds, in the time of the container (composition or group)."
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Seconds."
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "parent": {
+          "type": "string",
+          "description": "Id of a sibling layer whose transform is inherited."
+        },
+        "label": {
+          "type": "string"
+        },
+        "blendMode": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "add",
+            "multiply",
+            "screen"
+          ]
+        },
+        "motionBlur": {
+          "type": "boolean"
+        },
+        "transform": {
+          "$ref": "#/$defs/transform2d"
+        },
+        "transform3d": {
+          "$ref": "#/$defs/transform3d"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/effect"
+          }
+        },
+        "masks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mask"
+          }
+        },
+        "matte": {
+          "$ref": "#/$defs/matte"
+        },
+        "transitionIn": {
+          "$ref": "#/$defs/transition"
+        },
+        "transitionOut": {
+          "$ref": "#/$defs/transition"
+        },
+        "text": {
+          "$ref": "#/$defs/textContent"
+        },
+        "shape": {
+          "$ref": "#/$defs/shapeContent"
+        },
+        "image": {
+          "$ref": "#/$defs/imageContent"
+        },
+        "video": {
+          "$ref": "#/$defs/mediaContent"
+        },
+        "audio": {
+          "$ref": "#/$defs/mediaContent"
+        },
+        "object3d": {
+          "$ref": "#/$defs/object3dContent"
+        },
+        "model3d": {
+          "$ref": "#/$defs/model3dContent"
+        },
+        "camera": {
+          "$ref": "#/$defs/cameraContent"
+        },
+        "light": {
+          "$ref": "#/$defs/lightContent"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/layer"
+          },
+          "description": "Children of a group (painter's order)."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "text"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "text"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "shape"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "shape"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "image"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "image"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "video"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "video"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "audio"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "audio"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "object3d"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "object3d"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "model3d"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "model3d"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "camera"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "camera"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "light"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "light"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
