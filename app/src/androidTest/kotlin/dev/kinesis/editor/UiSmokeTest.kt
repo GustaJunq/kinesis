@@ -49,14 +49,12 @@ class UiSmokeTest {
         click("Star")
         shot("ui-editor-timeline")
 
-        click("Properties")
-        shot("ui-editor-properties")
-        rule.activity.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
-        rule.waitForIdle()
-
         click("Split")
         click("Duplicate")
         click("Group")
+        shot("ui-editor-after-ops")
+        click("Properties")
+        shot("ui-editor-properties")
         rule.onNodeWithContentDescription("Undo").assertExists()
         shot("ui-editor-after-ops")
     }
