@@ -20,7 +20,7 @@ android {
     }
 
     // Instrumented tests render and export the shipped example projects.
-    sourceSets.getByName("androidTest").assets.srcDir("../examples")
+    sourceSets.getByName("androidTest").assets.srcDir("../.claude/skills/knsproj/examples")
 
     buildTypes {
         release {

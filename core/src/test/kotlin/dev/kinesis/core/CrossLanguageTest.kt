@@ -49,7 +49,11 @@ class CrossLanguageTest {
 
     @Test
     fun examplesAreValidAndRender() {
-        val dirs = File(root, "examples").listFiles { f -> f.isDirectory }!!.sortedBy { it.name }
+        // basicos/ and receitas/ must validate cleanly; erros/ holds deliberately invalid projects (see invalidExamplesReportTheDocumentedCode).
+        val examples = File(root, ".claude/skills/knsproj/examples")
+        val dirs = listOf("basicos", "receitas").flatMap { group ->
+            File(examples, group).listFiles { f -> f.isDirectory }!!.sortedBy { it.name }
+        }
         assertTrue("examples present", dirs.isNotEmpty())
         for (dir in dirs) {
             val text = File(dir, "project.json").readText()

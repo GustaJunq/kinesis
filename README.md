@@ -120,8 +120,9 @@ completa está em **[docs/knsproj.md](docs/knsproj.md)** e o schema oficial em
 }
 ```
 
-Exemplos prontos em [`examples/`](examples): `metal-cube` (o exemplo do cubo metálico vertical), `kinetic-title`
-(título 16:9 com track matte, trim paths e transições) e `solar-system` (hierarquia 3D com órbitas).
+Exemplos prontos em [`.claude/skills/knsproj/examples/`](.claude/skills/knsproj/examples): `basicos/` (um recurso por
+pasta, com README), `receitas/` (composições completas como lower third e intro de logo) e `erros/` (projetos
+inválidos de propósito, com o código de erro esperado e o conserto).
 
 ## Gerar projetos com o Claude Code (`/knsproj`)
 
@@ -163,7 +164,7 @@ kinesis/
 ├── app/         Android: Jetpack Compose (UI), OpenGL ES 3.0 (render), MediaCodec (vídeo/áudio/exportação)
 ├── schema/      JSON Schema oficial do project.json
 ├── tools/       CLI knsproj (Python) e verificação de shaders
-├── examples/    projetos de exemplo
+├── .claude/skills/knsproj/   skill /knsproj, exemplos (basicos, receitas, erros) e o .zip da skill
 └── docs/        especificação do formato
 ```
 

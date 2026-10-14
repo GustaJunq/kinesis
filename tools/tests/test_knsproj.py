@@ -30,7 +30,7 @@ cli = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cli)
 
 FIXTURES = os.path.join(ROOT, "tools", "tests", "fixtures")
-EXAMPLES = os.path.join(ROOT, "examples")
+EXAMPLES = os.path.join(ROOT, ".claude", "skills", "knsproj", "examples")
 
 
 def run_cli(*args):
@@ -204,7 +204,7 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(1920, project["composition"]["width"])
         code, stdout, _ = run_cli("validate", d)
         self.assertEqual(0, code, stdout)
-        code, stdout, _ = run_cli("info", os.path.join(EXAMPLES, "metal-cube"))
+        code, stdout, _ = run_cli("info", os.path.join(EXAMPLES, "basicos", "3d-camera-orbita"))
         self.assertEqual(0, code)
         self.assertIn("cube [object3d]", stdout)
 

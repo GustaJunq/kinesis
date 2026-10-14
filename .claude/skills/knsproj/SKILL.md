@@ -13,7 +13,7 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
 - Schema oficial: `schema/knsproj-v1.schema.json`
-- Exemplos completos: `examples/metal-cube`, `examples/kinetic-title`, `examples/solar-system`
+- Exemplos: `.claude/skills/knsproj/examples/` (`basicos/`, `receitas/`, `erros/`)
 
 ## Fluxo
 
