@@ -40,9 +40,11 @@ sealed class Easing {
     val isHold: Boolean get() = this is Preset && preset == EasingPreset.HOLD
 
     companion object {
-        val LINEAR: Easing = Preset(EasingPreset.LINEAR)
-        val HOLD: Easing = Preset(EasingPreset.HOLD)
-        val EASE_IN_OUT: Easing = Preset(EasingPreset.EASE_IN_OUT)
+        // Getters, not fields: EasingPreset's constants build CubicBezier (nested in Easing), so eager fields here
+        // would read EasingPreset while it is still initializing and see null.
+        val LINEAR: Easing get() = Preset(EasingPreset.LINEAR)
+        val HOLD: Easing get() = Preset(EasingPreset.HOLD)
+        val EASE_IN_OUT: Easing get() = Preset(EasingPreset.EASE_IN_OUT)
     }
 }
 
