@@ -25,9 +25,12 @@ class UiSmokeTest {
         InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let { Shots.log(name, it, 420) }
     }
 
-    private fun click(text: String) {
-        rule.waitUntil(20_000) { rule.onAllNodesWithText(text, substring = true, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
-        rule.onAllNodesWithText(text, substring = true, ignoreCase = true, useUnmergedTree = true).onFirst().performClick()
+    /** Clicks the node whose text or content description is exactly [label]. */
+    private fun click(label: String) {
+        fun texts() = rule.onAllNodesWithText(label, useUnmergedTree = true)
+        fun descs() = rule.onAllNodesWithContentDescription(label, useUnmergedTree = true)
+        rule.waitUntil(20_000) { texts().fetchSemanticsNodes().isNotEmpty() || descs().fetchSemanticsNodes().isNotEmpty() }
+        (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst().performClick()
         rule.waitForIdle()
     }
 
