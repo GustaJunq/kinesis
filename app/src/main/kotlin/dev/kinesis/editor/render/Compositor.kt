@@ -10,12 +10,17 @@ import dev.kinesis.core.math.Affine2D
 import dev.kinesis.core.math.Color
 import dev.kinesis.core.math.Mat4
 import dev.kinesis.core.math.Vec3
+import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.model.BlendMode
+import dev.kinesis.core.model.EffectRegistry
+import dev.kinesis.core.model.EffectSpec
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.LightKind
 import dev.kinesis.core.model.MaskMode
 import dev.kinesis.core.model.MaskShape
 import dev.kinesis.core.model.MatteMode
+import dev.kinesis.core.model.ParamType
+import dev.kinesis.core.model.ParamUnit
 import dev.kinesis.core.scene.Content2D
 import dev.kinesis.core.scene.FrameScene
 import dev.kinesis.core.scene.GroupNode
@@ -61,6 +66,8 @@ data class RenderSettings(
     /** Sub-frames for motion blur (1 disables it). */
     val motionBlurSamples: Int,
     val allowMotionBlur: Boolean = true,
+    /** Lighter effects (fewer samples), used by the preview while playing. Export always uses full quality. */
+    val preview: Boolean = false,
 )
 
 /**
@@ -79,7 +86,13 @@ class Compositor(private val res: RenderResources) {
         val proj: Mat4,
         val width: Int,
         val height: Int,
-    )
+    ) {
+        /** Sample budget of many-tap effects (lens/directional/radial blur, outline…). */
+        val samples: Int get() = if (settings.preview) 16 else 48
+
+        /** While drawing motion-blur sub-frames, the real composite below (for effects that read the backdrop). */
+        var backdrop: RenderTarget? = null
+    }
 
     fun render(project: KnsProject, scene: FrameScene, outWidth: Int, outHeight: Int, settings: RenderSettings): RenderTarget {
         val out = output?.takeIf { it.width == outWidth && it.height == outHeight } ?: run {
@@ -185,7 +198,7 @@ class Compositor(private val res: RenderResources) {
                 } else {
                     var layer = res.pool.acquire()
                     drawContent2D(n, layer, ctx, 1f, BlendMode.NORMAL)
-                    layer = applyEffects(n.effects, n.transitionBlur, layer, ctx)
+                    layer = applyEffects(n.effects, n.transitionBlur, layer, ctx, target)
                     n.matte?.let { layer = applyMatte(layer, it, ctx) }
                     composite(layer, target, ctx, opacity, blend, Affine2D.IDENTITY, emptyList(), null)
                     res.pool.release(layer)
@@ -197,7 +210,7 @@ class Compositor(private val res: RenderResources) {
                 } else {
                     var layer = res.pool.acquire()
                     drawNodes(n.children, layer, ctx)
-                    layer = applyEffects(n.effects, n.transitionBlur, layer, ctx)
+                    layer = applyEffects(n.effects, n.transitionBlur, layer, ctx, target)
                     n.matte?.let { layer = applyMatte(layer, it, ctx) }
                     composite(layer, target, ctx, opacity, blend, Affine2D.IDENTITY, n.masks, n.matrix.inverse())
                     res.pool.release(layer)
@@ -208,8 +221,9 @@ class Compositor(private val res: RenderResources) {
                     draw3DBatch(listOf(n), target, ctx, opacityOverride = opacity)
                 } else {
                     var layer = res.pool.acquire()
-                    draw3DBatch(listOf(n), layer, ctx, opacityOverride = 1f)
-                    layer = applyEffects(n.effects, n.transitionBlur, layer, ctx)
+                    val depth = n.effects.firstOrNull { it.type == "depthMap" }
+                    if (depth != null) drawDepth(n, depth, layer, ctx) else draw3DBatch(listOf(n), layer, ctx, opacityOverride = 1f)
+                    layer = applyEffects(n.effects.filter { it.type != "depthMap" }, n.transitionBlur, layer, ctx, target)
                     composite(layer, target, ctx, opacity, blend, n.post, emptyList(), null)
                     res.pool.release(layer)
                 }
@@ -228,7 +242,10 @@ class Compositor(private val res: RenderResources) {
             val sub = if (k == samples / 2 && samples % 2 == 1) n else findNode(SceneEvaluator.evaluate(ctx.project, t).nodes, n.layerId)
             if (sub == null) continue
             val tmp = res.pool.acquire()
+            val outer = ctx.backdrop
+            ctx.backdrop = outer ?: target
             drawNodeAt(sub, tmp, ctx, sub.opacity, BlendMode.NORMAL)
+            ctx.backdrop = outer
             // Additive accumulation with weight 1/samples.
             accum.bind()
             GLES30.glEnable(GLES30.GL_BLEND)
@@ -497,58 +514,224 @@ class Compositor(private val res: RenderResources) {
         }
     }
 
-    private fun applyEffects(effects: List<ResolvedEffect>, transitionBlur: Float, input: RenderTarget, ctx: Ctx): RenderTarget {
+    /**
+     * Runs the layer's effects in order. [below] is the target the layer will be composited into; it holds the
+     * composite of the layers underneath (read by effects such as Glass).
+     */
+    private fun applyEffects(effects: List<ResolvedEffect>, transitionBlur: Float, input: RenderTarget, ctx: Ctx, below: RenderTarget): RenderTarget {
         var cur = input
         for (e in effects) {
-            cur = when (e) {
-                is ResolvedEffect.Blur -> blur(cur, e.radius, ctx)
-                is ResolvedEffect.ColorAdjust -> pass("color_adjust.frag", cur) { p ->
-                    p.set1f("u_brightness", e.brightness); p.set1f("u_contrast", e.contrast)
-                    p.set1f("u_saturation", e.saturation); p.set1f("u_hue", e.hue)
-                }
-                is ResolvedEffect.Tint -> pass("tint.frag", cur) { p ->
-                    p.set4f("u_color", e.color.r, e.color.g, e.color.b, e.color.a); p.set1f("u_amount", e.amount)
-                }
-                is ResolvedEffect.Invert -> pass("invert.frag", cur) { p -> p.set1f("u_amount", e.amount) }
-                is ResolvedEffect.Pixelate -> pass("pixelate.frag", cur) { p ->
-                    val px = e.size * ctx.scale
-                    p.set2f("u_cell", px / ctx.width, px / ctx.height)
-                }
-                is ResolvedEffect.ChromaticAberration -> pass("chroma.frag", cur) { p ->
-                    p.set2f("u_offset", e.offset.x * ctx.scale / ctx.width, -e.offset.y * ctx.scale / ctx.height)
-                }
-                is ResolvedEffect.Vignette -> pass("vignette.frag", cur) { p ->
-                    p.set1f("u_amount", e.amount); p.set1f("u_softness", e.softness); p.set1f("u_aspect", ctx.width.toFloat() / ctx.height)
-                }
-                is ResolvedEffect.DropShadow -> {
-                    val blurred = blur(copy(cur), e.softness, ctx)
-                    val r = pass("shadow.frag", cur) { p ->
-                        bindTexture2D(1, blurred.texture)
-                        p.set1i("u_blurred", 1)
-                        p.set2f("u_offset", e.offset.x * ctx.scale / ctx.width, -e.offset.y * ctx.scale / ctx.height)
-                        p.set4f("u_color", e.color.r, e.color.g, e.color.b, e.opacity * e.color.a)
-                        p.set1f("u_glow", 0f)
+            val spec = EffectRegistry.get(e.type) ?: continue
+            cur = when {
+                e.transform != null -> transformPass(cur, e.transform!!, ctx)
+                else -> when (e.type) {
+                    "blur" -> blur(cur, e.f("radius"), ctx)
+                    "glow" -> glow(cur, e.color("color"), e.f("radius"), e.f("intensity"), ctx)
+                    "dropShadow" -> {
+                        val a = Math.toRadians(e.f("angle").toDouble())
+                        val d = e.f("distance")
+                        dropShadow(cur, e.color("color"), e.f("opacity"), (kotlin.math.cos(a) * d).toFloat(), (kotlin.math.sin(a) * d).toFloat(), e.f("softness"), ctx)
                     }
-                    res.pool.release(blurred)
-                    r
-                }
-                is ResolvedEffect.Glow -> {
-                    val blurred = blur(copy(cur), e.radius, ctx)
-                    val r = pass("shadow.frag", cur) { p ->
-                        bindTexture2D(1, blurred.texture)
-                        p.set1i("u_blurred", 1)
-                        p.set2f("u_offset", 0f, 0f)
-                        p.set4f("u_color", e.color.r, e.color.g, e.color.b, e.intensity)
-                        p.set1f("u_glow", 1f)
-                    }
-                    res.pool.release(blurred)
-                    r
+                    "sharpen" -> sharpen(cur, e, ctx)
+                    "deepGlow" -> deepGlow(cur, e, ctx)
+                    "glass" -> glass(cur, e, ctx, ctx.backdrop ?: below)
+                    "echo" -> echo(cur, e, ctx)
+                    "posterizeTime", "depthMap" -> cur // handled by scene evaluation / 3D drawing
+                    else -> generic(spec, e, cur, ctx)
                 }
             }
         }
         if (transitionBlur > 0f) cur = blur(cur, transitionBlur, ctx)
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
         return cur
+    }
+
+    /** Composition point → uv of the offscreen targets (GL orientation, y up). */
+    private fun uvOf(p: Vec2, ctx: Ctx) = Vec2(0.5f + p.x / ctx.scene.width, 0.5f - p.y / ctx.scene.height)
+
+    private fun setCommon(p: Program, e: ResolvedEffect, ctx: Ctx) {
+        p.set2f("u_resolution", ctx.width.toFloat(), ctx.height.toFloat())
+        p.set1f("u_pxScale", ctx.scale)
+        p.set1f("u_time", e.time.toFloat())
+        uvOf(e.origin, ctx).let { p.set2f("u_origin", it.x, it.y) }
+        p.set1i("u_samples", ctx.samples)
+    }
+
+    /**
+     * Single-pass effects: `shaders/fx/<type>.frag` with one uniform per parameter, named `u_<param>`.
+     * Pixel lengths are converted to output pixels, points to uv, choices to their index, switches to 0/1.
+     */
+    private fun generic(spec: EffectSpec, e: ResolvedEffect, src: RenderTarget, ctx: Ctx): RenderTarget = pass("fx/${spec.id}.frag", src) { p ->
+        setCommon(p, e, ctx)
+        for (param in spec.params) {
+            val u = "u_${param.name}"
+            when (param.type) {
+                ParamType.NUMBER -> p.set1f(u, if (param.unit == ParamUnit.PX) e.f(param.name) * ctx.scale else e.f(param.name))
+                ParamType.INTEGER -> if (param.name == "seed") p.set1f(u, e.i(param.name).toFloat()) else p.set1i(u, e.i(param.name))
+                ParamType.COLOR -> e.color(param.name).let { c -> p.set4f(u, c.r, c.g, c.b, c.a) }
+                ParamType.POINT -> uvOf(e.point(param.name), ctx).let { v -> p.set2f(u, v.x, v.y) }
+                ParamType.BOOLEAN -> p.set1f(u, if (e.flag(param.name)) 1f else 0f)
+                ParamType.CHOICE -> p.set1i(u, param.choices.indexOfFirst { it.id == e.choice(param.name) }.coerceAtLeast(0))
+                ParamType.STOPS -> {
+                    val stops = e.stops(param.name).take(8)
+                    val offsets = FloatArray(8)
+                    val colors = FloatArray(32)
+                    stops.forEachIndexed { k, st ->
+                        offsets[k] = st.offset
+                        colors[k * 4] = st.color.r; colors[k * 4 + 1] = st.color.g; colors[k * 4 + 2] = st.color.b; colors[k * 4 + 3] = st.color.a
+                    }
+                    p.set1i("${u}Count", stops.size)
+                    p.set1fv("${u}Offset[0]", 8, offsets)
+                    p.set4fv("${u}Color[0]", 8, colors)
+                }
+            }
+        }
+    }
+
+    private fun glow(cur: RenderTarget, color: Color, radius: Float, intensity: Float, ctx: Ctx): RenderTarget {
+        val blurred = blur(copy(cur), radius, ctx)
+        val r = pass("shadow.frag", cur) { p ->
+            bindTexture2D(1, blurred.texture)
+            p.set1i("u_blurred", 1)
+            p.set2f("u_offset", 0f, 0f)
+            p.set4f("u_color", color.r, color.g, color.b, intensity)
+            p.set1f("u_glow", 1f)
+        }
+        res.pool.release(blurred)
+        return r
+    }
+
+    private fun dropShadow(cur: RenderTarget, color: Color, opacity: Float, dx: Float, dy: Float, softness: Float, ctx: Ctx): RenderTarget {
+        val blurred = blur(copy(cur), softness, ctx)
+        val r = pass("shadow.frag", cur) { p ->
+            bindTexture2D(1, blurred.texture)
+            p.set1i("u_blurred", 1)
+            p.set2f("u_offset", dx * ctx.scale / ctx.width, -dy * ctx.scale / ctx.height)
+            p.set4f("u_color", color.r, color.g, color.b, opacity * color.a)
+            p.set1f("u_glow", 0f)
+        }
+        res.pool.release(blurred)
+        return r
+    }
+
+    private fun sharpen(cur: RenderTarget, e: ResolvedEffect, ctx: Ctx): RenderTarget {
+        val blurred = blur(copy(cur), e.f("radius"), ctx)
+        val r = pass("fx/sharpen.frag", cur) { p ->
+            setCommon(p, e, ctx)
+            bindTexture2D(1, blurred.texture)
+            p.set1i("u_blurred", 1)
+            p.set1f("u_amount", e.f("amount"))
+        }
+        res.pool.release(blurred)
+        return r
+    }
+
+    /** Bloom: bright areas blurred at three radii, weighted by the falloff and added back. */
+    private fun deepGlow(cur: RenderTarget, e: ResolvedEffect, ctx: Ctx): RenderTarget {
+        val bright = pass("fx/threshold.frag", copy(cur)) { p -> setCommon(p, e, ctx); p.set1f("u_threshold", e.f("threshold")) }
+        val radius = e.f("radius")
+        val b1 = blur(copy(bright), radius * 0.15f, ctx)
+        val b2 = if (ctx.settings.preview) null else blur(copy(bright), radius * 0.45f, ctx)
+        val b3 = blur(bright, radius, ctx)
+        val falloff = e.f("falloff")
+        var w = floatArrayOf(1f, if (b2 != null) 1f - falloff * 0.5f else 0f, 1f - falloff * 0.8f)
+        w = w.map { it / w.sum() }.toFloatArray()
+        val color = e.color("color")
+        val r = pass("fx/deepGlowCombine.frag", cur) { p ->
+            setCommon(p, e, ctx)
+            bindTexture2D(1, b1.texture); p.set1i("u_blur1", 1)
+            bindTexture2D(2, (b2 ?: b1).texture); p.set1i("u_blur2", 2)
+            bindTexture2D(3, b3.texture); p.set1i("u_blur3", 3)
+            p.set3f("u_weights", w[0], w[1], w[2])
+            p.set1f("u_intensity", e.f("intensity"))
+            p.set4f("u_color", color.r, color.g, color.b, color.a)
+        }
+        res.pool.release(b1)
+        b2?.let(res.pool::release)
+        res.pool.release(b3)
+        return r
+    }
+
+    /** Glass: refracts a copy of the composite below through a height field made from the layer. */
+    private fun glass(cur: RenderTarget, e: ResolvedEffect, ctx: Ctx, below: RenderTarget): RenderTarget {
+        val backdrop = copy(below)
+        val softness = maxOf(e.f("bevel"), if (e.flag("useLuminanceAsHeight")) e.f("heightSoftness") else 0f, 1f)
+        val height = blur(copy(cur), softness, ctx)
+        val r = pass("fx/glass.frag", cur) { p ->
+            setCommon(p, e, ctx)
+            bindTexture2D(1, backdrop.texture); p.set1i("u_backdrop", 1)
+            bindTexture2D(2, height.texture); p.set1i("u_height", 2)
+            p.set1f("u_refraction", e.f("refraction"))
+            p.set1f("u_dispersion", e.f("dispersion"))
+            p.set1f("u_edgeGlow", e.f("edgeGlow"))
+            p.set1f("u_edgeGlowWidth", e.f("edgeGlowWidth") * ctx.scale)
+            e.color("edgeGlowColor").let { c -> p.set4f("u_edgeGlowColor", c.r, c.g, c.b, c.a) }
+            p.set1f("u_bevel", e.f("bevel") * ctx.scale)
+            p.set1f("u_useLuminanceAsHeight", if (e.flag("useLuminanceAsHeight")) 1f else 0f)
+            p.set1f("u_heightScale", e.f("heightScale") * ctx.scale)
+        }
+        res.pool.release(backdrop)
+        res.pool.release(height)
+        return r
+    }
+
+    /** Echo: earlier copies of the layer (oldest first) under the current image. */
+    private fun echo(cur: RenderTarget, e: ResolvedEffect, ctx: Ctx): RenderTarget {
+        if (e.echoes.isEmpty()) return cur
+        val acc = res.pool.acquire()
+        for (sample in e.echoes.asReversed()) {
+            drawNodeAt(sample.node, acc, ctx, sample.node.opacity * sample.opacity, BlendMode.NORMAL)
+        }
+        composite(cur, acc, ctx, 1f, BlendMode.NORMAL, Affine2D.IDENTITY, emptyList(), null)
+        res.pool.release(cur)
+        return acc
+    }
+
+    /** Motion effects: resamples the image through the inverse of [m] (composition pixels). */
+    private fun transformPass(cur: RenderTarget, m: Affine2D, ctx: Ctx): RenderTarget {
+        val inv = m.inverse() ?: return cur
+        val w = ctx.scene.width.toFloat()
+        val h = ctx.scene.height.toFloat()
+        // uv -> composition: x = (u - 0.5)·w, y = (0.5 - v)·h ; composition -> uv is the inverse.
+        val toComp = Affine2D(a = w, b = 0f, c = 0f, d = -h, tx = -w / 2f, ty = h / 2f)
+        val toUv = toComp.inverse()!!
+        val k = toUv * inv * toComp
+        return pass("fx/transform.frag", cur) { p ->
+            p.setMat3("u_inverse", floatArrayOf(k.a, k.b, 0f, k.c, k.d, 0f, k.tx, k.ty, 1f))
+        }
+    }
+
+    /** Depth Map: the 3D layer drawn as distance to the camera. */
+    private fun drawDepth(n: Node3D, e: ResolvedEffect, target: RenderTarget, ctx: Ctx) {
+        target.bind()
+        GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT)
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST)
+        GLES30.glDepthFunc(GLES30.GL_LEQUAL)
+        GLES30.glDepthMask(true)
+        applyBlend(BlendMode.NORMAL)
+        val p = res.shaders.get("mesh.vert", "depth.frag")
+        p.use()
+        val cam = ctx.scene.camera
+        p.setMat4("u_viewProj", cam.viewProjection.m)
+        p.set3f("u_cameraPos", cam.position.x, cam.position.y, cam.position.z)
+        p.set1f("u_near", e.f("near"))
+        p.set1f("u_far", e.f("far"))
+        p.set1f("u_gamma", e.f("gamma"))
+        p.set1f("u_invert", if (e.flag("invert")) 1f else 0f)
+        p.set1f("u_opacity", 1f)
+        val primitive = n.primitive
+        if (primitive != null) {
+            setModel(p, n.model)
+            res.meshes.primitive(primitive).draw()
+        } else {
+            val model = res.meshes.model(n.modelAssetId ?: return)
+            if (model != null) {
+                setModel(p, n.model * model.normalization)
+                model.parts.forEach { it.mesh.draw() }
+            }
+        }
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        GLES30.glFrontFace(GLES30.GL_CCW)
     }
 
     private fun applyMatte(layer: RenderTarget, matte: MatteRef, ctx: Ctx): RenderTarget {

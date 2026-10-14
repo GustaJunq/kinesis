@@ -102,7 +102,7 @@ class PreviewRenderer(
             val outH = (outW * p.composition.height.toFloat() / p.composition.width).roundToInt().coerceAtLeast(16)
             val scene = SceneEvaluator.evaluate(p, s.time)
             val samples = if (s.playing) min(3, p.composition.motionBlur.samples) else p.composition.motionBlur.samples
-            val target = comp.render(p, scene, outW, outH, RenderSettings(motionBlurSamples = samples))
+            val target = comp.render(p, scene, outW, outH, RenderSettings(motionBlurSamples = samples, preview = s.playing))
             GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
             comp.present(target, vp.left.roundToInt(), (viewH - vp.top - vp.height).roundToInt(), vp.width.roundToInt(), vp.height.roundToInt())
 
