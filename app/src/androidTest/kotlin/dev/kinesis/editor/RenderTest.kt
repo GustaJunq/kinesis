@@ -47,13 +47,13 @@ class RenderTest {
     }
 
     @Test
-    fun metalCube() = render(loadExample("metal-cube"), listOf(0.2, 1.5, 5.0), "metal-cube")
+    fun orbitCamera3d() = render(loadExample("basicos/3d-camera-orbita"), listOf(0.2, 1.5, 3.0), "3d-camera-orbita")
 
     @Test
-    fun kineticTitle() = render(loadExample("kinetic-title"), listOf(0.5, 2.5), "kinetic-title")
+    fun kineticTitle() = render(loadExample("receitas/titulo-cinetico"), listOf(0.5, 2.5), "titulo-cinetico")
 
     @Test
-    fun solarSystem() = render(loadExample("solar-system"), listOf(1.0, 4.0), "solar-system")
+    fun introLogoGlow() = render(loadExample("receitas/intro-logo-glow"), listOf(1.0, 3.0), "intro-logo-glow")
 
     /** Every effect, mask and primitive on one frame: catches shader/uniform problems. */
     @Test

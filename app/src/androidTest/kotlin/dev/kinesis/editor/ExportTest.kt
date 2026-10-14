@@ -62,7 +62,7 @@ class ExportTest {
     @Test
     fun exportsVideoWithAudioAndReimportsIt() {
         val tone = File(dir, "tone.wav").also { writeTone(it, 2.5) }
-        val base = loadExample("metal-cube")
+        val base = loadExample("basicos/3d-camera-orbita")
         var project = base.copy(composition = base.composition.copy(duration = 2.0))
         val audioAsset = Asset("tone", AssetType.AUDIO, "assets/tone.wav", duration = 2.5)
         project = project.copy(assets = listOf(audioAsset))

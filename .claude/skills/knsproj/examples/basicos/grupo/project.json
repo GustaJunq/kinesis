@@ -1,0 +1,54 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Grupo"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 5, "background": "#101522"},
+  "layers": [
+    {
+      "id": "badge",
+      "type": "group",
+      "start": 1,
+      "duration": 3.5,
+      "transform": {
+        "position": [0, 0],
+        "rotation": {"keyframes": [{"time": 0, "value": -8, "easing": "easeOutCubic"}, {"time": 1, "value": 0}]}
+      },
+      "effects": [{"type": "glow", "color": "#FFC857", "radius": 36, "intensity": 1.2}],
+      "transitionIn": {"type": "zoomIn", "duration": 0.5, "easing": "easeOutBack"},
+      "layers": [
+        {
+          "id": "plate",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.5,
+          "transform": {"position": [0, 0]},
+          "shape": {"kind": "rectangle", "size": [760, 300], "fill": {"color": "#1C3D75"}, "roundness": 60}
+        },
+        {
+          "id": "badge-title",
+          "type": "text",
+          "start": 0.3,
+          "duration": 3.2,
+          "transform": {"position": [0, 0]},
+          "text": {
+            "content": "NOVO",
+            "font": {"family": "sans-serif", "weight": 800},
+            "fontSize": 150,
+            "color": "#FFC857",
+            "animators": [
+              {
+                "type": "scale",
+                "unit": "character",
+                "stagger": 0.08,
+                "unitDuration": 0.4,
+                "easing": "easeOutBack",
+                "amount": 0
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

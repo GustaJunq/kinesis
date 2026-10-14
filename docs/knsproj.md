@@ -7,7 +7,7 @@ pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplica
 - **Schema oficial:** [`schema/knsproj-v1.schema.json`](../schema/knsproj-v1.schema.json) (JSON Schema draft 2020-12)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
-- **Exemplos:** [`examples/`](../examples)
+- **Exemplos:** [`.claude/skills/knsproj/examples/`](../.claude/skills/knsproj/examples)
 
 ## 1. Contêiner
 
@@ -415,12 +415,20 @@ Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes 
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.
 
-## 13. Exemplo completo
+## 13. Exemplos
 
-Veja [`examples/metal-cube/project.json`](../examples/metal-cube/project.json): animação vertical de 10 s com um cubo
-metálico girando, título com animação por caractere, halo desfocado, sombra, linha com trim path, câmera animada e
-três luzes. Para gerar o arquivo importável:
+Os exemplos ficam em [`.claude/skills/knsproj/examples/`](../.claude/skills/knsproj/examples), junto da skill `/knsproj`:
+
+- `basicos/` — um recurso por pasta (animadores de texto, trim path, máscaras, mattes, transições, efeitos, vídeo e
+  áudio, grupos, câmera 3D, modelo GLB…), cada um com `project.json` curto e um `README.md`;
+- `receitas/` — composições completas, como
+  [`intro-logo-glow`](../.claude/skills/knsproj/examples/receitas/intro-logo-glow/project.json) (intro com halo,
+  anel de loading e título) e `video-vertical-legenda-por-palavra` (1080×1920);
+- `erros/` — projetos inválidos de propósito, com o código de erro esperado e o conserto.
+
+Para gerar um arquivo importável a partir de qualquer exemplo:
 
 ```bash
-python3 tools/knsproj pack examples/metal-cube -o metal-cube.knsproj
+python3 tools/knsproj validate .claude/skills/knsproj/examples/receitas/intro-logo-glow
+python3 tools/knsproj pack .claude/skills/knsproj/examples/receitas/intro-logo-glow -o intro-logo-glow.knsproj
 ```

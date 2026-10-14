@@ -1,0 +1,50 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Keyframes e easing"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "overshoot",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": {
+          "keyframes": [
+            {"time": 0.2, "value": [-300, -300], "easing": {"cubicBezier": [0.34, 1.56, 0.64, 1]}},
+            {"time": 1.2, "value": [300, -300]}
+          ]
+        }
+      },
+      "shape": {"kind": "rectangle", "size": [180, 180], "fill": {"color": "#FF6B8B"}, "roundness": 40}
+    },
+    {
+      "id": "bounce",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": {
+          "keyframes": [{"time": 0.2, "value": [0, -380], "easing": "easeOutBounce"}, {"time": 1.6, "value": [0, 120]}]
+        }
+      },
+      "shape": {"kind": "ellipse", "size": [180, 180], "fill": {"color": "#FFC857"}}
+    },
+    {
+      "id": "pulse",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": [0, 330],
+        "scale": {
+          "keyframes": [{"time": 0, "value": [1, 1], "easing": "easeInOutSine"}, {"time": 0.8, "value": [1.5, 1.5]}],
+          "loop": "pingpong"
+        }
+      },
+      "shape": {"kind": "ellipse", "size": [160, 160], "fill": {"color": "#4C8DFF"}}
+    }
+  ]
+}

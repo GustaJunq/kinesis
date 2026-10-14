@@ -1,0 +1,67 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Efeitos"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#14182B"},
+  "layers": [
+    {
+      "id": "neon",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, -300]},
+      "text": {"content": "NEON", "font": {"family": "sans-serif", "weight": 800}, "fontSize": 220, "color": "#4C8DFF"},
+      "effects": [
+        {
+          "type": "glow",
+          "color": "#4C8DFF",
+          "radius": 40,
+          "intensity": {
+            "keyframes": [{"time": 0, "value": 0.6, "easing": "easeInOutSine"}, {"time": 1, "value": 1.6}],
+            "loop": "pingpong"
+          }
+        }
+      ]
+    },
+    {
+      "id": "card",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 20]},
+      "shape": {"kind": "rectangle", "size": [600, 240], "fill": {"color": "#FFFFFF"}, "roundness": 50},
+      "effects": [{"type": "dropShadow", "color": "#000000", "opacity": 0.6, "angle": 90, "distance": 28, "softness": 36}]
+    },
+    {
+      "id": "glitch",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 330]},
+      "text": {
+        "content": "GLITCH",
+        "font": {"family": "sans-serif", "weight": 800},
+        "fontSize": 200,
+        "color": "#FFFFFF"
+      },
+      "effects": [
+        {
+          "type": "chromaticAberration",
+          "angle": 0,
+          "amount": {
+            "keyframes": [
+              {"time": 0, "value": 0},
+              {"time": 1.5, "value": 0, "easing": "hold"},
+              {"time": 1.55, "value": 24},
+              {"time": 1.7, "value": 0},
+              {"time": 2.4, "value": 0, "easing": "hold"},
+              {"time": 2.45, "value": 30},
+              {"time": 2.6, "value": 0}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

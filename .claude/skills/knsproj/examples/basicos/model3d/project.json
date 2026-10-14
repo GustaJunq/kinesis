@@ -1,0 +1,35 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Modelo GLB"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 6, "background": "#10162B"},
+  "assets": [
+    {
+      "id": "pyramid",
+      "type": "model",
+      "path": "assets/pyramid.glb",
+      "name": "pyramid.glb",
+      "mimeType": "model/gltf-binary"
+    }
+  ],
+  "layers": [
+    {
+      "id": "rig",
+      "type": "object3d",
+      "duration": 6,
+      "object3d": {"primitive": "empty"},
+      "transform3d": {
+        "rotation": {"keyframes": [{"time": 0, "value": [0, 0, 0]}, {"time": 6, "value": [0, 360, 0]}], "loop": "cycle"}
+      }
+    },
+    {"id": "pyramid", "type": "model3d", "duration": 6, "model3d": {"asset": "pyramid", "size": 620}},
+    {
+      "id": "camera",
+      "type": "camera",
+      "duration": 6,
+      "parent": "rig",
+      "camera": {"position": [0, -500, -2200], "target": [0, 0, 0], "fov": 40}
+    }
+  ]
+}

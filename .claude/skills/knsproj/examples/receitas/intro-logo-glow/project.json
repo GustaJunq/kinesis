@@ -1,0 +1,93 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Intro com logo e glow",
+    "description": "Intro de logo: halo respirando, anel que se desenha, marca com glow e wordmark que fecha o espaçamento."
+  },
+  "composition": {"width": 1920, "height": 1080, "fps": 30, "duration": 5, "background": "#070A17"},
+  "layers": [
+    {
+      "id": "halo",
+      "type": "shape",
+      "start": 0,
+      "duration": 5,
+      "transform": {
+        "position": [0, -60],
+        "opacity": {"keyframes": [{"time": 0, "value": 0, "easing": "easeOutCubic"}, {"time": 1.2, "value": 0.75}]},
+        "scale": {
+          "keyframes": [{"time": 0, "value": [0.6, 0.6], "easing": "easeInOutSine"}, {"time": 2.5, "value": [1.1, 1.1]}],
+          "loop": "pingpong"
+        }
+      },
+      "shape": {"kind": "ellipse", "size": [700, 700], "fill": {"color": "#4C8DFF"}},
+      "effects": [{"type": "blur", "radius": 160}]
+    },
+    {
+      "id": "ring",
+      "type": "shape",
+      "start": 0.2,
+      "duration": 4.8,
+      "transform": {"position": [0, -60], "rotation": -90},
+      "shape": {
+        "kind": "ellipse",
+        "size": [430, 430],
+        "fill": {"enabled": false},
+        "stroke": {"color": "#FFFFFF", "width": 8, "cap": "round"},
+        "trim": {"end": {"keyframes": [{"time": 0, "value": 0, "easing": "easeInOutCubic"}, {"time": 1.4, "value": 1}]}}
+      }
+    },
+    {
+      "id": "mark",
+      "type": "shape",
+      "start": 1.0,
+      "duration": 4,
+      "transform": {
+        "position": [0, -60],
+        "scale": {"keyframes": [{"time": 0, "value": [0, 0], "easing": "easeOutBack"}, {"time": 0.7, "value": [1, 1]}]}
+      },
+      "shape": {
+        "kind": "star",
+        "size": [220, 220],
+        "sides": 5,
+        "innerRatio": 0.45,
+        "roundness": 14,
+        "fill": {"color": "#FFC857"}
+      },
+      "effects": [{"type": "glow", "color": "#FFC857", "radius": 40, "intensity": 1.2}]
+    },
+    {
+      "id": "wordmark",
+      "type": "text",
+      "start": 1.6,
+      "duration": 3.4,
+      "transform": {
+        "position": [0, 280],
+        "opacity": {"keyframes": [{"time": 0, "value": 0, "easing": "easeOutCubic"}, {"time": 0.8, "value": 1}]}
+      },
+      "text": {
+        "content": "KINESIS",
+        "font": {"family": "sans-serif", "weight": 900},
+        "fontSize": 120,
+        "color": "#FFFFFF",
+        "letterSpacing": {"keyframes": [{"time": 0, "value": 0.45, "easing": "easeOutCubic"}, {"time": 1.4, "value": 0.12}]}
+      },
+      "effects": [{"type": "glow", "color": "#4C8DFF", "radius": 30, "intensity": 0.9}]
+    },
+    {
+      "id": "tagline",
+      "type": "text",
+      "start": 2.4,
+      "duration": 2.6,
+      "transform": {"position": [0, 400]},
+      "text": {
+        "content": "motion design no bolso",
+        "font": {"family": "sans-serif", "weight": 400},
+        "fontSize": 44,
+        "color": "#9EC1FF",
+        "animators": [{"type": "fade", "unit": "word", "stagger": 0.15, "unitDuration": 0.5}]
+      }
+    }
+  ]
+}
