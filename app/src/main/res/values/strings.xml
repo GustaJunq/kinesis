@@ -6,6 +6,7 @@
     <string name="add_effect">Add effect</string>
     <string name="add_mask">Add mask</string>
     <string name="add_media">Media</string>
+    <string name="add_point">Add point</string>
     <string name="add_scene">Camera &amp; lights</string>
     <string name="align_center">Center</string>
     <string name="align_left">Left</string>
@@ -30,6 +31,7 @@
     <string name="cap_square">Square</string>
     <string name="choose">Choose</string>
     <string name="close">Close</string>
+    <string name="closed_path">Closed path</string>
     <string name="color">Color</string>
     <string name="create">Create</string>
     <string name="default_text">Kinesis</string>
@@ -136,7 +138,10 @@
     <string name="outline">Outline</string>
     <string name="override_material">Override material</string>
     <string name="parent">Parent</string>
+    <string name="path_hint">Drag the square handles in the viewport to move points.</string>
     <string name="play">Play</string>
+    <string name="point_corner">Corner</string>
+    <string name="point_smooth">Smooth</string>
     <string name="prev_keyframe">Previous keyframe</string>
     <string name="prim_cone">Cone</string>
     <string name="prim_cube">Cube</string>

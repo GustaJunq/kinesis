@@ -399,6 +399,7 @@ private fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: Lay
                 SectionTitle(stringResource(R.string.section_shape))
                 val kinds = ShapeKind.entries.filter { it != ShapeKind.PATH || s.kind == ShapeKind.PATH }
                 ChoiceChips(kinds.map { it to stringResource(shapeKindRes(it)) }, s.kind, { k -> vm.updateLayer(id) { it.updateShape { c -> c.copy(kind = k) } } })
+                if (s.kind == ShapeKind.PATH) PathPointsEditor(vm, id, s.path ?: dev.kinesis.core.model.PathSpec())
                 SwitchRow(stringResource(R.string.fill), s.fill.enabled) { v -> vm.updateLayer(id) { it.updateShape { c -> c.copy(fill = c.fill.copy(enabled = v)) } } }
                 if (s.fill.enabled) {
                     SwitchRow(stringResource(R.string.gradient), s.fill.gradient != null) { on ->
@@ -486,6 +487,29 @@ private fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: Lay
             }
         }
     }
+}
+
+@Composable
+private fun PathPointsEditor(vm: EditorViewModel, id: String, path: dev.kinesis.core.model.PathSpec) {
+    fun upd(key: String? = null, f: (dev.kinesis.core.model.PathSpec) -> dev.kinesis.core.model.PathSpec) =
+        vm.updateLayer(id, key) { l -> l.updateShape { sh -> sh.copy(path = f(sh.path ?: dev.kinesis.core.model.PathSpec())) } }
+    SmallLabel(stringResource(R.string.path_hint))
+    SwitchRow(stringResource(R.string.closed_path), path.closed) { v -> upd { it.copy(closed = v) } }
+    path.points.forEachIndexed { i, p ->
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("${i + 1}", fontSize = 11.sp, color = KColors.TextSecondary, modifier = Modifier.width(18.dp))
+            AxisField("X", p.point.x, 2f, 1f, "", Modifier.weight(1f), { v -> upd("pt:$id:$i") { pth -> dev.kinesis.core.edit.PathOps.movePoint(pth, i, Vec2(v, pth.points[i].point.y)) } }) { vm.endGesture() }
+            AxisField("Y", p.point.y, 2f, 1f, "", Modifier.weight(1f), { v -> upd("pt:$id:$i") { pth -> dev.kinesis.core.edit.PathOps.movePoint(pth, i, Vec2(pth.points[i].point.x, v)) } }) { vm.endGesture() }
+            val smooth = dev.kinesis.core.edit.PathOps.isSmooth(p)
+            TextButton(onClick = { upd { pth -> if (smooth) dev.kinesis.core.edit.PathOps.corner(pth, i) else dev.kinesis.core.edit.PathOps.smooth(pth, i) } }) {
+                Text(stringResource(if (smooth) R.string.point_smooth else R.string.point_corner), fontSize = 11.sp)
+            }
+            IconButton(onClick = { upd { pth -> dev.kinesis.core.edit.PathOps.removePoint(pth, i) } }, enabled = path.points.size > 2, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Filled.Delete, stringResource(R.string.delete), tint = KColors.TextSecondary, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+    OutlinedButton(onClick = { upd { pth -> dev.kinesis.core.edit.PathOps.insertAfter(pth, pth.points.lastIndex) } }) { Text(stringResource(R.string.add_point)) }
 }
 
 @Composable

@@ -212,6 +212,28 @@ class EditingTest {
     }
 
     @Test
+    fun pathEditing() {
+        var path = dev.kinesis.core.model.PathSpec(closed = false, points = listOf(dev.kinesis.core.model.PathPoint(Vec2(0f, 0f)), dev.kinesis.core.model.PathPoint(Vec2(100f, 0f))))
+        path = dev.kinesis.core.edit.PathOps.insertAfter(path, 0)
+        assertEquals(Vec2(50f, 0f), path.points[1].point)
+        path = dev.kinesis.core.edit.PathOps.insertAfter(path, 2)
+        assertEquals(Vec2(150f, 0f), path.points[3].point)
+        path = dev.kinesis.core.edit.PathOps.movePoint(path, 1, Vec2(50f, -60f))
+        path = dev.kinesis.core.edit.PathOps.smooth(path, 1)
+        assertEquals(100f / 6f, path.points[1].outTangent.x, 1e-4f)
+        assertEquals(0f, path.points[1].outTangent.y, 1e-4f)
+        assertEquals(-path.points[1].outTangent.x, path.points[1].inTangent.x, 1e-5f)
+        assertTrue(dev.kinesis.core.edit.PathOps.isSmooth(path.points[1]))
+        path = dev.kinesis.core.edit.PathOps.corner(path, 1)
+        assertFalse(dev.kinesis.core.edit.PathOps.isSmooth(path.points[1]))
+        path = dev.kinesis.core.edit.PathOps.removePoint(path, 0)
+        assertEquals(3, path.points.size)
+        // Paths never drop below two points.
+        repeat(5) { path = dev.kinesis.core.edit.PathOps.removePoint(path, 0) }
+        assertEquals(2, path.points.size)
+    }
+
+    @Test
     fun historyUndoRedoAndCoalescing() {
         val h = History(0)
         h.push(1)

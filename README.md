@@ -36,7 +36,7 @@ pelo **Claude Code** com a skill [`/knsproj`](.claude/skills/knsproj/SKILL.md) i
 | **Undo/redo** | histórico completo (gestos contínuos viram um único passo) |
 | **Preview** | tempo real via OpenGL ES 3.0, play/pause, loop, quadro a quadro, navegação entre keyframes, áudio sincronizado |
 | **Texto** | fontes do sistema ou importadas (TTF/OTF), peso, itálico, alinhamento, entrelinha, quebra, contorno; animadores por caractere/palavra/linha (máquina de escrever, fade, slide, escala, rotação, onda) |
-| **Formas** | retângulo (cantos arredondados), elipse, polígono, estrela, linha/caminho Bézier; preenchimento sólido ou gradiente linear/radial; traço com ponta e junção; **trim paths** |
+| **Formas** | retângulo (cantos arredondados), elipse, polígono, estrela, linha/caminho Bézier (vértices arrastáveis no viewport, pontos suaves ou de canto); preenchimento sólido ou gradiente linear/radial; traço com ponta e junção; **trim paths** |
 | **Mídia** | imagens (com orientação EXIF), vídeo (decodificação por hardware com seek preciso, velocidade, ponto de entrada), áudio (volume animável, fades, mudo) |
 | **Animação** | keyframes em todas as propriedades numéricas, de vetor e de cor; 36 presets de easing + **editor de curvas Bézier**; loops `cycle`/`pingpong` |
 | **Composição** | parenting (com compensação para a camada não "pular"), grupos, modos de mesclagem (normal, adição, multiplicação, tela), opacidade |
@@ -215,8 +215,9 @@ Funcionalidades fora desta beta, documentadas em vez de simuladas:
 
 - **Sombras projetadas** em 3D e iluminação por mapas de ambiente (IBL) reais — hoje há um ambiente de estúdio procedural.
 - **glTF:** skinning, animações embutidas, morph targets, compressão Draco/meshopt e buffers/texturas externos.
-- **Edição de caminhos Bézier no viewport** (pen tool): caminhos são criados como linha e editáveis via `.knsproj`;
-  no app só as propriedades de traço/trim são editáveis.
+- **Pen tool completa:** no app é possível arrastar os vértices de um caminho no viewport, adicionar/remover pontos,
+  fechar o caminho e alternar cada ponto entre suave e canto; arrastar as alças de tangente individualmente e
+  animar a forma do caminho ainda não é suportado.
 - **Interpolação espacial** (trajetórias curvas de posição com tangentes) — a posição interpola em linha reta com easing temporal.
 - **Máscaras de forma livre** (só retângulo/elipse) e **modos de mesclagem** além de normal/adição/multiplicação/tela.
 - **Rotoscopia, chroma key, estabilização, velocidade variável (rampas) e reprodução reversa** de vídeo.

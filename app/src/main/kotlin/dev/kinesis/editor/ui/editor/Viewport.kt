@@ -44,6 +44,7 @@ import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerTree
 import dev.kinesis.core.model.LayerType
+import dev.kinesis.core.model.updateShape
 import dev.kinesis.core.scene.FrameScene
 import dev.kinesis.core.scene.SceneEvaluator
 import dev.kinesis.editor.render.PreviewRenderer
@@ -193,6 +194,11 @@ fun Viewport(
             val accent = KColors.Accent
             when (outline) {
                 is Outline.Quad -> {
+                    pathHandles(vm.current, sel, scene, geometry)?.forEach { pt ->
+                        val v = toView(pt)
+                        drawRect(Color.White, Offset(v.x - 6f * density.density, v.y - 6f * density.density), androidx.compose.ui.geometry.Size(12f * density.density, 12f * density.density))
+                        drawRect(accent, Offset(v.x - 6f * density.density, v.y - 6f * density.density), androidx.compose.ui.geometry.Size(12f * density.density, 12f * density.density), style = Stroke(2f))
+                    }
                     val path = Path().apply {
                         val c = outline.corners.map { toView(it) }
                         moveTo(c[0].x, c[0].y)
@@ -223,6 +229,14 @@ fun Viewport(
 private fun interface Gesture {
     /** [pan] in composition pixels since the gesture started; [zoom]/[rotation] accumulated. */
     fun update(pan: Vec2, zoom: Float, rotation: Float)
+}
+
+/** Vertices of a selected `path` shape in composition pixels. */
+private fun pathHandles(project: KnsProject, id: String, scene: FrameScene, geometry: SceneGeometry): List<Vec2>? {
+    val layer = LayerTree.find(project, id) ?: return null
+    val pts = layer.shape?.takeIf { it.kind == dev.kinesis.core.model.ShapeKind.PATH }?.path?.points ?: return null
+    val node = geometry.findNode(scene, id) as? dev.kinesis.core.scene.Node2D ?: return null
+    return pts.map { node.matrix.apply(it.point) }
 }
 
 /** Screen-space handles of the selected 3D layer's local axes: (axis index, origin, tip) in composition pixels. */
@@ -281,6 +295,19 @@ private fun startGesture(
             return Gesture { pan, _, _ -> vm.setProperty(id, prop, Vec3(start.x + pan.x, start.y + pan.y, start.z), key) }
         }
         layer.type.isRendered3D -> return start3D(vm, layer, scene, downComp, viewScale, handleRadiusPx, tool, key, local)
+        layer.type.is2DVisual && pathVertexAt(project, id, scene, geometry, downComp, handleRadiusPx / viewScale) != null -> {
+            val index = pathVertexAt(project, id, scene, geometry, downComp, handleRadiusPx / viewScale)!!
+            val node = geometry.findNode(scene, id) as? dev.kinesis.core.scene.Node2D ?: return null
+            val inv = node.matrix.inverse() ?: return null
+            val start = layer.shape?.path?.points?.getOrNull(index)?.point ?: return null
+            val startComp = node.matrix.apply(start)
+            return Gesture { pan, _, _ ->
+                val local = inv.apply(startComp + pan)
+                vm.updateLayer(id, key) { l ->
+                    l.updateShape { sh -> sh.path?.let { pth -> sh.copy(path = dev.kinesis.core.edit.PathOps.movePoint(pth, index, local)) } ?: sh }
+                }
+            }
+        }
         layer.type.is2DVisual -> {
             val parent = SceneEvaluator.parentSpace2D(project, id, vm.time.value) ?: Affine2D.IDENTITY
             val inv = parent.inverse() ?: Affine2D.IDENTITY
@@ -301,6 +328,12 @@ private fun startGesture(
         }
     }
     return null
+}
+
+private fun pathVertexAt(project: KnsProject, id: String, scene: FrameScene, geometry: SceneGeometry, p: Vec2, radius: Float): Int? {
+    val handles = pathHandles(project, id, scene, geometry) ?: return null
+    val best = handles.withIndex().minByOrNull { (_, h) -> hypot(h.x - p.x, h.y - p.y) } ?: return null
+    return best.index.takeIf { hypot(best.value.x - p.x, best.value.y - p.y) <= radius }
 }
 
 private fun start3D(

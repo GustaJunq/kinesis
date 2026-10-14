@@ -6,6 +6,7 @@
     <string name="add_effect">Adicionar efeito</string>
     <string name="add_mask">Adicionar máscara</string>
     <string name="add_media">Mídia</string>
+    <string name="add_point">Adicionar ponto</string>
     <string name="add_scene">Câmera e luzes</string>
     <string name="align_center">Centro</string>
     <string name="align_left">Esquerda</string>
@@ -30,6 +31,7 @@
     <string name="cap_square">Quadrada</string>
     <string name="choose">Escolher</string>
     <string name="close">Fechar</string>
+    <string name="closed_path">Caminho fechado</string>
     <string name="color">Cor</string>
     <string name="create">Criar</string>
     <string name="default_text">Kinesis</string>
@@ -136,7 +138,10 @@
     <string name="outline">Contorno</string>
     <string name="override_material">Substituir material</string>
     <string name="parent">Pai</string>
+    <string name="path_hint">Arraste os quadradinhos no viewport para mover os pontos.</string>
     <string name="play">Reproduzir</string>
+    <string name="point_corner">Canto</string>
+    <string name="point_smooth">Suave</string>
     <string name="prev_keyframe">Keyframe anterior</string>
     <string name="prim_cone">Cone</string>
     <string name="prim_cube">Cubo</string>
