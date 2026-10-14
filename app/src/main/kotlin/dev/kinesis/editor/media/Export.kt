@@ -80,7 +80,7 @@ class EglCore {
         EGL14.eglMakeCurrent(display, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
         EGL14.eglDestroyContext(display, context)
         EGL14.eglReleaseThread()
-        EGL14.eglTerminate(display)
+        // The display is shared with the preview's GLSurfaceView, so it is not terminated here.
     }
 
     companion object {
