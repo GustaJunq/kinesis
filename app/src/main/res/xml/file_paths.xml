@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Exported videos (Android/data/<app>/files/Movies/Kinesis) are shared through FileProvider. -->
+    <external-files-path name="movies" path="Movies/" />
+    <files-path name="files" path="." />
+</paths>

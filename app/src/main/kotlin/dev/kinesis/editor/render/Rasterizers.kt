@@ -160,6 +160,23 @@ object TextRasterizer {
         return Raster(bitmap, RectF(-lw / 2f, -lh / 2f, lw / 2f, lh / 2f))
     }
 
+    /** Size of the laid-out text block in layer pixels, centred on the origin (for selection outlines). */
+    fun measure(t: Content2D.Text, typefaces: TypefaceProvider): RectF {
+        val text = t.content.ifEmpty { " " }
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
+        paint.typeface = typefaces.get(t.font)
+        paint.letterSpacing = t.letterSpacing
+        paint.textSize = t.fontSize
+        val width = if (t.maxWidth > 0f) ceil(t.maxWidth).toInt() else ceil(Layout.getDesiredWidth(text, paint)).toInt()
+        val layout = StaticLayout.Builder.obtain(text, 0, text.length, paint, max(1, width))
+            .setLineSpacing(0f, t.lineHeight / 1.17f)
+            .setIncludePad(false)
+            .build()
+        val w = layout.width + t.strokeWidth
+        val h = layout.height + t.strokeWidth
+        return RectF(-w / 2f, -h / 2f, w / 2f, h / 2f)
+    }
+
     /** Extra room (layer pixels) so animated glyphs are not clipped. */
     private fun animatorPadding(t: Content2D.Text): Float {
         var pad = 0f

@@ -123,3 +123,19 @@ object LayerTree {
         return chain
     }
 }
+
+// Lenses for editing a layer's content object (no-ops when the layer has none). They also spare callers in
+// other modules from needing smart casts on these properties.
+fun Layer.updateText(f: (TextContent) -> TextContent): Layer = text?.let { copy(text = f(it)) } ?: this
+fun Layer.updateShape(f: (ShapeContent) -> ShapeContent): Layer = shape?.let { copy(shape = f(it)) } ?: this
+fun Layer.updateObject3D(f: (Object3DContent) -> Object3DContent): Layer = object3d?.let { copy(object3d = f(it)) } ?: this
+fun Layer.updateModel3D(f: (Model3DContent) -> Model3DContent): Layer = model3d?.let { copy(model3d = f(it)) } ?: this
+fun Layer.updateCamera(f: (CameraContent) -> CameraContent): Layer = camera?.let { copy(camera = f(it)) } ?: this
+fun Layer.updateLight(f: (LightContent) -> LightContent): Layer = light?.let { copy(light = f(it)) } ?: this
+
+/** Updates the media of a video or audio layer. */
+fun Layer.updateMedia(f: (MediaContent) -> MediaContent): Layer = when {
+    video != null -> copy(video = f(video))
+    audio != null -> copy(audio = f(audio))
+    else -> this
+}
