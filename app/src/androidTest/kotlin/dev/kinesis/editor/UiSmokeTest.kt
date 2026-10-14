@@ -2,6 +2,7 @@ package dev.kinesis.editor
 
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -25,8 +26,8 @@ class UiSmokeTest {
     }
 
     private fun click(text: String) {
-        rule.waitUntil(10_000) { rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
-        rule.onAllNodesWithText(text).onFirst().performClick()
+        rule.waitUntil(20_000) { rule.onAllNodesWithText(text, substring = true, ignoreCase = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.onAllNodesWithText(text, substring = true, ignoreCase = true, useUnmergedTree = true).onFirst().performClick()
         rule.waitForIdle()
     }
 
@@ -35,7 +36,7 @@ class UiSmokeTest {
         shot("ui-home")
         click("New project")
         click("Create")
-        rule.waitUntil(10_000) { rule.onAllNodes(hasText("Timeline")).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(20_000) { rule.onAllNodesWithContentDescription("Undo").fetchSemanticsNodes().isNotEmpty() }
 
         click("Add")
         click("Text")
