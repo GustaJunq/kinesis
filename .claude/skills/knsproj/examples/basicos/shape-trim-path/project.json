@@ -1,0 +1,55 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Trim path"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "line",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, -300]},
+      "shape": {
+        "kind": "path",
+        "path": {
+          "closed": false,
+          "points": [
+            {"point": [-380, 0], "out": [120, -160]},
+            {"point": [0, 0], "in": [-120, 160], "out": [120, -160]},
+            {"point": [380, 0], "in": [-120, 160]}
+          ]
+        },
+        "fill": {"enabled": false},
+        "stroke": {"color": "#FFC857", "width": 14, "cap": "round"},
+        "trim": {"end": {"keyframes": [{"time": 0, "value": 0, "easing": "easeInOutCubic"}, {"time": 1.5, "value": 1}]}}
+      }
+    },
+    {
+      "id": "loader",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": [0, 250],
+        "rotation": {"keyframes": [{"time": 0, "value": 0}, {"time": 1, "value": 360}], "loop": "cycle"}
+      },
+      "shape": {
+        "kind": "ellipse",
+        "size": [300, 300],
+        "fill": {"enabled": false},
+        "stroke": {"color": "#4C8DFF", "width": 22, "cap": "round"},
+        "trim": {
+          "end": {
+            "keyframes": [
+              {"time": 0, "value": 0.15, "easing": "easeInOutSine"},
+              {"time": 0.8, "value": 0.85, "easing": "easeInOutSine"}
+            ],
+            "loop": "pingpong"
+          }
+        }
+      }
+    }
+  ]
+}

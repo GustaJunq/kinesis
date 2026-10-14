@@ -1,0 +1,51 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Câmera em órbita"},
+  "composition": {"width": 1080, "height": 1920, "fps": 30, "duration": 6, "background": "#0B0F1E"},
+  "layers": [
+    {
+      "id": "rig",
+      "type": "object3d",
+      "duration": 6,
+      "object3d": {"primitive": "empty"},
+      "transform3d": {
+        "rotation": {"keyframes": [{"time": 0, "value": [0, 0, 0]}, {"time": 6, "value": [0, 360, 0]}], "loop": "cycle"}
+      }
+    },
+    {
+      "id": "cube",
+      "type": "object3d",
+      "duration": 6,
+      "motionBlur": true,
+      "transform3d": {"rotation": [-20, 35, 0]},
+      "object3d": {"primitive": "cube", "size": 480, "material": {"color": "#DDE3EA", "metallic": 1, "roughness": 0.22}}
+    },
+    {
+      "id": "camera",
+      "type": "camera",
+      "duration": 6,
+      "parent": "rig",
+      "camera": {"position": [0, -300, -2400], "target": [0, 0, 0], "fov": 40}
+    },
+    {
+      "id": "key",
+      "type": "light",
+      "duration": 6,
+      "light": {"kind": "directional", "color": "#FFFFFF", "intensity": 1.3, "position": [-900, -1300, -1400]}
+    },
+    {
+      "id": "rim",
+      "type": "light",
+      "duration": 6,
+      "light": {"kind": "point", "color": "#4C8DFF", "intensity": 1.6, "position": [900, 200, 700], "radius": 3500}
+    },
+    {
+      "id": "ambient",
+      "type": "light",
+      "duration": 6,
+      "light": {"kind": "ambient", "color": "#A8C0FF", "intensity": 0.3}
+    }
+  ]
+}

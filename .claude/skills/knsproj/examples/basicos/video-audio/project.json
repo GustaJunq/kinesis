@@ -1,0 +1,80 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Vídeo e áudio"},
+  "composition": {"width": 1440, "height": 810, "fps": 30, "duration": 4, "background": "#000000"},
+  "assets": [
+    {
+      "id": "clip",
+      "type": "video",
+      "path": "assets/clip.mp4",
+      "name": "clip.mp4",
+      "mimeType": "video/mp4",
+      "width": 480,
+      "height": 270,
+      "duration": 4,
+      "hasAudio": true
+    },
+    {
+      "id": "music",
+      "type": "audio",
+      "path": "assets/music.m4a",
+      "name": "music.m4a",
+      "mimeType": "audio/mp4",
+      "duration": 6
+    }
+  ],
+  "layers": [
+    {
+      "id": "clip",
+      "type": "video",
+      "start": 0,
+      "duration": 3.5,
+      "transform": {"scale": [3, 3]},
+      "video": {
+        "asset": "clip",
+        "sourceStart": 0.5,
+        "speed": 1.0,
+        "volume": {
+          "keyframes": [
+            {"time": 0, "value": 0},
+            {"time": 0.5, "value": 1},
+            {"time": 3, "value": 1},
+            {"time": 3.5, "value": 0}
+          ]
+        },
+        "fadeIn": 0.3,
+        "fadeOut": 0.3
+      },
+      "transitionIn": {"type": "fade", "duration": 0.3}
+    },
+    {
+      "id": "music",
+      "type": "audio",
+      "start": 0,
+      "duration": 4,
+      "audio": {
+        "asset": "music",
+        "sourceStart": 1.0,
+        "speed": 1.0,
+        "volume": {"keyframes": [{"time": 0, "value": 0.2}, {"time": 2, "value": 0.6}]},
+        "fadeIn": 0.5,
+        "fadeOut": 1.0
+      }
+    },
+    {
+      "id": "label",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 350]},
+      "text": {
+        "content": "sourceStart 0.5 s - volume em fade",
+        "font": {"family": "sans-serif", "weight": 700},
+        "fontSize": 48,
+        "color": "#FFFFFF"
+      }
+    }
+  ]
+}

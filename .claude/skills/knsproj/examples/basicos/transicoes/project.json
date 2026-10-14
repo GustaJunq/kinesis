@@ -1,0 +1,46 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Transições"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 5, "background": "#101522"},
+  "layers": [
+    {
+      "id": "card",
+      "type": "shape",
+      "start": 0.3,
+      "duration": 4.4,
+      "transform": {"position": [0, -280]},
+      "shape": {"kind": "rectangle", "size": [700, 260], "fill": {"color": "#4C8DFF"}, "roundness": 50},
+      "transitionIn": {"type": "slideUp", "duration": 0.6, "easing": "easeOutCubic", "distance": 300},
+      "transitionOut": {"type": "fade", "duration": 0.5}
+    },
+    {
+      "id": "stack",
+      "type": "group",
+      "start": 0.8,
+      "duration": 3.9,
+      "transform": {"position": [0, 250]},
+      "transitionIn": {"type": "zoomIn", "duration": 0.6, "easing": "easeOutBack"},
+      "transitionOut": {"type": "blur", "duration": 0.6},
+      "layers": [
+        {
+          "id": "dot-a",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.9,
+          "transform": {"position": [-150, 0]},
+          "shape": {"kind": "ellipse", "size": [260, 260], "fill": {"color": "#FF6B8B"}}
+        },
+        {
+          "id": "dot-b",
+          "type": "shape",
+          "start": 0,
+          "duration": 3.9,
+          "transform": {"position": [150, 0]},
+          "shape": {"kind": "ellipse", "size": [260, 260], "fill": {"color": "#FFC857"}}
+        }
+      ]
+    }
+  ]
+}

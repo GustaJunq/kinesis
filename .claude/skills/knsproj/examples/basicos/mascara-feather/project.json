@@ -1,0 +1,52 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Máscara com feather"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "reveal",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "shape": {
+        "kind": "rectangle",
+        "size": [900, 900],
+        "roundness": 60,
+        "fill": {
+          "gradient": {
+            "type": "linear",
+            "start": [-450, -450],
+            "end": [450, 450],
+            "stops": [{"offset": 0, "color": "#FF6B8B"}, {"offset": 1, "color": "#4C8DFF"}]
+          }
+        }
+      },
+      "masks": [
+        {
+          "shape": "ellipse",
+          "mode": "add",
+          "size": {
+            "keyframes": [{"time": 0, "value": [0, 0], "easing": "easeOutCubic"}, {"time": 2, "value": [1300, 1300]}]
+          },
+          "feather": 80
+        }
+      ]
+    },
+    {
+      "id": "caption",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 520]},
+      "text": {
+        "content": "Revelado por máscara",
+        "font": {"family": "sans-serif", "weight": 800},
+        "fontSize": 70,
+        "color": "#FFFFFF",
+        "animators": [{"type": "fade", "unit": "word", "stagger": 0.2}]
+      }
+    }
+  ]
+}
