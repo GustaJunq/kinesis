@@ -194,6 +194,21 @@ python3 tools/check_shaders.py                # compila todos os shaders com gls
 Os testes do core validam a saída do serializador Kotlin e os exemplos contra o schema oficial, e os mesmos fixtures
 inválidos são verificados pelo validador Kotlin e pela CLI Python (os códigos de erro devem coincidir).
 
+Testes instrumentados (aparelho ou emulador com GLES 3.0):
+
+```bash
+./gradlew :app:connectedDebugAndroidTest
+```
+
+- `RenderTest` renderiza os exemplos e um quadro com todos os efeitos, máscaras e primitivas pelo pipeline OpenGL real
+  e verifica erros de GL e o conteúdo dos pixels;
+- `ExportTest` exporta MP4 (H.264 + AAC) com os codificadores do aparelho, confere duração, resolução e faixas,
+  reimporta o vídeo como camada (decodificação para textura OES) e exporta de novo;
+- `UiSmokeTest` percorre a interface: cria projeto, adiciona texto, cubo e estrela, navega pelos painéis e executa
+  dividir/duplicar/agrupar.
+
+No CI eles rodam num emulador Android 14 e imprimem miniaturas dos quadros no log (linhas `KSHOT`).
+
 ## Pendências e limitações conhecidas
 
 Funcionalidades fora desta beta, documentadas em vez de simuladas:

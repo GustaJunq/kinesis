@@ -103,6 +103,10 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     private val mixer: AudioMixer
     private val previewAudio: PreviewAudio
     private var saveJob: Job? = null
+    private val saveLock = Any()
+
+    @Volatile
+    private var dirty = false
     private var playJob: Job? = null
     private var exportJob: Job? = null
     @Volatile
@@ -162,6 +166,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
 
     private fun apply(p: KnsProject) {
         _project.value = p
+        dirty = true
         _canUndo.value = history.canUndo
         _canRedo.value = history.canRedo
         mixer.setProject(p)
@@ -178,13 +183,19 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         }
     }
 
+    /** Writes the project if it changed since the last save. Serialized: saves never run concurrently. */
     private fun saveNow() {
-        if (loadError != null) return // never overwrite a project we could not read
-        try {
-            store.save(projectId, _project.value)
-        } catch (e: Exception) {
-            Log.e("Kinesis", "save failed", e)
-            notify("Could not save: ${e.message}", true)
+        synchronized(saveLock) {
+            // Never overwrite a project we could not read.
+            if (loadError != null || !dirty) return
+            dirty = false
+            try {
+                store.save(projectId, _project.value)
+            } catch (e: Exception) {
+                dirty = true
+                Log.e("Kinesis", "save failed", e)
+                notify("Could not save: ${e.message}", true)
+            }
         }
     }
 
