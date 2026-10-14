@@ -1,0 +1,18 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "composition": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "duration": 10
+  },
+  "assets": [
+    {
+      "id": "x",
+      "type": "image",
+      "path": "assets/../../etc/passwd"
+    }
+  ],
+  "layers": []
+}

@@ -1,0 +1,20 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "composition": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "duration": 10
+  },
+  "assets": [],
+  "layers": [
+    {
+      "id": "i",
+      "type": "image",
+      "image": {
+        "asset": "nope"
+      }
+    }
+  ]
+}

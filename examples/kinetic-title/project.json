@@ -1,0 +1,128 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "Claude Code /knsproj",
+  "meta": {
+    "title": "Kinetic title",
+    "description": "16:9 title sequence: shapes with transitions, trim paths, a text revealed through a track matte and per-character animation."
+  },
+  "composition": {"width": 1920, "height": 1080, "fps": 30, "duration": 6, "background": "#111015"},
+  "assets": [],
+  "layers": [
+    {
+      "id": "bar-1",
+      "type": "shape",
+      "name": "Bar 1",
+      "start": 0,
+      "duration": 6,
+      "transform": {"position": [0, -120], "rotation": -8},
+      "shape": {"kind": "rectangle", "size": [2400, 90], "fill": {"color": "#7C5CFF"}},
+      "transitionIn": {"type": "slideLeft", "duration": 0.7, "easing": "easeOutExpo", "distance": 2400}
+    },
+    {
+      "id": "bar-2",
+      "type": "shape",
+      "name": "Bar 2",
+      "start": 0.15,
+      "duration": 5.85,
+      "transform": {"position": [0, 120], "rotation": -8},
+      "shape": {"kind": "rectangle", "size": [2400, 90], "fill": {"color": "#4FD1C5"}},
+      "transitionIn": {"type": "slideRight", "duration": 0.7, "easing": "easeOutExpo", "distance": 2400}
+    },
+    {
+      "id": "ring",
+      "type": "shape",
+      "name": "Ring",
+      "start": 0.4,
+      "duration": 5.6,
+      "transform": {
+        "position": [-620, 0],
+        "rotation": {"keyframes": [{"time": 0, "value": -90}, {"time": 5.6, "value": 270}]}
+      },
+      "shape": {
+        "kind": "ellipse",
+        "size": [300, 300],
+        "fill": {"enabled": false},
+        "stroke": {"color": "#FFC857", "width": 14, "cap": "round"},
+        "trim": {
+          "end": {"keyframes": [{"time": 0, "value": 0, "easing": "easeInOutCubic"}, {"time": 1.2, "value": 0.85}]}
+        }
+      },
+      "effects": [{"type": "glow", "color": "#FFC857", "radius": 26, "intensity": 0.8}]
+    },
+    {
+      "id": "star",
+      "type": "shape",
+      "name": "Star",
+      "start": 0.8,
+      "duration": 5.2,
+      "motionBlur": true,
+      "transform": {
+        "position": [-620, 0],
+        "rotation": {"keyframes": [{"time": 0, "value": 0}, {"time": 1, "value": 144}], "loop": "cycle"}
+      },
+      "shape": {"kind": "star", "size": [150, 150], "sides": 5, "innerRatio": 0.45, "roundness": 6, "fill": {"color": "#FF6B8B"}},
+      "transitionIn": {"type": "spin", "duration": 0.6, "easing": "easeOutBack"}
+    },
+    {
+      "id": "reveal",
+      "type": "shape",
+      "name": "Reveal matte",
+      "start": 0.9,
+      "duration": 5.1,
+      "transform": {
+        "position": {"keyframes": [{"time": 0, "value": [-500, 0], "easing": "easeInOutQuart"}, {"time": 1, "value": [250, 0]}]}
+      },
+      "shape": {
+        "kind": "rectangle",
+        "size": {"keyframes": [{"time": 0, "value": [0, 260], "easing": "easeInOutQuart"}, {"time": 1, "value": [1500, 260]}]},
+        "fill": {"color": "#FFFFFF"}
+      }
+    },
+    {
+      "id": "headline",
+      "type": "text",
+      "name": "Headline",
+      "start": 0.9,
+      "duration": 5.1,
+      "transform": {"position": [250, 0]},
+      "matte": {"layer": "reveal", "mode": "alpha"},
+      "text": {
+        "content": "MOVE THINGS",
+        "font": {"family": "sans-serif-condensed", "weight": 800},
+        "fontSize": 190,
+        "color": "#FFFFFF",
+        "letterSpacing": 0.04
+      },
+      "effects": [{"type": "dropShadow", "opacity": 0.45, "distance": 12, "softness": 20}],
+      "transitionOut": {"type": "blur", "duration": 0.5}
+    },
+    {
+      "id": "tagline",
+      "type": "text",
+      "name": "Tagline",
+      "start": 2,
+      "duration": 4,
+      "transform": {"position": [250, 170]},
+      "text": {
+        "content": "keyframes · curves · 3D",
+        "font": {"family": "monospace", "weight": 400},
+        "fontSize": 48,
+        "color": "#B9B4D6",
+        "animators": [
+          {"type": "scale", "unit": "character", "stagger": 0.03, "unitDuration": 0.35, "easing": "easeOutBack", "amount": 0, "order": "center"}
+        ]
+      },
+      "transitionOut": {"type": "slideDown", "duration": 0.5, "easing": "easeInCubic", "distance": 120}
+    },
+    {
+      "id": "frame",
+      "type": "shape",
+      "name": "Frame",
+      "start": 0,
+      "duration": 6,
+      "shape": {"kind": "rectangle", "size": [1920, 1080], "fill": {"enabled": false}},
+      "effects": [{"type": "vignette", "amount": 0.55, "softness": 0.6}]
+    }
+  ]
+}

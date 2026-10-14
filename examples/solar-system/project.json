@@ -1,0 +1,140 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "generator": "Claude Code /knsproj",
+  "meta": {
+    "title": "Solar system",
+    "description": "Square 12 s loop showing 3D hierarchy: planets parented to rotating empty pivots, a moon orbiting the earth, an emissive sun and a point light."
+  },
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 12, "background": "#05060B"},
+  "assets": [],
+  "layers": [
+    {
+      "id": "glow",
+      "type": "shape",
+      "name": "Sun glow",
+      "start": 0,
+      "duration": 12,
+      "transform": {"opacity": 0.5},
+      "shape": {"kind": "ellipse", "size": [520, 520], "fill": {"color": "#FF9F1C"}},
+      "effects": [{"type": "blur", "radius": 80}]
+    },
+    {
+      "id": "sun",
+      "type": "object3d",
+      "name": "Sun",
+      "start": 0,
+      "duration": 12,
+      "transform3d": {"rotation": {"keyframes": [{"time": 0, "value": [0, 0, 0]}, {"time": 12, "value": [0, 360, 0]}]}},
+      "object3d": {
+        "primitive": "sphere",
+        "size": 240,
+        "material": {"color": "#FFB347", "roughness": 1, "emissive": "#FF8A00"}
+      }
+    },
+    {
+      "id": "earth-orbit",
+      "type": "object3d",
+      "name": "Earth orbit pivot",
+      "start": 0,
+      "duration": 12,
+      "transform3d": {
+        "rotation": {"keyframes": [{"time": 0, "value": [0, 0, 0]}, {"time": 6, "value": [0, 360, 0]}], "loop": "cycle"}
+      },
+      "object3d": {"primitive": "empty"}
+    },
+    {
+      "id": "earth",
+      "type": "object3d",
+      "name": "Earth",
+      "start": 0,
+      "duration": 12,
+      "parent": "earth-orbit",
+      "transform3d": {"position": [400, 0, 0]},
+      "object3d": {"primitive": "sphere", "size": 90, "material": {"color": "#3D7BFF", "roughness": 0.55}}
+    },
+    {
+      "id": "moon-orbit",
+      "type": "object3d",
+      "name": "Moon orbit pivot",
+      "start": 0,
+      "duration": 12,
+      "parent": "earth",
+      "transform3d": {
+        "rotation": {"keyframes": [{"time": 0, "value": [0, 0, 0]}, {"time": 1.5, "value": [0, 360, 0]}], "loop": "cycle"}
+      },
+      "object3d": {"primitive": "empty"}
+    },
+    {
+      "id": "moon",
+      "type": "object3d",
+      "name": "Moon",
+      "start": 0,
+      "duration": 12,
+      "parent": "moon-orbit",
+      "transform3d": {"position": [95, 0, 0]},
+      "object3d": {"primitive": "sphere", "size": 28, "material": {"color": "#C9CCD3", "roughness": 0.9}}
+    },
+    {
+      "id": "mars-orbit",
+      "type": "object3d",
+      "name": "Mars orbit pivot",
+      "start": 0,
+      "duration": 12,
+      "transform3d": {
+        "rotation": {"keyframes": [{"time": 0, "value": [0, 120, 0]}, {"time": 12, "value": [0, 480, 0]}], "loop": "cycle"}
+      },
+      "object3d": {"primitive": "empty"}
+    },
+    {
+      "id": "mars",
+      "type": "object3d",
+      "name": "Mars",
+      "start": 0,
+      "duration": 12,
+      "parent": "mars-orbit",
+      "transform3d": {"position": [-560, 0, 0]},
+      "object3d": {"primitive": "sphere", "size": 64, "material": {"color": "#E2553A", "roughness": 0.8}}
+    },
+    {
+      "id": "camera",
+      "type": "camera",
+      "name": "Camera",
+      "start": 0,
+      "duration": 12,
+      "camera": {"position": [0, -620, -1500], "target": [0, 0, 0], "fov": 45}
+    },
+    {
+      "id": "sunlight",
+      "type": "light",
+      "name": "Sunlight",
+      "start": 0,
+      "duration": 12,
+      "light": {"kind": "point", "color": "#FFE2B0", "intensity": 1.6, "position": [0, 0, 0], "radius": 2400}
+    },
+    {
+      "id": "space",
+      "type": "light",
+      "name": "Space ambient",
+      "start": 0,
+      "duration": 12,
+      "light": {"kind": "ambient", "color": "#6C7AA8", "intensity": 0.12}
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "name": "Title",
+      "start": 0.5,
+      "duration": 11.5,
+      "transform": {"position": [0, 440]},
+      "text": {
+        "content": "SOLAR SYSTEM",
+        "font": {"family": "sans-serif", "weight": 300},
+        "fontSize": 54,
+        "color": "#E8ECF8",
+        "letterSpacing": 0.4,
+        "animators": [{"type": "fade", "unit": "character", "stagger": 0.05, "unitDuration": 0.6, "order": "center"}]
+      }
+    }
+  ]
+}

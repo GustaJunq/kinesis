@@ -1,0 +1,38 @@
+{
+  "asset-path.json": [
+    "asset.path"
+  ],
+  "asset-type.json": [
+    "layer.assetType"
+  ],
+  "children-on-shape.json": [
+    "layer.children"
+  ],
+  "dup-layer-id.json": [
+    "layer.duplicateId"
+  ],
+  "keyframe-order.json": [
+    "keyframe.order"
+  ],
+  "matte-missing.json": [
+    "layer.matteMissing"
+  ],
+  "matte-self.json": [
+    "layer.matteSelf"
+  ],
+  "missing-asset.json": [
+    "layer.missingAsset"
+  ],
+  "parent-cycle.json": [
+    "layer.parentCycle"
+  ],
+  "parent-kind.json": [
+    "layer.parentKind"
+  ],
+  "parent-missing.json": [
+    "layer.parentMissing"
+  ],
+  "path-points.json": [
+    "shape.path"
+  ]
+}

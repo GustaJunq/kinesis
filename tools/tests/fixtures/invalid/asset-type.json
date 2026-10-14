@@ -1,0 +1,26 @@
+{
+  "format": "knsproj",
+  "formatVersion": 1,
+  "composition": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "duration": 10
+  },
+  "assets": [
+    {
+      "id": "song",
+      "type": "audio",
+      "path": "assets/song.m4a"
+    }
+  ],
+  "layers": [
+    {
+      "id": "i",
+      "type": "image",
+      "image": {
+        "asset": "song"
+      }
+    }
+  ]
+}
