@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kinesis mark: a "K" built from a stem and two motion strokes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M38,32h9v44h-9z" />
+    <path
+        android:fillColor="#FF7C5CFF"
+        android:pathData="M49,54l18,-22h11l-18,22z" />
+    <path
+        android:fillColor="#FF4FD1C5"
+        android:pathData="M49,54l18,22h11l-18,-22z" />
+</vector>

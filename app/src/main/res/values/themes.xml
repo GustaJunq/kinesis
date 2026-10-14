@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Kinesis" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/kinesis_background</item>
+        <item name="android:statusBarColor">@color/kinesis_background</item>
+        <item name="android:navigationBarColor">@color/kinesis_background</item>
+    </style>
+</resources>
