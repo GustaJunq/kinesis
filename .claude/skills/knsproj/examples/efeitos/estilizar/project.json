@@ -1,0 +1,54 @@
+{
+  "format": "knsproj",
+  "formatVersion": 2,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Estilizar"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "screen",
+      "type": "group",
+      "start": 0,
+      "duration": 4,
+      "effects": [
+        {"type": "scanlines", "spacing": 6, "intensity": 0.5, "curvature": 0.3},
+        {"type": "filmGrain", "amount": 0.2, "seed": 3}
+      ],
+      "layers": [
+        {
+          "id": "backdrop",
+          "type": "shape",
+          "start": 0,
+          "duration": 4,
+          "shape": {
+            "kind": "rectangle",
+            "size": [1080, 1080],
+            "fill": {
+              "gradient": {
+                "type": "radial",
+                "start": [0, 0],
+                "end": [0, 756.0],
+                "stops": [{"offset": 0, "color": "#4FD1C5"}, {"offset": 1, "color": "#1C3D75"}]
+              }
+            }
+          },
+          "effects": [{"type": "halftone", "dotSize": 18, "angle": 45}]
+        },
+        {
+          "id": "title",
+          "type": "text",
+          "start": 0,
+          "duration": 4,
+          "transform": {"position": [0, 0]},
+          "text": {
+            "content": "RETRÔ",
+            "font": {"family": "sans-serif", "weight": 800},
+            "fontSize": 220,
+            "color": "#FFFFFF"
+          },
+          "effects": [{"type": "posterize", "levels": 4}, {"type": "dropShadow", "distance": 20, "softness": 0}]
+        }
+      ]
+    }
+  ]
+}

@@ -12,7 +12,8 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
-- Schema oficial: `schema/knsproj-v1.schema.json`
+- Schema oficial: `schema/knsproj-v2.schema.json` (formato versão 2; arquivos v1 ainda abrem e são migrados)
+- Lista completa de efeitos (parâmetros, padrões, faixas): tabela da seção 7 de `docs/knsproj.md` ou `tools/knsproj/effects.json`
 - Exemplos: `.claude/skills/knsproj/examples/` (veja "Exemplos" abaixo)
 
 ## Exemplos (comece por aqui)
@@ -42,10 +43,11 @@ Tudo em `.claude/skills/knsproj/examples/`; cada pasta tem `project.json` e `REA
 | `receitas/titulo-cinetico` | título animado com matte e motion blur |
 | `receitas/slideshow-transicoes-musica` | sequência de slides com transições e música |
 | `receitas/video-vertical-legenda-por-palavra` | 1080x1920 com legendas palavra a palavra |
+| `efeitos/<categoria>` | um exemplo por categoria de efeito: `cor-e-luz`, `desfoque-e-nitidez`, `distorcao` (inclui **Glass**), `movimentar-e-transformar`, `estilizar`, `glitch`, `desenho-e-borda`, `procedimental`, `fosco-mascara-e-chave`, `tempo-e-transicao`, `texto`, `utilitario` |
 | `erros/*` | quando o `validate` acusar `keyframe.order`, `layer.parentKind`, `layer.matteMissing` ou `layer.missingAsset`: o README mostra a causa e o conserto |
 
 Para usar um exemplo como ponto de partida: copie a pasta para `generated/<slug>`, ajuste textos, cores, tempos e
-mídias, e valide. Os exemplos de `basicos/` e `receitas/` validam com 0 erros e 0 avisos; os de `erros/` falham de propósito.
+mídias, e valide. Os exemplos de `basicos/`, `receitas/` e `efeitos/` validam com 0 erros e 0 avisos; os de `erros/` falham de propósito.
 
 **Instalação por .zip:** `knsproj-skill.zip` (nesta pasta) é uma cópia autônoma da skill — traz `SKILL.md`, os exemplos,
 a CLI (`tools/knsproj`), o schema e a especificação. Descompacte em `~/.claude/skills/` (resultado: `~/.claude/skills/knsproj/`)
@@ -137,9 +139,21 @@ e o objeto de conteúdo com o **mesmo nome do tipo**.
 Valores possíveis (o schema é a fonte da verdade):
 - `type` de camada: `text`, `shape`, `image`, `video`, `audio`, `group`, `object3d`, `model3d`, `camera`, `light`.
 - `shape.kind`: `rectangle`, `ellipse`, `polygon`, `star`, `path`. `primitive`: `cube`, `sphere`, `cylinder`, `cone`, `torus`, `plane`, `empty`.
-- Efeitos (`effects[].type`): `blur` (radius), `colorAdjust` (brightness, contrast, saturation, hue), `tint` (color, amount),
-  `dropShadow` (color, opacity, angle, distance, softness), `glow` (color, radius, intensity), `invert` (amount),
-  `pixelate` (size), `chromaticAberration` (amount, angle), `vignette` (amount, softness).
+- Efeitos (`effects[].type`): 60 efeitos em 11 categorias (Cor e luz, Desfoque e nitidez, Distorção, Movimentar e
+  transformar, Estilizar, Glitch, Desenho e borda, Procedimental, Fosco/máscara/chave, Tempo e transição, Utilitário).
+  Consulte a tabela (seção 7 de `docs/knsproj.md`) antes de usar um efeito: os nomes dos parâmetros são exatos e o
+  schema rejeita os desconhecidos. Regras: parâmetros omitidos valem o padrão; números, cores e pontos são animáveis;
+  escolhas (`mode`…), liga/desliga e `stops` são estáticos; pontos (`center`…) são px relativos à origem da camada;
+  efeitos aleatórios usam `seed` inteiro. Principais:
+  - cor: `gradientMap` (stops), `exposure`, `brightnessContrast`, `saturation`, `hueShift`, `fill`, `deepGlow`, `lensFlare`, `glow`, `tint`;
+  - desfoque: `blur` (radius), `lensBlur`, `directionalBlur`, `radialBlur` (`mode`: spin/zoom), `sharpen`;
+  - distorção: `glass` (refrata as camadas **abaixo** dela), `pinchBulge` (amount −1..1), `warp` (wave/fractal), `mirror`, `twirl`, `ripple`;
+  - movimento sem keyframes: `autoShake`, `spin`, `oscillate`, `float`, `pulse`;
+  - estilo/glitch: `pixelate`, `dropShadow`, `vignette`, `halftone`, `posterize`, `filmGrain`, `scanlines`, `blockGlitch`, `lineGlitch`, `vhs`, `chromaticAberration`, `rgbSplit`, `staticNoise`;
+  - borda: `outline`, `findEdges`, `emboss`, `sketch`; geradores: `fractalNoise`, `gradientRamp`, `checkerboard`, `grid` (`mode` + `mix`);
+  - chave: `chromaKey`, `lumaKey`, `spillSuppressor`, `matteChoker`; tempo: `echo`, `posterizeTime`, `strobe`;
+  - utilitário: `depthMap` (só `object3d`/`model3d`), `channelShuffle`, `alphaFromLuma`.
+  O antigo `colorAdjust` (v1) não existe mais: use `brightnessContrast`, `saturation` e `hueShift`.
 - Transições: `fade`, `slideLeft`, `slideRight`, `slideUp`, `slideDown`, `zoomIn`, `zoomOut`, `spin`, `blur`, `wipeLeft`, `wipeRight`.
 - Animadores de texto: `typewriter`, `fade`, `slideUp`, `slideDown`, `slideLeft`, `slideRight`, `scale`, `rotate`, `wave`;
   `unit`: `character` | `word` | `line`; `order`: `forward` | `backward` | `center` | `random`; `mode`: `in` | `out`.

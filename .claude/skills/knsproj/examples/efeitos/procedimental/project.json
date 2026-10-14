@@ -1,0 +1,38 @@
+{
+  "format": "knsproj",
+  "formatVersion": 2,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Procedimental"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "canvas",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 0]},
+      "shape": {"kind": "rectangle", "size": [1080, 1080], "fill": {"color": "#000000"}},
+      "effects": [
+        {
+          "type": "fractalNoise",
+          "scale": 260,
+          "complexity": 5,
+          "evolution": {"keyframes": [{"time": 0, "value": 0}, {"time": 4, "value": 360}]},
+          "colorA": "#0B0F1E",
+          "colorB": "#4C8DFF",
+          "seed": 11
+        },
+        {"type": "grid", "spacing": 90, "width": 2, "color": "#FFFFFF33", "mode": "add"}
+      ]
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 0]},
+      "text": {"content": "RUÍDO", "font": {"family": "sans-serif", "weight": 800}, "fontSize": 200, "color": "#FFFFFF"},
+      "effects": [{"type": "checkerboard", "size": 24, "colorA": "#FFFFFF", "colorB": "#FFC857", "mode": "multiply"}]
+    }
+  ]
+}

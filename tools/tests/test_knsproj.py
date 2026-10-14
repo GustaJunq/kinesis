@@ -276,7 +276,7 @@ def all_layers(layers):
 class ExampleTests(unittest.TestCase):
     """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
 
-    VALID_GROUPS = ("basicos", "receitas")
+    VALID_GROUPS = ("basicos", "receitas", "efeitos")
     README_SECTIONS = ("## O que demonstra", "## Quando usar", "## Armadilhas")
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
@@ -284,6 +284,16 @@ class ExampleTests(unittest.TestCase):
         self.assertEqual(12, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
         self.assertGreaterEqual(len(example_dirs("erros")), 4)
+        self.assertEqual(12, len(example_dirs("efeitos")))
+
+    def test_effect_examples_cover_every_category(self):
+        category_of = {e["id"]: e["category"] for e in kns_semantic.REGISTRY["effects"]}
+        covered = set()
+        for path in example_dirs("efeitos"):
+            project, _, _ = cli.load_target(path)
+            for layer in all_layers(project.get("layers", [])):
+                covered.update(category_of[e["type"]] for e in layer.get("effects", []) or [])
+        self.assertEqual(set(category_of.values()), covered)
 
     def test_basicos_and_receitas_validate_without_errors_or_warnings(self):
         for group in self.VALID_GROUPS:

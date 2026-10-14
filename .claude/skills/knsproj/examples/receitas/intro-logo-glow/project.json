@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "generator": "knsproj skill examples",
   "meta": {
     "title": "Intro com logo e glow",

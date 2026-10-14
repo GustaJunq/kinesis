@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "generator": "knsproj skill examples",
   "meta": {"title": "Vídeo e áudio"},
   "composition": {"width": 1440, "height": 810, "fps": 30, "duration": 4, "background": "#000000"},

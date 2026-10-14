@@ -1,0 +1,54 @@
+{
+  "format": "knsproj",
+  "formatVersion": 2,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Texto"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "backdrop",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "shape": {
+        "kind": "rectangle",
+        "size": [1080, 1080],
+        "fill": {
+          "gradient": {
+            "type": "radial",
+            "start": [0, 0],
+            "end": [0, 756.0],
+            "stops": [{"offset": 0, "color": "#1C3D75"}, {"offset": 1, "color": "#0B0F1E"}]
+          }
+        }
+      }
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 0]},
+      "text": {
+        "content": "Animado",
+        "font": {"family": "sans-serif", "weight": 800},
+        "fontSize": 180,
+        "color": "#FFFFFF",
+        "animators": [
+          {
+            "type": "slideUp",
+            "unit": "character",
+            "stagger": 0.05,
+            "unitDuration": 0.5,
+            "easing": "easeOutBack",
+            "amount": 120
+          }
+        ]
+      },
+      "effects": [
+        {"type": "fill", "color": "#FFC857"},
+        {"type": "glow", "color": "#FFC857", "radius": 30, "intensity": 0.8}
+      ]
+    }
+  ]
+}

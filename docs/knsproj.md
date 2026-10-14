@@ -1,10 +1,11 @@
-# Formato `.knsproj` — versão 1
+# Formato `.knsproj` — versão 2
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v1.schema.json`](../schema/knsproj-v1.schema.json) (JSON Schema draft 2020-12)
+- **Schema oficial:** [`schema/knsproj-v2.schema.json`](../schema/knsproj-v2.schema.json) (JSON Schema draft 2020-12);
+  o da versão 1 continua em [`schema/knsproj-v1.schema.json`](../schema/knsproj-v1.schema.json)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
 - **Exemplos:** [`.claude/skills/knsproj/examples/`](../.claude/skills/knsproj/examples)
@@ -59,7 +60,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "generator": "Claude Code /knsproj",
   "meta": { "title": "Meu vídeo", "createdAt": "2026-10-14T12:00:00Z" },
   "composition": {
@@ -75,7 +76,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `1` |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `2` (documentos da versão `1` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
 | `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120), `duration` (s), `background`, `motionBlur` |
@@ -659,6 +660,9 @@ Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes 
 - Leitores convertem versões antigas com migrações encadeadas (`Migrations` no core) e **recusam** versões mais
   novas que conhecem, com uma mensagem pedindo atualização.
 - O app ignora campos desconhecidos ao abrir (tolerância), mas ao salvar escreve apenas o que conhece.
+- Histórico: **v1** → primeira versão pública (9 efeitos); **v2** → registro de efeitos com 60 tipos em categorias e
+  `colorAdjust` dividido em `hueShift`, `brightnessContrast` e `saturation` (seção 7). A CLI converte com
+  `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.
 
@@ -668,6 +672,7 @@ Os exemplos ficam em [`.claude/skills/knsproj/examples/`](../.claude/skills/knsp
 
 - `basicos/` — um recurso por pasta (animadores de texto, trim path, máscaras, mattes, transições, efeitos, vídeo e
   áudio, grupos, câmera 3D, modelo GLB…), cada um com `project.json` curto e um `README.md`;
+- `efeitos/` — um exemplo pequeno por categoria de efeito (seção 7), incluindo o Glass;
 - `receitas/` — composições completas, como
   [`intro-logo-glow`](../.claude/skills/knsproj/examples/receitas/intro-logo-glow/project.json) (intro com halo,
   anel de loading e título) e `video-vertical-legenda-por-palavra` (1080×1920);

@@ -40,7 +40,7 @@ pelo **Claude Code** com a skill [`/knsproj`](.claude/skills/knsproj/SKILL.md) i
 | **Mídia** | imagens (com orientação EXIF), vídeo (decodificação por hardware com seek preciso, velocidade, ponto de entrada), áudio (volume animável, fades, mudo, forma de onda na timeline) |
 | **Animação** | keyframes em todas as propriedades numéricas, de vetor e de cor; 36 presets de easing + **editor de curvas Bézier**; loops `cycle`/`pingpong` |
 | **Composição** | parenting (com compensação para a camada não "pular"), grupos, modos de mesclagem (normal, adição, multiplicação, tela), opacidade |
-| **Efeitos** | desfoque gaussiano, ajuste de cor, colorizar, sombra, brilho (glow), inverter, pixelizar, aberração cromática, vinheta |
+| **Efeitos** | 60 efeitos procedurais e determinísticos em 13 categorias (Cor e luz, Desfoque e nitidez, Distorção — incluindo **Glass** com refração e dispersão espectral —, Movimentar e transformar, Estilizar, Glitch, Desenho e borda, Procedimental, Fosco/máscara/chave, Tempo e transição, Texto, Utilitário); tela "Adicionar efeito" com busca e prévias renderizadas; todos os parâmetros numéricos animáveis |
 | **Máscaras** | até 4 por camada (retângulo arredondado/elipse; somar, subtrair, interseção; suavização, inversão) e **track mattes** (alfa/luma, normais e invertidos) |
 | **Transições** | fade, slides, zoom, giro, desfoque e cortina — de entrada e de saída |
 | **Motion blur** | por camada, com ângulo de obturador e número de amostras |
@@ -99,12 +99,12 @@ motion blur).
 
 Um `.knsproj` é um ZIP com `project.json` (JSON versionado) e uma pasta `assets/` com as mídias. A especificação
 completa está em **[docs/knsproj.md](docs/knsproj.md)** e o schema oficial em
-**[schema/knsproj-v1.schema.json](schema/knsproj-v1.schema.json)**. Resumo:
+**[schema/knsproj-v2.schema.json](schema/knsproj-v2.schema.json)**. Resumo:
 
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "composition": { "width": 1080, "height": 1920, "fps": 30, "duration": 10, "background": "#0A2463" },
   "assets": [],
   "layers": [

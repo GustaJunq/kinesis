@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "generator": "knsproj skill examples",
   "meta": {"title": "Grupo"},
   "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 5, "background": "#101522"},
