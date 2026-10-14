@@ -103,8 +103,13 @@ class ExportTest {
             val res = RenderResources(app.assets, videoFiles)
             val comp = Compositor(res)
             for (t in listOf(0.5, 1.5, 0.2)) {
-                val target = comp.render(p2, SceneEvaluator.evaluate(p2, t), 360, 640, RenderSettings(1))
-                val bmp = comp.readPixels(target)
+                // The emulator's software GL can present a decoded frame late; retry before judging it empty.
+                var bmp = comp.readPixels(comp.render(p2, SceneEvaluator.evaluate(p2, t), 360, 640, RenderSettings(1)))
+                var attempt = 0
+                while (differingFraction(bmp, android.graphics.Color.BLACK) <= 0.2f && attempt++ < 4) {
+                    Thread.sleep(250)
+                    bmp = comp.readPixels(comp.render(p2, SceneEvaluator.evaluate(p2, t), 360, 640, RenderSettings(1)))
+                }
                 Shots.log("video-layer@$t", bmp)
                 assertTrue("video frame at $t is empty", differingFraction(bmp, android.graphics.Color.BLACK) > 0.2f)
             }
