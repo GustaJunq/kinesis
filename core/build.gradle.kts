@@ -25,5 +25,5 @@ dependencies {
 
 tasks.test {
     // Tests validate the shipped examples against the official JSON Schema.
-    systemProperty("kinesis.repoRoot", rootDir.absolutePath)
+    systemProperty("kinesis.repoRoot", projectDir.parentFile.absolutePath)
 }
