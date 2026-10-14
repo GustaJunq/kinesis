@@ -14,6 +14,7 @@
     <string name="alignment">Alinhamento</string>
     <string name="app_name">Kinesis</string>
     <string name="apply">Aplicar</string>
+    <string name="aspect_ratio">Proporção</string>
     <string name="back">Voltar</string>
     <string name="background">Fundo</string>
     <string name="blend_add">Adição</string>
@@ -72,6 +73,7 @@
     <string name="font">Fonte</string>
     <string name="font_weight">Peso</string>
     <string name="format">Formato</string>
+    <string name="fps_label">Quadros por segundo</string>
     <string name="frame_rate">Taxa de quadros</string>
     <string name="go_to_start">Ir ao início</string>
     <string name="gradient">Gradiente</string>
@@ -150,6 +152,7 @@
     <string name="prim_plane">Plano</string>
     <string name="prim_sphere">Esfera</string>
     <string name="prim_torus">Toro</string>
+    <string name="project_name">Nome do projeto</string>
     <string name="project_unreadable">Este projeto não pode ser aberto</string>
     <string name="prop_amount">Quantidade</string>
     <string name="prop_anchor">Ponto de âncora</string>
@@ -186,6 +189,9 @@
     <string name="prop_value">Valor</string>
     <string name="prop_volume">Volume</string>
     <string name="quality">Qualidade</string>
+    <string name="quality_4k">4K</string>
+    <string name="quality_fhd">Full HD</string>
+    <string name="quality_hd">HD</string>
     <string name="quality_high">Alta</string>
     <string name="quality_max">Máxima</string>
     <string name="quality_standard">Padrão</string>
@@ -205,6 +211,7 @@
     <string name="section_text">Texto</string>
     <string name="section_transform">Transformação</string>
     <string name="section_trim">Aparar traçado</string>
+    <string name="settings">Configurações</string>
     <string name="shape_ellipse">Elipse</string>
     <string name="shape_line">Linha</string>
     <string name="shape_path">Caminho</string>

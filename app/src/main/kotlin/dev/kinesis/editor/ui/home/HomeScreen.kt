@@ -8,6 +8,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as rowItems
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -322,56 +333,116 @@ private fun ProjectCard(p: ProjectSummary, onOpen: () -> Unit, onDuplicate: () -
     }
 }
 
-private data class AspectPreset(val label: String, val width: Int, val height: Int)
+private data class Ratio(val label: String, val w: Int, val h: Int)
+
+private val RATIOS = listOf(Ratio("9:16", 9, 16), Ratio("16:9", 16, 9), Ratio("1:1", 1, 1), Ratio("4:5", 4, 5), Ratio("3:4", 3, 4), Ratio("4:3", 4, 3))
+
+/** Pixel size for an aspect ratio whose shorter side has [shortSide] pixels (even numbers, as MP4 needs). */
+private fun dimensions(r: Ratio, shortSide: Int): Pair<Int, Int> {
+    fun even(v: Double) = ((v / 2).roundToInt() * 2).coerceAtLeast(16)
+    return if (r.w <= r.h) shortSide to even(shortSide.toDouble() * r.h / r.w) else even(shortSide.toDouble() * r.w / r.h) to shortSide
+}
 
 @Composable
+private fun SectionLabel(text: String) {
+    Text(text, style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+}
+
+@Composable
+private fun OptionTile(selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) KColors.AccentSoft.copy(alpha = 0.55f) else KColors.SurfaceHigh)
+            .border(1.5.dp, if (selected) KColors.Accent else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) { content() }
+}
+
+/** New project: only a name, an aspect ratio, a quality and a frame rate. */
+@Composable
 private fun NewProjectDialog(onDismiss: () -> Unit, onCreate: (String, Int, Int, Double, Double, Color) -> Unit) {
-    val presets = listOf(
-        AspectPreset("9:16", 1080, 1920), AspectPreset("16:9", 1920, 1080), AspectPreset("1:1", 1080, 1080),
-        AspectPreset("4:5", 1080, 1350), AspectPreset("4K", 3840, 2160),
-    )
     val untitled = stringResource(R.string.untitled)
     var title by remember { mutableStateOf("") }
-    var preset by remember { mutableStateOf(presets[0]) }
+    var ratio by remember { mutableStateOf(RATIOS[0]) }
+    var shortSide by remember { mutableStateOf(1080) }
     var fps by remember { mutableStateOf(30.0) }
-    var duration by remember { mutableStateOf("10") }
-    var background by remember { mutableStateOf(Color.parse("#0E0F13")) }
-    var picking by remember { mutableStateOf(false) }
-    val durationValue = duration.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0 && it <= 3600 }
+    val qualities = listOf(720 to R.string.quality_hd, 1080 to R.string.quality_fhd, 2160 to R.string.quality_4k)
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.new_project)) },
-        confirmButton = {
-            TextButton(enabled = durationValue != null, onClick = {
-                onCreate(title.ifBlank { untitled }, preset.width, preset.height, fps, durationValue ?: 10.0, background)
-            }) { Text(stringResource(R.string.create)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(stringResource(R.string.title)) }, singleLine = true)
-                Text(stringResource(R.string.format), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
-                ChoiceChips(presets.map { it to it.label }, preset, { preset = it })
-                Text("${preset.width} × ${preset.height}", style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
-                Text(stringResource(R.string.frame_rate), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
-                ChoiceChips(listOf(24.0 to "24", 25.0 to "25", 30.0 to "30", 60.0 to "60"), fps, { fps = it })
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = duration, onValueChange = { duration = it }, singleLine = true,
-                        label = { Text(stringResource(R.string.duration_seconds)) }, modifier = Modifier.weight(1f),
-                        isError = durationValue == null,
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(stringResource(R.string.background), style = MaterialTheme.typography.labelSmall, color = KColors.TextSecondary)
-                        ColorSwatch(background, { picking = true }, size = 36)
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier
+                .fillMaxWidth(0.94f)
+                .clip(RoundedCornerShape(20.dp))
+                .background(KColors.Surface)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+        ) {
+            Text(stringResource(R.string.new_project), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(14.dp))
+            OutlinedTextField(
+                value = title, onValueChange = { title = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.project_name)) },
+                shape = RoundedCornerShape(12.dp),
+            )
+
+            SectionLabel(stringResource(R.string.aspect_ratio))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowItems(RATIOS) { r ->
+                    OptionTile(r == ratio, { ratio = r }, Modifier.width(78.dp)) {
+                        Box(Modifier.height(44.dp), contentAlignment = Alignment.Center) {
+                            val scale = 40f / maxOf(r.w, r.h)
+                            Box(
+                                Modifier
+                                    .width((r.w * scale).dp)
+                                    .height((r.h * scale).dp)
+                                    .border(2.dp, if (r == ratio) KColors.Accent else KColors.TextSecondary, RoundedCornerShape(4.dp)),
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(r.label, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
-        },
-    )
-    if (picking) {
-        ColorPickerDialog(background, onDismiss = { picking = false }, onChange = {}, onConfirm = { background = it; picking = false })
+
+            SectionLabel(stringResource(R.string.quality))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                qualities.forEach { (side, label) ->
+                    val (w, h) = dimensions(ratio, side)
+                    OptionTile(side == shortSide, { shortSide = side }, Modifier.weight(1f)) {
+                        Text(stringResource(label), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text("$w×$h", fontSize = 11.sp, color = KColors.TextSecondary)
+                    }
+                }
+            }
+
+            SectionLabel(stringResource(R.string.fps_label))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                listOf(24.0, 30.0, 60.0).forEach { f ->
+                    OptionTile(f == fps, { fps = f }, Modifier.weight(1f)) {
+                        Text("${f.roundToInt()}", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                        Text("fps", fontSize = 11.sp, color = KColors.TextSecondary)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(22.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.cancel)) }
+                Button(
+                    onClick = {
+                        val (w, h) = dimensions(ratio, shortSide)
+                        onCreate(title.trim().ifBlank { untitled }, w, h, fps, 10.0, DEFAULT_BACKGROUND)
+                    },
+                    modifier = Modifier.weight(2f).height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                ) { Text(stringResource(R.string.create), fontWeight = FontWeight.SemiBold) }
+            }
+        }
     }
 }
+
+private val DEFAULT_BACKGROUND = Color.parse("#0E0F13")

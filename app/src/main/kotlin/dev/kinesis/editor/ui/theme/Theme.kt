@@ -10,13 +10,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 object KColors {
-    val Background = Color(0xFF0E0F13)
-    val Surface = Color(0xFF16171D)
-    val SurfaceHigh = Color(0xFF1E2028)
-    val SurfaceHighest = Color(0xFF282B35)
-    val Outline = Color(0xFF33364A)
-    val Accent = Color(0xFF7C5CFF)
-    val AccentSoft = Color(0xFF3A2F7A)
+    val Background = Color(0xFF121520)
+    val Surface = Color(0xFF1B1E2B)
+    val SurfaceHigh = Color(0xFF232736)
+    val SurfaceHighest = Color(0xFF2D3244)
+    val Outline = Color(0xFF363B52)
+    val Accent = Color(0xFF2DE0A5)
+    val AccentSoft = Color(0xFF0F5B45)
     val Teal = Color(0xFF4FD1C5)
     val Keyframe = Color(0xFFFFC857)
     val Danger = Color(0xFFFF5C7A)
@@ -40,7 +40,7 @@ object KColors {
 
 private val scheme = darkColorScheme(
     primary = KColors.Accent,
-    onPrimary = Color.White,
+    onPrimary = Color.Black,
     primaryContainer = KColors.AccentSoft,
     onPrimaryContainer = Color.White,
     secondary = KColors.Teal,

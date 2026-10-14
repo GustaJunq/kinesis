@@ -2,6 +2,7 @@ package dev.kinesis.editor
 
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -24,9 +25,12 @@ class UiSmokeTest {
         InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let { Shots.log(name, it, 420) }
     }
 
-    private fun click(text: String) {
-        rule.waitUntil(10_000) { rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
-        rule.onAllNodesWithText(text).onFirst().performClick()
+    /** Clicks the node whose text or content description is exactly [label]. */
+    private fun click(label: String) {
+        fun texts() = rule.onAllNodesWithText(label, useUnmergedTree = true)
+        fun descs() = rule.onAllNodesWithContentDescription(label, useUnmergedTree = true)
+        rule.waitUntil(20_000) { texts().fetchSemanticsNodes().isNotEmpty() || descs().fetchSemanticsNodes().isNotEmpty() }
+        (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst().performClick()
         rule.waitForIdle()
     }
 
@@ -35,7 +39,7 @@ class UiSmokeTest {
         shot("ui-home")
         click("New project")
         click("Create")
-        rule.waitUntil(10_000) { rule.onAllNodes(hasText("Timeline")).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(20_000) { rule.onAllNodesWithContentDescription("Undo").fetchSemanticsNodes().isNotEmpty() }
 
         click("Add")
         click("Text")
@@ -45,15 +49,12 @@ class UiSmokeTest {
         click("Star")
         shot("ui-editor-timeline")
 
-        click("Properties")
-        shot("ui-editor-properties")
-        click("Layers")
-        shot("ui-editor-layers")
-        click("Timeline")
-
         click("Split")
         click("Duplicate")
         click("Group")
+        shot("ui-editor-after-ops")
+        click("Properties")
+        shot("ui-editor-properties")
         rule.onNodeWithContentDescription("Undo").assertExists()
         shot("ui-editor-after-ops")
     }

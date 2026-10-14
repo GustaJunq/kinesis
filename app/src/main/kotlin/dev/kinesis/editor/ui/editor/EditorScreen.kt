@@ -38,6 +38,16 @@ import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.ModalBottomSheet
+import dev.kinesis.editor.ui.common.TextInputDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -91,6 +101,7 @@ import dev.kinesis.editor.R
 import dev.kinesis.editor.ui.common.formatTime
 import dev.kinesis.editor.ui.theme.KColors
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(projectId: String, onClose: () -> Unit) {
     val context = LocalContext.current
@@ -115,7 +126,10 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     val exportState by vm.exportState.collectAsState()
     val loop by vm.loopPlayback.collectAsState()
 
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var showLayers by remember { mutableStateOf(false) }
+    var showProps by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
     var showAdd by remember { mutableStateOf(false) }
     var showExport by remember { mutableStateOf(false) }
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
@@ -211,19 +225,18 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     val selectedLayer = selection?.let { LayerTree.find(project, it) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(KColors.Background)) {
-        val panelHeight = maxHeight * 0.42f
+        val boxMaxHeight = maxHeight
+        val sheetHeight = boxMaxHeight * 0.62f
         Column(Modifier.fillMaxSize()) {
-            // Top bar
-            Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Top bar: back, project name, settings, export
+            Row(Modifier.fillMaxWidth().height(56.dp).background(KColors.Surface).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { vm.flushSave(); onClose() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
-                Text(project.meta.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                IconButton(onClick = { vm.undo() }, enabled = canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, stringResource(R.string.undo)) }
-                IconButton(onClick = { vm.redo() }, enabled = canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, stringResource(R.string.redo)) }
-                Button(onClick = { vm.pause(); showExport = true }, modifier = Modifier.padding(end = 4.dp)) {
-                    Icon(Icons.Filled.FileUpload, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.export))
-                }
+                Text(
+                    project.meta.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).clickable { renaming = true }.padding(horizontal = 8.dp, vertical = 8.dp),
+                )
+                IconButton(onClick = { vm.pause(); showSettings = true }) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
+                IconButton(onClick = { vm.pause(); showExport = true }) { Icon(Icons.Filled.FileUpload, stringResource(R.string.export), tint = KColors.Accent) }
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = KColors.Accent)
 
@@ -241,84 +254,98 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                             .clickable { renderError = null },
                     )
                 }
+                if (selectedLayer?.type?.isRendered3D == true) {
+                    IconButton(
+                        onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE },
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(KColors.Surface.copy(alpha = 0.85f), RoundedCornerShape(12.dp)),
+                    ) {
+                        Icon(
+                            if (tool3D == Tool3D.MOVE) Icons.Filled.OpenWith else Icons.Filled.ScreenRotation,
+                            stringResource(if (tool3D == Tool3D.MOVE) R.string.tool_move else R.string.tool_rotate),
+                            tint = KColors.Accent,
+                        )
+                    }
+                }
             }
 
-            // Transport
-            Row(Modifier.fillMaxWidth().height(48.dp).background(KColors.Surface).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { vm.seek(0.0) }) { Icon(Icons.Filled.SkipPrevious, stringResource(R.string.go_to_start)) }
+            // Transport: undo, redo, keyframes, play, layers, loop
+            Row(Modifier.fillMaxWidth().height(52.dp).background(KColors.Surface), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                IconButton(onClick = { vm.undo() }, enabled = canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, stringResource(R.string.undo)) }
+                IconButton(onClick = { vm.redo() }, enabled = canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, stringResource(R.string.redo)) }
                 IconButton(onClick = {
-                    val l = selectedLayer ?: return@IconButton
-                    val offset = LayerTree.containerOffset(project, l.id) + l.start
-                    l.keyframeTimes().map { it + offset }.lastOrNull { it < time - 1e-4 }?.let { vm.seek(it) }
-                }, enabled = selectedLayer != null) { Icon(Icons.Filled.FastRewind, stringResource(R.string.prev_keyframe)) }
-                IconButton(onClick = { vm.step(-1) }) { Text("−1", fontSize = 12.sp) }
-                IconButton(onClick = { vm.togglePlay() }) {
-                    Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, stringResource(R.string.play), tint = KColors.Accent, modifier = Modifier.size(30.dp))
+                    val l = selectedLayer
+                    if (l == null) vm.seek(0.0) else {
+                        val offset = LayerTree.containerOffset(project, l.id) + l.start
+                        l.keyframeTimes().map { it + offset }.lastOrNull { it < time - 1e-4 }?.let { vm.seek(it) } ?: vm.seek(0.0)
+                    }
+                }) { Icon(Icons.Filled.SkipPrevious, stringResource(R.string.prev_keyframe)) }
+                IconButton(onClick = { vm.togglePlay() }, modifier = Modifier.size(48.dp)) {
+                    Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, stringResource(R.string.play), tint = KColors.Accent, modifier = Modifier.size(32.dp))
                 }
-                IconButton(onClick = { vm.step(1) }) { Text("+1", fontSize = 12.sp) }
                 IconButton(onClick = {
                     val l = selectedLayer ?: return@IconButton
                     val offset = LayerTree.containerOffset(project, l.id) + l.start
                     l.keyframeTimes().map { it + offset }.firstOrNull { it > time + 1e-4 }?.let { vm.seek(it) }
-                }, enabled = selectedLayer != null) { Icon(Icons.Filled.FastForward, stringResource(R.string.next_keyframe)) }
-                Text(
-                    "${formatTime(time, project.composition.fps)} / ${formatTime(project.composition.duration, project.composition.fps)}",
-                    fontSize = 12.sp, color = KColors.TextSecondary, modifier = Modifier.weight(1f).padding(start = 4.dp), maxLines = 1,
-                )
-                if (selectedLayer?.type?.isRendered3D == true) {
-                    IconButton(onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE }) {
-                        Icon(
-                            if (tool3D == Tool3D.MOVE) Icons.Filled.OpenWith else Icons.Filled.ScreenRotation,
-                            stringResource(if (tool3D == Tool3D.MOVE) R.string.tool_move else R.string.tool_rotate),
-                            tint = KColors.Teal,
-                        )
-                    }
-                }
+                }, enabled = selectedLayer != null) { Icon(Icons.Filled.SkipNext, stringResource(R.string.next_keyframe)) }
+                IconButton(onClick = { showLayers = true }) { Icon(Icons.Filled.Layers, stringResource(R.string.tab_layers)) }
                 IconButton(onClick = { vm.loopPlayback.value = !loop }) {
                     Icon(Icons.Filled.Repeat, stringResource(R.string.loop), tint = if (loop) KColors.Accent else KColors.TextSecondary)
                 }
             }
 
-            // Panels
-            TabRow(
-                selectedTabIndex = tab,
-                containerColor = KColors.Surface,
-                indicator = { positions -> TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(positions[tab]), color = KColors.Accent) },
-            ) {
-                listOf(R.string.tab_timeline, R.string.tab_properties, R.string.tab_layers).forEachIndexed { i, res ->
-                    Tab(selected = tab == i, onClick = { tab = i }, text = { Text(stringResource(res), fontSize = 13.sp) })
+            // Timeline (always visible) with the add button floating over it
+            Box(Modifier.fillMaxWidth().height(boxMaxHeight * 0.34f)) {
+                Timeline(vm, project, time, playing, selection, multi, Modifier.fillMaxSize())
+                FloatingActionButton(
+                    onClick = { vm.pause(); showAdd = true },
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                    containerColor = KColors.Background,
+                    contentColor = KColors.Accent,
+                    shape = CircleShape,
+                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
+                ) { Icon(Icons.Filled.Add, stringResource(R.string.add), modifier = Modifier.size(30.dp)) }
+            }
+
+            // Tools for the selected layer only
+            if (selectedLayer != null) {
+                Row(
+                    Modifier.fillMaxWidth().height(60.dp).background(KColors.Surface).padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    ActionButton(Icons.Filled.Tune, stringResource(R.string.tab_properties), true, highlight = true) { vm.pause(); showProps = true }
+                    ActionButton(Icons.Filled.ContentCut, stringResource(R.string.split), true) { vm.splitSelected() }
+                    ActionButton(Icons.Filled.ContentCopy, stringResource(R.string.duplicate), true) { vm.duplicateSelected() }
+                    ActionButton(Icons.Filled.CreateNewFolder, stringResource(R.string.group), true) { vm.groupSelection() }
+                    ActionButton(Icons.Filled.Delete, stringResource(R.string.delete), true) { vm.deleteSelection() }
                 }
             }
-            Box(Modifier.fillMaxWidth().height(panelHeight)) {
-                when (tab) {
-                    0 -> Timeline(vm, project, time, playing, selection, multi, Modifier.fillMaxSize())
-                    1 -> PropertiesPanel(
-                        vm, project, time, selection,
+        }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp))
+
+        if (showProps || showSettings) {
+            ModalBottomSheet(onDismissRequest = { showProps = false; showSettings = false }, containerColor = KColors.Surface) {
+                Box(Modifier.fillMaxWidth().height(sheetHeight)) {
+                    PropertiesPanel(
+                        vm, project, time, if (showSettings) null else selection,
                         onEditCurve = { curveTarget = it },
                         onPickTexture = { id -> textureTarget = id; pickTexture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         onPickFont = { pickFont.launch(arrayOf("font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream", "*/*")) },
                         modifier = Modifier.fillMaxSize(),
                     )
-                    else -> LayersPanel(vm, project, selection, multi, Modifier.fillMaxSize())
                 }
             }
-
-            // Actions
-            Row(
-                Modifier.fillMaxWidth().height(56.dp).background(KColors.Surface).padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                ActionButton(Icons.Filled.Add, stringResource(R.string.add), true, highlight = true) { vm.pause(); showAdd = true }
-                ActionButton(Icons.Filled.ContentCut, stringResource(R.string.split), selectedLayer != null) { vm.splitSelected() }
-                ActionButton(Icons.Filled.ContentCopy, stringResource(R.string.duplicate), selectedLayer != null) { vm.duplicateSelected() }
-                ActionButton(Icons.Filled.CreateNewFolder, stringResource(R.string.group), selectedLayer != null) { vm.groupSelection() }
-                ActionButton(Icons.Filled.Delete, stringResource(R.string.delete), selectedLayer != null) { vm.deleteSelection() }
+        }
+        if (showLayers) {
+            ModalBottomSheet(onDismissRequest = { showLayers = false }, containerColor = KColors.Surface) {
+                Box(Modifier.fillMaxWidth().height(sheetHeight)) { LayersPanel(vm, project, selection, multi, Modifier.fillMaxSize()) }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp))
     }
 
+    if (renaming) {
+        TextInputDialog(stringResource(R.string.rename), project.meta.title, onDismiss = { renaming = false }) { vm.rename(it.ifBlank { project.meta.title }); renaming = false }
+    }
     if (showAdd) AddSheet(onDismiss = { showAdd = false }, onAdd = ::handleAdd)
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })
     curveTarget?.let { target ->
