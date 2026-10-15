@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
@@ -30,7 +31,10 @@ class UiSmokeTest {
         fun texts() = rule.onAllNodesWithText(label, useUnmergedTree = true)
         fun descs() = rule.onAllNodesWithContentDescription(label, useUnmergedTree = true)
         rule.waitUntil(20_000) { texts().fetchSemanticsNodes().isNotEmpty() || descs().fetchSemanticsNodes().isNotEmpty() }
-        (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst().performClick()
+        val node = (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst()
+        // Tool bars scroll horizontally: bring the target into view first.
+        runCatching { node.performScrollTo() }
+        node.performClick()
         rule.waitForIdle()
     }
 
