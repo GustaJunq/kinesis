@@ -85,6 +85,7 @@
     <string name="group">Agrupar</string>
     <string name="group_children">%1$d camadas dentro</string>
     <string name="height">Altura</string>
+    <string name="import_error_title">Não foi possível importar o arquivo</string>
     <string name="import_failed">Falha ao importar: %1$s</string>
     <string name="import_font">Importar fonte</string>
     <string name="import_invalid">Este projeto não é válido:\n%1$s</string>
@@ -122,10 +123,14 @@
     <string name="mode_in">Entrada</string>
     <string name="mode_out">Saída</string>
     <string name="more">Mais</string>
+    <string name="more_for">Mais opções de %1$s</string>
     <string name="motion_blur">Motion blur</string>
     <string name="move_down">Mover para baixo</string>
     <string name="move_up">Mover para cima</string>
     <string name="mute">Silenciar</string>
+    <string name="nav_presets">Presets</string>
+    <string name="nav_projects">Projetos</string>
+    <string name="nav_settings">Ajustes</string>
     <string name="new_project">Novo projeto</string>
     <string name="next_keyframe">Próximo keyframe</string>
     <string name="no_layers_hint">Nenhuma camada ainda. Toque em + para adicionar texto, formas, mídia ou objetos 3D.</string>
@@ -136,6 +141,7 @@
     <string name="ok">OK</string>
     <string name="opacity">Opacidade</string>
     <string name="open">Abrir</string>
+    <string name="open_knsproj">Abrir arquivo .knsproj</string>
     <string name="order_backward">Inverso</string>
     <string name="order_center">Do centro</string>
     <string name="order_forward">Normal</string>
@@ -147,6 +153,7 @@
     <string name="play">Reproduzir</string>
     <string name="point_corner">Canto</string>
     <string name="point_smooth">Suave</string>
+    <string name="presets_hint">Comece um projeto com um formato pronto.</string>
     <string name="prev_keyframe">Keyframe anterior</string>
     <string name="prim_cone">Cone</string>
     <string name="prim_cube">Cubo</string>
@@ -215,6 +222,11 @@
     <string name="section_transform">Transformação</string>
     <string name="section_trim">Aparar traçado</string>
     <string name="settings">Configurações</string>
+    <string name="settings_fonts">Fontes</string>
+    <string name="settings_fonts_value">Manrope, JetBrains Mono, Barlow Condensed (SIL OFL 1.1)</string>
+    <string name="settings_format">Formato de arquivo</string>
+    <string name="settings_format_value">.knsproj, formato aberto (zip + JSON)</string>
+    <string name="settings_version">Versão</string>
     <string name="shape_ellipse">Elipse</string>
     <string name="shape_line">Linha</string>
     <string name="shape_path">Caminho</string>
@@ -268,4 +280,5 @@
     <string name="visibility">Visibilidade</string>
     <string name="width">Largura</string>
     <string name="wrap_width">Largura de quebra</string>
+    <string name="your_projects">SEUS PROJETOS</string>
 </resources>
