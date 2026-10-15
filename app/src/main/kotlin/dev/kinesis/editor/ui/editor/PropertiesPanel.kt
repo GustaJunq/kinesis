@@ -101,6 +101,7 @@ import dev.kinesis.core.model.TextUnit
 import dev.kinesis.core.model.Transition
 import dev.kinesis.core.model.TransitionType
 import dev.kinesis.core.model.updateCamera
+import dev.kinesis.core.model.CameraAim
 import dev.kinesis.core.model.updateLight
 import dev.kinesis.core.model.updateMedia
 import dev.kinesis.core.model.updateModel3D
@@ -580,16 +581,25 @@ private fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: Lay
                     vm.updateLayer(id) { it.updateModel3D { c -> c.copy(material = if (on) Material() else null) } }
                 }
             }
+            LayerType.NULL -> {
+                SectionTitle(stringResource(R.string.layer_null))
+                SmallLabel(stringResource(if (layer.is3DLayer) R.string.null_hint_3d else R.string.null_hint_2d))
+            }
             LayerType.CAMERA -> {
                 val c = layer.camera ?: return@Column
                 SectionTitle(stringResource(R.string.layer_camera))
+                ChoiceChips(
+                    listOf(CameraAim.ROTATION to stringResource(R.string.camera_aim_rotation), CameraAim.TARGET to stringResource(R.string.camera_aim_target)),
+                    c.aim,
+                    { a -> vm.updateLayer(id) { LayerProps.withCameraAim(it, a, vm.localTime(it), project.composition.height) } },
+                )
                 if (c.position == null) {
                     SmallLabel(stringResource(R.string.camera_auto_hint))
                     OutlinedButton(onClick = { vm.updateLayer(id) { LayerProps.withExplicitCameraPosition(it, project.composition.height) } }) {
                         Text(stringResource(R.string.camera_free))
                     }
                 } else {
-                    SmallLabel(stringResource(R.string.camera_orbit_hint))
+                    SmallLabel(stringResource(if (c.aim == CameraAim.ROTATION) R.string.camera_rotation_hint else R.string.camera_orbit_hint))
                     TextButton(onClick = { vm.updateLayer(id) { it.updateCamera { c -> c.copy(position = null) } } }) { Text(stringResource(R.string.camera_reset)) }
                 }
             }
@@ -909,7 +919,7 @@ private fun LayerSettings(vm: EditorViewModel, project: KnsProject, layer: Layer
     }
     if (layer.type != LayerType.AUDIO) {
         val candidates = LayerTree.siblings(project, id).filter {
-            it.id != id && it.type.is3D == layer.type.is3D && it.type != LayerType.CAMERA && it.type != LayerType.LIGHT && it.type != LayerType.AUDIO
+            dev.kinesis.core.edit.TimelineOps.canParent(layer, it)
         }
         SmallLabel(stringResource(R.string.parent))
         ChoiceChips(

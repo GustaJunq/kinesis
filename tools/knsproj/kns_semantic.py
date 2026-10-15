@@ -17,6 +17,13 @@ CONTENT_KEY = {
     "object3d": "object3d", "model3d": "model3d", "camera": "camera", "light": "light",
 }
 IS_3D = {"object3d", "model3d", "camera", "light"}
+
+
+def is_3d_layer(layer):
+    """3D objects, cameras, lights and null layers with `null.threeD`."""
+    return layer.get("type") in IS_3D or (
+        layer.get("type") == "null" and (layer.get("null") or {}).get("threeD") is True)
+
 IS_VISUAL = {"text", "shape", "image", "video", "group", "object3d", "model3d"}
 IS_2D_VISUAL = {"text", "shape", "image", "video", "group"}
 
@@ -255,7 +262,7 @@ def validate(project, available_files=None):
                     err("layer.parentSelf", f"{p}.parent", "a layer cannot be its own parent")
                 elif parent is None:
                     err("layer.parentMissing", f"{p}.parent", f"parent '{parent_id}' must be a layer in the same group")
-                elif (ltype in IS_3D) != (parent.get("type") in IS_3D):
+                elif is_3d_layer(layer) != is_3d_layer(parent):
                     err("layer.parentKind", f"{p}.parent", "2D layers can only be parented to 2D layers and 3D layers to 3D layers")
                 elif parent.get("type") in ("camera", "light"):
                     err("layer.parentKind", f"{p}.parent", "cameras and lights cannot be parents")
@@ -338,6 +345,12 @@ def validate(project, available_files=None):
             if model is not None:
                 check_asset_ref(model.get("asset"), "model", f"{p}.model3d.asset")
                 check_asset_ref((model.get("material") or {}).get("texture"), "image", f"{p}.model3d.material.texture")
+            camera = layer.get("camera")
+            if camera is not None:
+                for key in ("position", "target", "rotation", "fov"):
+                    check_anim(camera.get(key), f"{p}.camera.{key}", d)
+            if layer.get("null") is not None and ltype != "null":
+                warn("layer.nullContent", f"{p}.null", 'the "null" object is only used by null layers')
             if ltype in counts:
                 counts[ltype] += 1
 

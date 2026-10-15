@@ -50,6 +50,15 @@ class RenderTest {
     fun orbitCamera3d() = render(loadExample("basicos/3d-camera-orbita"), listOf(0.2, 1.5, 3.0), "3d-camera-orbita")
 
     @Test
+    fun nullRig3d() = render(loadExample("basicos/nulo-3d-rig"), listOf(0.2, 1.5, 3.0), "nulo-3d-rig")
+
+    @Test
+    fun cameraByRotation() = render(loadExample("basicos/camera-rotacao"), listOf(0.2, 3.0, 5.8), "camera-rotacao")
+
+    @Test
+    fun nullParent2d() = render(loadExample("basicos/nulo-2d"), listOf(0.5, 2.0), "nulo-2d")
+
+    @Test
     fun kineticTitle() = render(loadExample("receitas/titulo-cinetico"), listOf(0.5, 2.5), "titulo-cinetico")
 
     @Test

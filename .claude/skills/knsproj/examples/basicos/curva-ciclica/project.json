@@ -1,0 +1,49 @@
+{
+  "format": "knsproj",
+  "formatVersion": 5,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Curva cíclica"},
+  "composition": {"width": 1080, "height": 1920, "fps": 30, "duration": 5, "background": "#0B0F1E"},
+  "layers": [
+    {
+      "id": "pendulo",
+      "type": "shape",
+      "name": "Pêndulo",
+      "duration": 5,
+      "transform": {
+        "position": {"keyframes": [
+          {"time": 0, "value": [-300, -300], "easing": {"cyclic": {"cycles": 3.5}}},
+          {"time": 5, "value": [300, -300]}
+        ]}
+      },
+      "shape": {"kind": "ellipse", "size": [200, 200], "fill": {"color": "#4C8DFF"}}
+    },
+    {
+      "id": "pulso",
+      "type": "shape",
+      "name": "Pulso",
+      "duration": 5,
+      "transform": {
+        "scale": {"keyframes": [
+          {"time": 0, "value": [0.6, 0.6], "easing": {"cyclic": {"offset": 0, "cycles": 5.5}}},
+          {"time": 5, "value": [1.4, 1.4]}
+        ]}
+      },
+      "shape": {"kind": "star", "size": [260, 260], "sides": 5, "fill": {"color": "#FF6B8B"}}
+    },
+    {
+      "id": "giro",
+      "type": "shape",
+      "name": "Balanço",
+      "duration": 5,
+      "transform": {
+        "position": [0, 400],
+        "rotation": {"keyframes": [
+          {"time": 0, "value": -25, "easing": {"cyclic": {"cycles": 2.5}}},
+          {"time": 5, "value": 25}
+        ]}
+      },
+      "shape": {"kind": "rectangle", "size": [420, 90], "roundness": 24, "fill": {"color": "#FFC857"}}
+    }
+  ]
+}

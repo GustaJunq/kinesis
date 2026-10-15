@@ -11,6 +11,7 @@ import dev.kinesis.core.scene.FrameScene
 import dev.kinesis.core.scene.GroupNode
 import dev.kinesis.core.scene.Node2D
 import dev.kinesis.core.scene.Node3D
+import dev.kinesis.core.scene.NullNode
 import dev.kinesis.core.scene.RenderNode
 import dev.kinesis.editor.render.ShapeRasterizer
 import dev.kinesis.editor.render.TextRasterizer
@@ -87,7 +88,28 @@ class SceneGeometry(private val typefaces: TypefaceProvider, private val project
             if (pts.isEmpty() || center == null) null
             else Outline.Box3D(n.layerId, Vec2(pts.minOf { it.x }, pts.minOf { it.y }), Vec2(pts.maxOf { it.x }, pts.maxOf { it.y }), center)
         }
+        is NullNode -> nullOutline(n, camera)
         is GroupNode -> null
+    }
+
+    /** The square (2D) or cube (3D) editors draw for a null object. */
+    private fun nullOutline(n: NullNode, camera: CameraState): Outline? {
+        val h = NullNode.MARKER_SIZE / 2f
+        if (!n.threeD) {
+            val m = n.matrix
+            return Outline.Quad(
+                n.layerId,
+                listOf(m.apply(Vec2(-h, -h)), m.apply(Vec2(h, -h)), m.apply(Vec2(h, h)), m.apply(Vec2(-h, h))),
+                m.apply(Vec2.ZERO),
+            )
+        }
+        val pts = ArrayList<Vec2>()
+        for (x in listOf(-h, h)) for (y in listOf(-h, h)) for (z in listOf(-h, h)) {
+            camera.project(n.model.transformPoint(Vec3(x, y, z)))?.let { pts += n.post.apply(it) }
+        }
+        val center = camera.project(n.model.transformPoint(Vec3.ZERO))?.let { n.post.apply(it) }
+        if (pts.isEmpty() || center == null) return null
+        return Outline.Box3D(n.layerId, Vec2(pts.minOf { it.x }, pts.minOf { it.y }), Vec2(pts.maxOf { it.x }, pts.maxOf { it.y }), center)
     }
 
     /** Flattened visual nodes, top-most first (for hit testing). */

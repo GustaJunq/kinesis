@@ -222,6 +222,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
             AddAction.AUDIO -> pickAudio.launch(arrayOf("audio/*"))
             AddAction.MODEL -> pickModel.launch(arrayOf("model/gltf-binary", "model/gltf+json", "application/octet-stream", "*/*"))
             AddAction.CAMERA -> vm.addLayer(Factory.camera(p, t, context.getString(R.string.layer_camera)))
+            AddAction.NULL_2D -> vm.addLayer(Factory.nullObject(p, t, false, context.getString(R.string.layer_null)))
+            AddAction.NULL_3D -> vm.addLayer(Factory.nullObject(p, t, true, context.getString(R.string.null_3d)))
             else -> {
                 primitiveFor(action)?.let { vm.addLayer(Factory.object3d(p, t, it, context.getString(primitiveRes(it)))) }
                 lightFor(action)?.let { vm.addLayer(Factory.light(p, t, it, context.getString(lightKindRes(it)))) }
@@ -262,7 +264,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                             .clickable { renderError = null },
                     )
                 }
-                if (selectedLayer?.type?.isRendered3D == true) {
+                if (selectedLayer?.hasTransform3D == true) {
                     IconButton(
                         onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE },
                         modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(KColors.Bar.copy(alpha = 0.85f), KShapes.Tile),

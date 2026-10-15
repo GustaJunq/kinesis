@@ -99,7 +99,7 @@ object ColorSerializer : KSerializer<Color> {
     }
 }
 
-/** Preset name (`"easeOutCubic"`) or `{"cubicBezier": [x1, y1, x2, y2]}`. */
+/** Preset name (`"easeOutCubic"`), `{"cubicBezier": [x1, y1, x2, y2]}` or `{"cyclic": {"offset": 0, "cycles": 3.5}}`. */
 object EasingSerializer : KSerializer<Easing> {
     override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor
     override fun serialize(encoder: Encoder, value: Easing) =
@@ -111,6 +111,9 @@ object EasingSerializer : KSerializer<Easing> {
         is Easing.Preset -> JsonPrimitive(e.preset.id)
         is Easing.CubicBezier -> buildJsonObject {
             put("cubicBezier", buildJsonArray { add(e.x1.toJson()); add(e.y1.toJson()); add(e.x2.toJson()); add(e.y2.toJson()) })
+        }
+        is Easing.Cyclic -> buildJsonObject {
+            put("cyclic", buildJsonObject { put("offset", e.offset.toJson()); put("cycles", e.cycles.toJson()) })
         }
     }
 
@@ -127,7 +130,17 @@ object EasingSerializer : KSerializer<Easing> {
             if (x1 !in 0f..1f || x2 !in 0f..1f) throw SerializationException("cubicBezier x1 and x2 must be between 0 and 1")
             return Easing.CubicBezier(x1, y1, x2, y2)
         }
-        throw SerializationException("easing must be a preset name or {\"cubicBezier\": [x1, y1, x2, y2]}, got $e")
+        if (e is JsonObject && "cyclic" in e) {
+            val obj = e["cyclic"] as? JsonObject ?: throw SerializationException("cyclic must be {\"offset\": …, \"cycles\": …}")
+            val offset = obj["offset"]?.number("offset") ?: 0f
+            val cycles = obj["cycles"]?.number("cycles") ?: Easing.Cyclic.DEFAULT_CYCLES
+            if (offset !in -1f..1f) throw SerializationException("cyclic offset must be between -1 and 1")
+            if (cycles !in Easing.Cyclic.MIN_CYCLES..Easing.Cyclic.MAX_CYCLES) {
+                throw SerializationException("cyclic cycles must be between ${Easing.Cyclic.MIN_CYCLES} and ${Easing.Cyclic.MAX_CYCLES}")
+            }
+            return Easing.Cyclic(offset, cycles)
+        }
+        throw SerializationException("easing must be a preset name, {\"cubicBezier\": [x1, y1, x2, y2]} or {\"cyclic\": {\"offset\": 0, \"cycles\": 3.5}}, got $e")
     }
 }
 

@@ -353,4 +353,14 @@
     <string name="width">Width</string>
     <string name="wrap_width">Wrap width</string>
     <string name="your_projects">YOUR PROJECTS</string>
+    <string name="layer_null">Null</string>
+    <string name="null_3d">3D null</string>
+    <string name="null_hint_2d">Invisible layer that only carries a transform. Make it the parent of other 2D layers to move, rotate and scale them together. It is not in the exported video.</string>
+    <string name="null_hint_3d">Invisible 3D layer that only carries a transform. Make it the parent of 3D objects, cameras and lights (rigs, orbits). It is not in the exported video.</string>
+    <string name="camera_aim_rotation">Aim by rotation</string>
+    <string name="camera_aim_target">Aim at target</string>
+    <string name="camera_rotation_hint">Position and rotation are independent. Drag in the viewport to turn the camera in place; pinch to dolly forward and back.</string>
+    <string name="easing_cyclic">Cyclic</string>
+    <string name="cyclic_info">cyclic · offset %1$s · %2$s waves</string>
+    <string name="cyclic_hint">Top handle: offset (slide it to shift the wave). Bottom handle: quantity (slide it to add or remove waves).</string>
 </resources>

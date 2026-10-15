@@ -10,6 +10,7 @@ import dev.kinesis.core.math.Mat4
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.math.clamp
+import dev.kinesis.core.model.CameraAim
 import dev.kinesis.core.model.CameraContent
 import dev.kinesis.core.model.Composition
 import dev.kinesis.core.model.Effect
@@ -64,7 +65,7 @@ object SceneEvaluator {
         val matteSources = layers.mapNotNullTo(HashSet()) { l -> l.matte?.layer?.takeIf { l.visible } }
         val result = ArrayList<RenderNode>()
         for (layer in layers) {
-            if (!layer.type.isVisual || !layer.isActiveAt(containerTime) || layer.id in matteSources) continue
+            if ((!layer.type.isVisual && layer.type != LayerType.NULL) || !layer.isActiveAt(containerTime) || layer.id in matteSources) continue
             var matte: MatteRef? = null
             val m = layer.matte
             if (m != null) {
@@ -107,6 +108,7 @@ object SceneEvaluator {
             }
         }
         return when {
+            layer.type == LayerType.NULL -> evaluateNull(layer, siblings, containerTime, containerMatrix)
             layer.type.isRendered3D -> evaluate3D(layer, siblings, containerTime, containerMatrix, camera, transition, ::effects)
             layer.type == LayerType.GROUP -> {
                 val parent = parentMatrix2D(layer, siblings, containerTime)
@@ -193,6 +195,16 @@ object SceneEvaluator {
         )
     }
 
+    /** Null objects draw nothing; the node only tells editors where the layer's transform is. */
+    private fun evaluateNull(layer: Layer, siblings: Map<String, Layer>, containerTime: Double, containerMatrix: Affine2D): NullNode {
+        val t = layer.localTime(containerTime)
+        return if (layer.is3DLayer) {
+            NullNode(layer.id, true, Affine2D.IDENTITY, parentMatrix3D(layer, siblings, containerTime) * localMatrix3D(layer, t), containerMatrix)
+        } else {
+            NullNode(layer.id, false, containerMatrix * parentMatrix2D(layer, siblings, containerTime) * localMatrix2D(layer, t), Mat4.identity(), Affine2D.IDENTITY)
+        }
+    }
+
     /** Wipes need content bounds; groups and 3D layers fade instead. */
     private fun wipeFallback(t: TransitionState): Float = t.wipe?.progress ?: 1f
 
@@ -214,7 +226,7 @@ object SceneEvaluator {
     fun parentMatrix2D(layer: Layer, siblings: Map<String, Layer>, containerTime: Double): Affine2D {
         var m = Affine2D.IDENTITY
         for (p in parentChain(layer, siblings)) {
-            if (!p.type.is2DVisual) break
+            if (!p.hasTransform2D) break
             m = localMatrix2D(resolved(p, siblings, containerTime), p.localTime(containerTime)) * m
         }
         return m
@@ -223,7 +235,7 @@ object SceneEvaluator {
     fun parentMatrix3D(layer: Layer, siblings: Map<String, Layer>, containerTime: Double): Mat4 {
         var m = Mat4.identity()
         for (p in parentChain(layer, siblings)) {
-            if (!p.type.isRendered3D) break
+            if (!p.hasTransform3D) break
             m = localMatrix3D(resolved(p, siblings, containerTime), p.localTime(containerTime)) * m
         }
         return m
@@ -386,6 +398,8 @@ object SceneEvaluator {
         var fov = CameraContent.DEFAULT_FOV
         var position = Vec3(0f, 0f, -defaultCameraDistance(comp.height, fov))
         var target = Vec3.ZERO
+        var forward: Vec3? = null
+        var up = Vec3(0f, -1f, 0f)
         if (active != null) {
             val (layer0, containerTime, siblings) = active
             val layer = resolved(layer0, siblings, containerTime)
@@ -394,9 +408,17 @@ object SceneEvaluator {
             fov = cam.fov.at(t).clamp(1f, 170f)
             val parent = parentMatrix3D(layer, siblings, containerTime)
             position = parent.transformPoint(cam.position?.at(t) ?: Vec3(0f, 0f, -defaultCameraDistance(comp.height, fov)))
-            target = parent.transformPoint(cam.target.at(t))
+            if (cam.aim == CameraAim.ROTATION) {
+                // The camera's own axes: +z forward, +y down, turned by `rotation` and then by the parent's transform.
+                val r = Mat4.rotationXYZ(cam.rotation.at(t))
+                forward = parent.transformVector(r.transformVector(Vec3(0f, 0f, 1f))).normalized()
+                up = parent.transformVector(r.transformVector(Vec3(0f, -1f, 0f))).normalized()
+                target = position + forward * defaultCameraDistance(comp.height, fov)
+            } else {
+                target = parent.transformPoint(cam.target.at(t))
+            }
         }
-        val view = Mat4.lookAt(position, target, Vec3(0f, -1f, 0f))
+        val view = Mat4.lookAt(position, forward?.let { position + it } ?: target, up)
         val projection = Mat4.perspective(fov, comp.aspect, NEAR_PLANE, FAR_PLANE)
         return CameraState(position, target, fov, view, projection, comp.width, comp.height)
     }

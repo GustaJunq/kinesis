@@ -123,7 +123,7 @@ object ProjectValidator {
                     LayerType.MODEL3D -> layer.model3d != null
                     LayerType.CAMERA -> layer.camera != null
                     LayerType.LIGHT -> layer.light != null
-                    LayerType.GROUP -> true
+                    LayerType.GROUP, LayerType.NULL -> true
                 }
                 val key = layer.type.name.lowercase()
                 if (!contentOk) err("layer.missingContent", p, "a '$key' layer needs a \"$key\" object")
@@ -135,7 +135,7 @@ object ProjectValidator {
                     when {
                         parentId == layer.id -> err("layer.parentSelf", "$p.parent", "a layer cannot be its own parent")
                         parent == null -> err("layer.parentMissing", "$p.parent", "parent '$parentId' must be a layer in the same group")
-                        layer.type.is3D != parent.type.is3D ->
+                        layer.is3DLayer != parent.is3DLayer ->
                             err("layer.parentKind", "$p.parent", "2D layers can only be parented to 2D layers and 3D layers to 3D layers")
                         parent.type == LayerType.CAMERA || parent.type == LayerType.LIGHT ->
                             err("layer.parentKind", "$p.parent", "cameras and lights cannot be parents")
@@ -221,6 +221,12 @@ object ProjectValidator {
                     checkAssetRef(m.asset, AssetType.MODEL, "$p.model3d.asset")
                     checkAssetRef(m.material?.texture, AssetType.IMAGE, "$p.model3d.material.texture")
                 }
+                layer.camera?.let { c ->
+                    c.position?.let { checkAnimatable(it, "$p.camera.position", d) }
+                    checkAnimatable(c.target, "$p.camera.target", d); checkAnimatable(c.rotation, "$p.camera.rotation", d)
+                    checkAnimatable(c.fov, "$p.camera.fov", d)
+                }
+                if (layer.nullObject != null && layer.type != LayerType.NULL) warn("layer.nullContent", "$p.null", "the \"null\" object is only used by null layers")
                 if (layer.type == LayerType.CAMERA) cameraCount++
                 if (layer.type == LayerType.LIGHT) lightCount++
 

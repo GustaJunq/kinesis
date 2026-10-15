@@ -220,6 +220,30 @@ class Node3D(
     val post: Affine2D,
 ) : RenderNode()
 
+/**
+ * A null object: drawn by nobody, but editors use it to show and move the layer. 2D null objects fill [matrix]
+ * (local → composition pixels); 3D ones fill [model] (local → world) and [post] (the enclosing group's transform).
+ */
+class NullNode(
+    override val layerId: String,
+    val threeD: Boolean,
+    val matrix: Affine2D,
+    val model: Mat4,
+    val post: Affine2D,
+) : RenderNode() {
+    override val layerType: LayerType get() = LayerType.NULL
+    override val opacity: Float get() = 1f
+    override val blendMode: BlendMode get() = BlendMode.NORMAL
+    override val effects: List<ResolvedEffect> get() = emptyList()
+    override val motionBlur: Boolean get() = false
+    override val transitionBlur: Float get() = 0f
+
+    companion object {
+        /** Side of the square/cube editors draw for a null object, in composition pixels. */
+        const val MARKER_SIZE = 100f
+    }
+}
+
 class GroupNode(
     override val layerId: String,
     /** Group-local → composition pixels (already applied to 2D children; used for masks). */

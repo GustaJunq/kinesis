@@ -5,9 +5,12 @@ import dev.kinesis.core.anim.Easing
 import dev.kinesis.core.anim.Interpolators
 import dev.kinesis.core.anim.KeyframeOps
 import dev.kinesis.core.anim.anim
+import dev.kinesis.core.anim.at
 import dev.kinesis.core.math.Color
+import dev.kinesis.core.math.Mat4
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
+import dev.kinesis.core.model.CameraAim
 import dev.kinesis.core.model.CameraContent
 import dev.kinesis.core.model.Effect
 import dev.kinesis.core.model.EffectParam
@@ -114,24 +117,24 @@ object LayerProps {
     private val OPACITY = FloatKind(0f, 1f, PropUnit.PERCENT, 0f, 1f, display = 100f)
     private val ROTATION = FloatKind(-360f, 360f, PropUnit.DEG)
 
-    fun transform2D(): PropSection = PropSection(
+    fun transform2D(withOpacity: Boolean = true): PropSection = PropSection(
         "transform",
-        listOf(
+        listOfNotNull<AnimProp<*>>(
             v2prop("transform.position", Vec2Kind(), { it.transform.position }, { l, a -> l.copy(transform = l.transform.copy(position = a)) }),
             v2prop("transform.scale", Vec2Kind(PropUnit.PERCENT, 100f, 0f, 4f), { it.transform.scale }, { l, a -> l.copy(transform = l.transform.copy(scale = a)) }),
             fprop("transform.rotation", ROTATION, { it.transform.rotation }, { l, a -> l.copy(transform = l.transform.copy(rotation = a)) }),
-            fprop("transform.opacity", OPACITY, { it.transform.opacity }, { l, a -> l.copy(transform = l.transform.copy(opacity = a)) }),
+            if (withOpacity) fprop("transform.opacity", OPACITY, { it.transform.opacity }, { l, a -> l.copy(transform = l.transform.copy(opacity = a)) }) else null,
             v2prop("transform.anchor", Vec2Kind(), { it.transform.anchor }, { l, a -> l.copy(transform = l.transform.copy(anchor = a)) }),
         ),
     )
 
-    fun transform3D(): PropSection = PropSection(
+    fun transform3D(withOpacity: Boolean = true): PropSection = PropSection(
         "transform3d",
-        listOf(
+        listOfNotNull<AnimProp<*>>(
             v3prop("transform3d.position", Vec3Kind(), { it.transform3d.position }, { l, a -> l.copy(transform3d = l.transform3d.copy(position = a)) }),
             v3prop("transform3d.rotation", Vec3Kind(PropUnit.DEG, 1f, -360f, 360f), { it.transform3d.rotation }, { l, a -> l.copy(transform3d = l.transform3d.copy(rotation = a)) }),
             v3prop("transform3d.scale", Vec3Kind(PropUnit.PERCENT, 100f, 0f, 4f), { it.transform3d.scale }, { l, a -> l.copy(transform3d = l.transform3d.copy(scale = a)) }),
-            fprop("transform3d.opacity", OPACITY, { it.transform3d.opacity }, { l, a -> l.copy(transform3d = l.transform3d.copy(opacity = a)) }),
+            if (withOpacity) fprop("transform3d.opacity", OPACITY, { it.transform3d.opacity }, { l, a -> l.copy(transform3d = l.transform3d.copy(opacity = a)) }) else null,
             v3prop("transform3d.anchor", Vec3Kind(), { it.transform3d.anchor }, { l, a -> l.copy(transform3d = l.transform3d.copy(anchor = a)) }),
         ),
     )
@@ -200,6 +203,7 @@ object LayerProps {
                 )
             }
             LayerType.IMAGE, LayerType.GROUP -> add(transform2D())
+            LayerType.NULL -> add(if (layer.is3DLayer) transform3D(withOpacity = false) else transform2D(withOpacity = false))
             LayerType.VIDEO -> {
                 add(transform2D())
                 add(PropSection("audio", listOf(fprop("video.volume", FloatKind(0f, 2f, PropUnit.PERCENT, 0f, 4f, 100f), { it.video!!.volume }, { l, a -> l.copy(video = l.video!!.copy(volume = a)) }, "media.volume"))))
@@ -229,10 +233,15 @@ object LayerProps {
                 PropSection(
                     "camera",
                     buildList {
-                        if (layer.camera?.position != null) {
+                        val cam = layer.camera
+                        if (cam?.position != null) {
                             add(v3prop("camera.position", Vec3Kind(PropUnit.PX, 1f, -5000f, 5000f), { it.camera!!.position!! }, { l, a -> l.copy(camera = l.camera!!.copy(position = a)) }))
                         }
-                        add(v3prop("camera.target", Vec3Kind(), { it.camera!!.target }, { l, a -> l.copy(camera = l.camera!!.copy(target = a)) }))
+                        if (cam?.aim == CameraAim.ROTATION) {
+                            add(v3prop("camera.rotation", Vec3Kind(PropUnit.DEG, 1f, -360f, 360f), { it.camera!!.rotation }, { l, a -> l.copy(camera = l.camera!!.copy(rotation = a)) }))
+                        } else {
+                            add(v3prop("camera.target", Vec3Kind(), { it.camera!!.target }, { l, a -> l.copy(camera = l.camera!!.copy(target = a)) }))
+                        }
                         add(fprop("camera.fov", FloatKind(10f, 120f, PropUnit.DEG, 1f, 170f), { it.camera!!.fov }, { l, a -> l.copy(camera = l.camera!!.copy(fov = a)) }))
                     },
                 ),
@@ -306,6 +315,34 @@ object LayerProps {
         if (cam.position != null) return layer
         val d = SceneEvaluator.defaultCameraDistance(compHeight, cam.fov.value)
         return layer.copy(camera = cam.copy(position = anim(Vec3(0f, 0f, -d))))
+    }
+
+    /**
+     * Switches how a camera is aimed (point of interest ↔ own rotation) without changing the view at layer time
+     * [local]. The values of the aim that stops being used are discarded; the new ones start static.
+     */
+    fun withCameraAim(layer: Layer, aim: CameraAim, local: Double, compHeight: Int): Layer {
+        val cam0 = layer.camera ?: return layer
+        if (cam0.aim == aim) return layer
+        val explicit = withExplicitCameraPosition(layer, compHeight)
+        val cam = explicit.camera!!
+        val pos = cam.position!!.at(local)
+        val distance = SceneEvaluator.defaultCameraDistance(compHeight, cam.fov.at(local))
+        return explicit.copy(
+            camera = if (aim == CameraAim.ROTATION) {
+                val view = Mat4.lookAt(pos, cam.target.at(local), Vec3(0f, -1f, 0f))
+                // View rows are right, up and -forward; the camera's own axes are right, down and forward.
+                val e = Mat4.eulerXYZ(
+                    view[0, 0], view[0, 1], view[0, 2],
+                    -view[1, 0], -view[1, 1], -view[1, 2],
+                    -view[2, 0], -view[2, 1], -view[2, 2],
+                )
+                cam.copy(aim = CameraAim.ROTATION, rotation = anim(e))
+            } else {
+                val forward = Mat4.rotationXYZ(cam.rotation.at(local)).transformVector(Vec3(0f, 0f, 1f))
+                cam.copy(aim = CameraAim.TARGET, target = anim(pos + forward * distance))
+            },
+        )
     }
 
     /** Adds a stroke so text stroke properties can be edited. */

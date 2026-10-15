@@ -12,7 +12,9 @@ import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.model.Asset
 import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.BlendMode
+import dev.kinesis.core.model.CameraAim
 import dev.kinesis.core.model.CameraContent
+import dev.kinesis.core.model.NullContent
 import dev.kinesis.core.model.Composition
 import dev.kinesis.core.model.Effect
 import dev.kinesis.core.model.FillSpec
@@ -117,7 +119,7 @@ object TestProjects {
             ),
             Layer(
                 id = "title", type = LayerType.TEXT, name = "Title", start = 0.5, duration = 5.0,
-                transform = Transform2D(position = anim(Vec2(0f, -600f)), opacity = keys(0.0 to 0f, 0.5 to 1f, easing = Easing.CubicBezier(0.2f, 0f, 0f, 1f))),
+                transform = Transform2D(position = anim(Vec2(0f, -600f)), opacity = keys(0.0 to 0f, 0.5 to 1f, easing = Easing.CubicBezier(0.2f, 0f, 0f, 1f)), rotation = keys(0.0 to 0f, 2.0 to 90f, easing = Easing.Cyclic(0.1f, 2.5f))),
                 text = TextContent(
                     content = "Hello\nKinesis", font = FontSpec("serif", 800, italic = true), fontSize = anim(120f),
                     color = keys(0.0 to Color.WHITE, 2.0 to Color.parse("#FFC857")),
@@ -152,7 +154,9 @@ object TestProjects {
                 transform3d = Transform3D(rotation = keys(0.0 to Vec3.ZERO, 10.0 to Vec3(0f, 360f, 0f), loop = LoopMode.CYCLE)),
             ),
             Layer(id = "moon", type = LayerType.MODEL3D, name = "Model", duration = 10.0, parent = "orbit", transform3d = Transform3D(position = anim(Vec3(500f, 0f, 0f))), model3d = Model3DContent("mdl", size = anim(150f))),
-            Layer(id = "cam", type = LayerType.CAMERA, name = "Camera", duration = 10.0, camera = CameraContent(position = anim(Vec3(0f, -300f, -2500f)), fov = anim(45f))),
+            Layer(id = "rig", type = LayerType.NULL, name = "Rig", duration = 10.0, nullObject = NullContent(threeD = true), transform3d = Transform3D(position = anim(Vec3(0f, 0f, 100f)))),
+            Layer(id = "cam", type = LayerType.CAMERA, name = "Camera", duration = 10.0, parent = "rig", camera = CameraContent(position = anim(Vec3(0f, -300f, -2500f)), rotation = anim(Vec3(5f, 0f, 0f)), aim = CameraAim.ROTATION, fov = anim(45f))),
+            Layer(id = "pin", type = LayerType.NULL, name = "Pin", duration = 10.0, transform = Transform2D(position = anim(Vec2(40f, -20f)))),
             Layer(id = "key", type = LayerType.LIGHT, name = "Key", duration = 10.0, light = LightContent(LightKind.DIRECTIONAL, intensity = anim(1.2f))),
             Layer(id = "amb", type = LayerType.LIGHT, name = "Ambient", duration = 10.0, light = LightContent(LightKind.AMBIENT, intensity = anim(0.3f))),
         ),

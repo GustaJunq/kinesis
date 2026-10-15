@@ -50,6 +50,16 @@ class Mat4(val m: FloatArray = identityArray()) {
 
     fun translation(): Vec3 = Vec3(m[12], m[13], m[14])
 
+    /** Splits `T · R · S` (no shear) into translation, per-axis scale and XYZ Euler rotation in degrees. */
+    fun decompose(): Decomposed {
+        val sx = Vec3(m[0], m[1], m[2]).length().coerceAtLeast(1e-9f)
+        val sy = Vec3(m[4], m[5], m[6]).length().coerceAtLeast(1e-9f)
+        val sz = Vec3(m[8], m[9], m[10]).length().coerceAtLeast(1e-9f)
+        return Decomposed(translation(), Vec3(sx, sy, sz), eulerXYZ(m[0] / sx, m[1] / sx, m[2] / sx, m[4] / sy, m[5] / sy, m[6] / sy, m[8] / sz, m[9] / sz, m[10] / sz))
+    }
+
+    class Decomposed(val translation: Vec3, val scale: Vec3, val rotation: Vec3)
+
     fun transpose(): Mat4 {
         val r = FloatArray(16)
         for (row in 0 until 4) for (col in 0 until 4) r[row * 4 + col] = this[row, col]
@@ -129,6 +139,26 @@ class Mat4(val m: FloatArray = identityArray()) {
 
         /** Euler rotation applied in X, then Y, then Z order (degrees). */
         fun rotationXYZ(r: Vec3): Mat4 = rotationZ(r.z) * rotationY(r.y) * rotationX(r.x)
+
+        /**
+         * Inverse of [rotationXYZ] for the rotation whose columns are (c0*, c1*, c2*), in degrees. Near gimbal lock
+         * (Y at ±90°) X is taken as 0.
+         */
+        fun eulerXYZ(c0x: Float, c0y: Float, c0z: Float, c1x: Float, c1y: Float, c1z: Float, c2x: Float, c2y: Float, c2z: Float): Vec3 {
+            // R = Rz(c) · Ry(b) · Rx(a): R[2][0] = -sin b, R[2][1] = cos b sin a, R[2][2] = cos b cos a, R[1][0] = cos b sin c, R[0][0] = cos b cos c.
+            val sinB = (-c0z).coerceIn(-1f, 1f)
+            val b = kotlin.math.asin(sinB.toDouble())
+            val a: Double
+            val c: Double
+            if (abs(sinB) < 0.99999f) {
+                a = kotlin.math.atan2(c1z.toDouble(), c2z.toDouble())
+                c = kotlin.math.atan2(c0y.toDouble(), c0x.toDouble())
+            } else {
+                a = 0.0
+                c = kotlin.math.atan2(-c1x.toDouble(), c1y.toDouble())
+            }
+            return Vec3(Math.toDegrees(a).toFloat(), Math.toDegrees(b).toFloat(), Math.toDegrees(c).toFloat())
+        }
 
         /** 3D layer transform: `T(position) · R(rotation) · S(scale) · T(-anchor)`. */
         fun layer(position: Vec3, anchor: Vec3, scale: Vec3, rotation: Vec3): Mat4 =

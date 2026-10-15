@@ -18,7 +18,7 @@ import dev.kinesis.editor.R
 fun propLabelRes(key: String): Int = when (key) {
     "transform.position", "transform3d.position", "camera.position", "light.position", "mask.position" -> R.string.prop_position
     "transform.scale", "transform3d.scale" -> R.string.prop_scale
-    "transform.rotation", "transform3d.rotation" -> R.string.prop_rotation
+    "transform.rotation", "transform3d.rotation", "camera.rotation" -> R.string.prop_rotation
     "transform.opacity", "transform3d.opacity", "mask.opacity", "effect.opacity" -> R.string.opacity
     "transform.anchor", "transform3d.anchor" -> R.string.prop_anchor
     "text.fontSize" -> R.string.prop_font_size
@@ -81,6 +81,7 @@ fun layerTypeRes(type: LayerType): Int = when (type) {
     LayerType.MODEL3D -> R.string.layer_model3d
     LayerType.CAMERA -> R.string.layer_camera
     LayerType.LIGHT -> R.string.layer_light
+    LayerType.NULL -> R.string.layer_null
 }
 
 fun shapeKindRes(k: ShapeKind): Int = when (k) {

@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 3,
+  "formatVersion": 5,
   "generator": "tests",
   "meta": {
     "title": "Everything",
@@ -235,6 +235,30 @@
       "blendMode": "screen",
       "transform": {
         "position": [0, -600],
+        "rotation": {
+          "keyframes": [
+            {
+              "time": 0,
+              "value": 0,
+              "easing": {
+                "cyclic": {
+                  "offset": 0.1,
+                  "cycles": 2.5
+                }
+              }
+            },
+            {
+              "time": 2,
+              "value": 90,
+              "easing": {
+                "cyclic": {
+                  "offset": 0.1,
+                  "cycles": 2.5
+                }
+              }
+            }
+          ]
+        },
         "opacity": {
           "keyframes": [
             {
@@ -449,14 +473,40 @@
       }
     },
     {
+      "id": "rig",
+      "type": "null",
+      "name": "Rig",
+      "start": 0,
+      "duration": 10,
+      "transform3d": {
+        "position": [0, 0, 100]
+      },
+      "null": {
+        "threeD": true
+      }
+    },
+    {
       "id": "cam",
       "type": "camera",
       "name": "Camera",
       "start": 0,
       "duration": 10,
+      "parent": "rig",
       "camera": {
         "position": [0, -300, -2500],
+        "rotation": [5, 0, 0],
+        "aim": "rotation",
         "fov": 45
+      }
+    },
+    {
+      "id": "pin",
+      "type": "null",
+      "name": "Pin",
+      "start": 0,
+      "duration": 10,
+      "transform": {
+        "position": [40, -20]
       }
     },
     {

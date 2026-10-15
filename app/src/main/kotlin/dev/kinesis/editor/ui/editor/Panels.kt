@@ -115,6 +115,7 @@ import dev.kinesis.editor.ui.theme.KType
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.foundation.layout.heightIn
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -198,13 +199,14 @@ fun layerIcon(layer: Layer): ImageVector = when (layer.type) {
     LayerType.MODEL3D -> Icons.Filled.Token
     LayerType.CAMERA -> Icons.Filled.CameraAlt
     LayerType.LIGHT -> Icons.Filled.Lightbulb
+    LayerType.NULL -> Icons.Filled.CenterFocusStrong
 }
 
 // ---------------------------------------------------------------------------------------- add menu
 
 enum class AddAction {
     TEXT, RECTANGLE, ELLIPSE, POLYGON, STAR, LINE, IMAGE, VIDEO, AUDIO,
-    CUBE, SPHERE, CYLINDER, CONE, TORUS, PLANE, EMPTY, MODEL, CAMERA, LIGHT_DIRECTIONAL, LIGHT_POINT, LIGHT_AMBIENT,
+    CUBE, SPHERE, CYLINDER, CONE, TORUS, PLANE, NULL_2D, NULL_3D, MODEL, CAMERA, LIGHT_DIRECTIONAL, LIGHT_POINT, LIGHT_AMBIENT,
 }
 
 private class AddItem(val action: AddAction, val label: Int, val icon: ImageVector)
@@ -222,6 +224,7 @@ fun AddSheet(section: AddSection, onDismiss: () -> Unit, onAdd: (AddAction) -> U
             AddItem(AddAction.POLYGON, R.string.shape_polygon, Icons.Filled.Hexagon),
             AddItem(AddAction.STAR, R.string.shape_star, Icons.Filled.Star),
             AddItem(AddAction.LINE, R.string.shape_line, Icons.Filled.Remove),
+            AddItem(AddAction.NULL_2D, R.string.layer_null, Icons.Filled.CenterFocusStrong),
         ),
         R.string.add_media to listOf(
             AddItem(AddAction.IMAGE, R.string.layer_image, Icons.Filled.Image),
@@ -235,7 +238,7 @@ fun AddSheet(section: AddSection, onDismiss: () -> Unit, onAdd: (AddAction) -> U
             AddItem(AddAction.CONE, R.string.prim_cone, Icons.Filled.Category),
             AddItem(AddAction.TORUS, R.string.prim_torus, Icons.Filled.DonutLarge),
             AddItem(AddAction.PLANE, R.string.prim_plane, Icons.Filled.Square),
-            AddItem(AddAction.EMPTY, R.string.prim_empty, Icons.Filled.CenterFocusStrong),
+            AddItem(AddAction.NULL_3D, R.string.null_3d, Icons.Filled.CenterFocusStrong),
             AddItem(AddAction.MODEL, R.string.layer_model3d, Icons.Filled.Token),
         ),
         R.string.add_scene to listOf(
@@ -287,7 +290,6 @@ fun primitiveFor(action: AddAction): Primitive? = when (action) {
     AddAction.CONE -> Primitive.CONE
     AddAction.TORUS -> Primitive.TORUS
     AddAction.PLANE -> Primitive.PLANE
-    AddAction.EMPTY -> Primitive.EMPTY
     else -> null
 }
 
@@ -322,6 +324,8 @@ fun CurveEditorPanel(
 ) {
     var current by remember(easing) { mutableStateOf(easing) }
     var handles by remember(easing) { mutableStateOf(easing.bezierOrNull() ?: Easing.CubicBezier(0.42f, 0f, 0.58f, 1f)) }
+    // The last wave, so switching to Cyclic and back keeps its settings.
+    var wave by remember(easing) { mutableStateOf((easing as? Easing.Cyclic) ?: Easing.Cyclic()) }
     val transition = rememberInfiniteTransition(label = "preview")
     val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart), label = "phase")
     val latest by rememberUpdatedState(onEasing)
@@ -349,9 +353,17 @@ fun CurveEditorPanel(
                         onDragStart = { o ->
                             val w = size.width.toFloat(); val h = size.height.toFloat()
                             fun pos(x: Float, y: Float) = Offset(x * w, h - (y + 0.5f) / 2f * h)
-                            val h1 = pos(handles.x1, handles.y1)
-                            val h2 = pos(handles.x2, handles.y2)
-                            dragging = if (hypot(o.x - h1.x, o.y - h1.y) < hypot(o.x - h2.x, o.y - h2.y)) 1 else 2
+                            val cy = current as? Easing.Cyclic
+                            if (cy != null) {
+                                // 3 = the crest handle (offset), 4 = the trough handle (number of waves).
+                                val top = pos(cy.peak.coerceIn(0f, 1f), 1f)
+                                val bottom = pos(cy.trough.coerceIn(0f, 1f), 0f)
+                                dragging = if (hypot(o.x - top.x, o.y - top.y) < hypot(o.x - bottom.x, o.y - bottom.y)) 3 else 4
+                            } else {
+                                val h1 = pos(handles.x1, handles.y1)
+                                val h2 = pos(handles.x2, handles.y2)
+                                dragging = if (hypot(o.x - h1.x, o.y - h1.y) < hypot(o.x - h2.x, o.y - h2.y)) 1 else 2
+                            }
                         },
                         onDragEnd = { latest(current) },
                         onDragCancel = { latest(current) },
@@ -359,6 +371,20 @@ fun CurveEditorPanel(
                         change.consume()
                         val w = size.width.toFloat(); val h = size.height.toFloat()
                         val x = (change.position.x / w).coerceIn(0f, 1f)
+                        val cy = current as? Easing.Cyclic
+                        if (cy != null) {
+                            wave = if (dragging == 3) {
+                                // The first crest follows the finger and the wave keeps its frequency, so the offset moves.
+                                val off = x - 0.5f / cy.cycles
+                                cy.copy(offset = if (abs(off) < 0.02f) 0f else ((off * 100).roundToInt() / 100f).coerceIn(-1f, 1f))
+                            } else {
+                                // The trough after the crest ends one full wave: its distance from the start sets the quantity.
+                                val span = (x - cy.offset).coerceAtLeast(1f / Easing.Cyclic.MAX_CYCLES)
+                                cy.copy(cycles = ((1f / span * 2f).roundToInt() / 2f).coerceIn(Easing.Cyclic.MIN_CYCLES, Easing.Cyclic.MAX_CYCLES))
+                            }
+                            current = wave
+                            return@detectDragGestures
+                        }
                         val y = ((h - change.position.y) / h * 2f - 0.5f).coerceIn(-0.5f, 1.5f)
                         handles = if (dragging == 1) handles.copy(x1 = x, y1 = y) else handles.copy(x2 = x, y2 = y)
                         current = handles
@@ -373,12 +399,22 @@ fun CurveEditorPanel(
             drawLine(KColors.LineStrong, pos(0f, 0f), pos(0f, 1f))
             drawLine(KColors.LineStrong, pos(1f, 0f), pos(1f, 1f))
             val path = Path()
-            for (i in 0..120) {
-                val u = i / 120f
+            val cyc = current as? Easing.Cyclic
+            val samples = if (cyc != null) (cyc.cycles * 32f).toInt().coerceIn(120, 1600) else 120
+            for (i in 0..samples) {
+                val u = i / samples.toFloat()
                 val p = pos(u, current.transform(u))
                 if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
             }
             drawPath(path, KColors.Accent, style = Stroke(3.dp.toPx()))
+            if (cyc != null) {
+                // Top handle: first crest (offset). Bottom handle: the trough after it (quantity of waves).
+                val top = pos(cyc.peak.coerceIn(0f, 1f), 1f)
+                val bottom = pos(cyc.trough.coerceIn(0f, 1f), 0f)
+                drawLine(KColors.Keyframe.copy(alpha = 0.5f), top, pos(top.x / w, 0f), strokeWidth = 2f)
+                drawCircle(KColors.Keyframe, 9.dp.toPx(), top)
+                drawCircle(KColors.Keyframe, 9.dp.toPx(), bottom)
+            }
             val hb = current.bezierOrNull()
             if (hb != null) {
                 drawLine(KColors.Keyframe, pos(0f, 0f), pos(hb.x1, hb.y1), strokeWidth = 2f)
@@ -392,6 +428,16 @@ fun CurveEditorPanel(
             drawCircle(KColors.Teal, 7.dp.toPx(), Offset(w - 10.dp.toPx(), pos(0f, v).y))
         }
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            item {
+                PillChip(
+                    stringResource(R.string.easing_cyclic),
+                    selected = current is Easing.Cyclic,
+                    onClick = {
+                        current = wave
+                        onEasing(wave)
+                    },
+                )
+            }
             items(CURVE_PRESETS) { p ->
                 PillChip(
                     easingLabel(p),
@@ -406,10 +452,16 @@ fun CurveEditorPanel(
             }
         }
         val b = current.bezierOrNull()
+        val cyclic = current as? Easing.Cyclic
         Text(
-            if (b != null) "cubic-bezier(${fmt(b.x1)}, ${fmt(b.y1)}, ${fmt(b.x2)}, ${fmt(b.y2)})" else (current as? Easing.Preset)?.preset?.id ?: "",
+            when {
+                cyclic != null -> stringResource(R.string.cyclic_info, fmt(cyclic.offset), fmt(cyclic.cycles))
+                b != null -> "cubic-bezier(${fmt(b.x1)}, ${fmt(b.y1)}, ${fmt(b.x2)}, ${fmt(b.y2)})"
+                else -> (current as? Easing.Preset)?.preset?.id ?: ""
+            },
             style = KType.Mono, color = KColors.TextSoft,
         )
+        if (cyclic != null) Text(stringResource(R.string.cyclic_hint), fontSize = 12.sp, color = KColors.TextSecondary)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             OverlineLabel(stringResource(R.string.loop), Modifier.padding(end = 6.dp))
             PillChip(stringResource(R.string.loop_none), loop == dev.kinesis.core.anim.LoopMode.NONE, { onLoop(dev.kinesis.core.anim.LoopMode.NONE) })

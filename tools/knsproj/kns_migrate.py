@@ -51,7 +51,19 @@ def v2_to_v3(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2, 2: v2_to_v3}
+def v3_to_v4(doc):
+    """Version 4 only adds null layers and camera.rotation/camera.aim; v3 documents are valid as they are."""
+    doc["formatVersion"] = 4
+    return doc
+
+
+def v4_to_v5(doc):
+    """Version 5 only adds the cyclic easing ({"cyclic": {...}}); v4 documents are valid as they are."""
+    doc["formatVersion"] = 5
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5}
 
 
 def migrate(doc, to_version):

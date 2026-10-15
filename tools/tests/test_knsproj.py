@@ -273,6 +273,70 @@ def all_layers(layers):
         yield from all_layers(layer.get("layers", []) or [])
 
 
+class NullAndCameraTests(unittest.TestCase):
+    """Format v4: null layers and cameras aimed by rotation (parity with the Kotlin validator)."""
+
+    def codes(self, layers):
+        result = cli.validate_project(minimal(layers=layers), None)
+        return [i["code"] for i in result.issues]
+
+    def test_null_parent_kinds_follow_the_dimension(self):
+        shape = {"id": "c", "type": "shape", "shape": {}, "parent": "n"}
+        cube = {"id": "c", "type": "object3d", "object3d": {}, "parent": "n"}
+        cam = {"id": "c", "type": "camera", "camera": {}, "parent": "n"}
+        n2 = {"id": "n", "type": "null"}
+        n3 = {"id": "n", "type": "null", "null": {"threeD": True}}
+        self.assertEqual([], self.codes([shape, n2]))
+        self.assertEqual([], self.codes([cube, n3]))
+        self.assertEqual([], self.codes([cam, n3]))
+        self.assertEqual(["layer.parentKind"], self.codes([shape, n3]))
+        self.assertEqual(["layer.parentKind"], self.codes([cube, n2]))
+        self.assertEqual(["layer.parentKind"], self.codes([{"id": "x", "type": "object3d", "object3d": {}, "parent": "cam"}, {"id": "cam", "type": "camera", "camera": {}}]))
+
+    def test_camera_rotation_and_aim_are_valid_and_checked(self):
+        cam = {"id": "cam", "type": "camera", "camera": {"aim": "rotation", "position": [0, 0, -2000], "rotation": [0, 20, 0]}}
+        self.assertEqual([], self.codes([cam]))
+        bad = {"id": "cam", "type": "camera", "camera": {"aim": "orbit"}}
+        self.assertEqual(["schema"], self.codes([bad])[:1])
+        keys = {"id": "cam", "type": "camera", "camera": {"rotation": {"keyframes": [{"time": 1, "value": [0, 0, 0]}, {"time": 1, "value": [0, 9, 0]}]}}}
+        self.assertIn("keyframe.order", self.codes([keys]))
+
+    def test_null_object_on_another_layer_is_a_warning(self):
+        self.assertIn("layer.nullContent", self.codes([{"id": "s", "type": "shape", "shape": {}, "null": {}}]))
+
+    def test_version_3_documents_migrate_to_4(self):
+        v3 = minimal(formatVersion=3, layers=[{"id": "c", "type": "camera", "camera": {"target": [0, 0, 0]}}])
+        migrated = kns_migrate.migrate(v3, 4)
+        self.assertEqual(4, migrated["formatVersion"])
+        self.assertEqual([], [i["code"] for i in cli.validate_project(v3, None).errors])
+
+
+class CyclicEasingTests(unittest.TestCase):
+    """Format v5: the cyclic (wave) easing."""
+
+    def doc(self, easing):
+        return minimal(layers=[{"id": "s", "type": "shape", "shape": {}, "transform": {"rotation": {"keyframes": [
+            {"time": 0, "value": 0, "easing": easing}, {"time": 2, "value": 90}]}}}])
+
+    def codes(self, easing):
+        return [i["code"] for i in cli.validate_project(self.doc(easing), None).issues]
+
+    def test_cyclic_easing_is_valid_and_optional_fields_work(self):
+        self.assertEqual([], self.codes({"cyclic": {"offset": 0.1, "cycles": 2.5}}))
+        self.assertEqual([], self.codes({"cyclic": {}}))
+
+    def test_cyclic_easing_ranges_and_typos_are_rejected(self):
+        self.assertEqual("schema", self.codes({"cyclic": {"cycles": 0.2}})[0])
+        self.assertEqual("schema", self.codes({"cyclic": {"cycles": 100}})[0])
+        self.assertEqual("schema", self.codes({"cyclic": {"offset": 2}})[0])
+        self.assertEqual("schema", self.codes({"cyclic": {"cycle": 3}})[0])
+
+    def test_version_4_documents_migrate_to_5(self):
+        v4 = minimal(formatVersion=4)
+        self.assertEqual(5, kns_migrate.migrate(v4, 5)["formatVersion"])
+        self.assertEqual([], [i["code"] for i in cli.validate_project(v4, None).errors])
+
+
 class ExampleTests(unittest.TestCase):
     """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
 
@@ -281,7 +345,7 @@ class ExampleTests(unittest.TestCase):
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
     def test_expected_examples_exist(self):
-        self.assertEqual(14, len(example_dirs("basicos")))
+        self.assertEqual(18, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
         self.assertGreaterEqual(len(example_dirs("erros")), 5)
         self.assertEqual(12, len(example_dirs("efeitos")))

@@ -27,6 +27,7 @@ import dev.kinesis.core.scene.GroupNode
 import dev.kinesis.core.scene.MatteRef
 import dev.kinesis.core.scene.Node2D
 import dev.kinesis.core.scene.Node3D
+import dev.kinesis.core.scene.NullNode
 import dev.kinesis.core.scene.RenderNode
 import dev.kinesis.core.scene.ResolvedEffect
 import dev.kinesis.core.scene.ResolvedMask
@@ -155,7 +156,9 @@ class Compositor(private val res: RenderResources) {
 
     // ------------------------------------------------------------------ node dispatch
 
-    private fun drawNodes(nodes: List<RenderNode>, target: RenderTarget, ctx: Ctx) {
+    private fun drawNodes(allNodes: List<RenderNode>, target: RenderTarget, ctx: Ctx) {
+        // Null objects only mark a transform for the editor; they must not split batches of 3D layers.
+        val nodes = if (allNodes.any { it is NullNode }) allNodes.filter { it !is NullNode } else allNodes
         var i = 0
         while (i < nodes.size) {
             val n = nodes[i]
@@ -191,6 +194,7 @@ class Compositor(private val res: RenderResources) {
     /** Renders [n] into [target] with the given opacity and blend mode. */
     private fun drawNodeAt(n: RenderNode, target: RenderTarget, ctx: Ctx, opacity: Float, blend: BlendMode) {
         when (n) {
+            is NullNode -> Unit
             is Node2D -> {
                 val offscreen = n.effects.isNotEmpty() || n.matte != null || n.transitionBlur > 0f
                 if (!offscreen) {
