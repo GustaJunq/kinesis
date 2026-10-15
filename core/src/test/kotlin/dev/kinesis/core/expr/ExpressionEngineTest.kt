@@ -1,6 +1,7 @@
 package dev.kinesis.core.expr
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -277,5 +278,18 @@ class ExpressionEngineTest {
         val first = ExpressionEngine.evaluate(src, scalar(0.05, value = 100.0, textIndex = 1, textTotal = 10)).values[0]
         val last = ExpressionEngine.evaluate(src, scalar(0.05, value = 100.0, textIndex = 10, textTotal = 10)).values[0]
         assertTrue(first < 100.0 && last == 100.0)
+    }
+
+    @Test
+    fun supportedLanguageFeatures() {
+        fun works(src: String) = ExpressionEngine.check(src, scalar(0.0)) == null
+        assertTrue(works("let a = 2; const b = 3; a * b"))
+        assertTrue(works("f = (x) => x * 2; f(4)"))
+        assertTrue(works("a = 3; s = `v${"$"}{a}`; a"))
+        assertTrue(works("Math.sign(-2) + Math.trunc(2.5) + Math.hypot(3, 4)"))
+        assertTrue(works("[1, 2, 3].map(function (x) { return x * 2; })[2]"))
+        // Known gaps of the embedded engine (Rhino): documented in docs/expressoes.md.
+        assertFalse(works("function f(a, b = 2) { return a + b; } f(1)"))
+        assertFalse(works("a = [1, 2]; b = [...a, 3]; b[2]"))
     }
 }

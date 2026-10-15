@@ -1,0 +1,39 @@
+{
+  "format": "knsproj",
+  "formatVersion": 3,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Expressão com erro de sintaxe"
+  },
+  "composition": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 3,
+    "background": "#101522"
+  },
+  "layers": [
+    {
+      "id": "bolinha-quebrada",
+      "type": "shape",
+      "start": 0,
+      "duration": 3,
+      "transform": {
+        "position": {
+          "value": [
+            0,
+            0
+          ],
+          "expression": "x = wiggle(2, 30;\nx"
+        }
+      },
+      "shape": {
+        "kind": "ellipse",
+        "size": [
+          200,
+          200
+        ]
+      }
+    }
+  ]
+}

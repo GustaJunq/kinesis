@@ -281,9 +281,9 @@ class ExampleTests(unittest.TestCase):
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
     def test_expected_examples_exist(self):
-        self.assertEqual(12, len(example_dirs("basicos")))
+        self.assertEqual(14, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
-        self.assertGreaterEqual(len(example_dirs("erros")), 4)
+        self.assertGreaterEqual(len(example_dirs("erros")), 5)
         self.assertEqual(12, len(example_dirs("efeitos")))
 
     def test_effect_examples_cover_every_category(self):
@@ -342,6 +342,8 @@ class ExampleTests(unittest.TestCase):
         self.assertIn("knsproj/SKILL.md", names)
         self.assertIn("knsproj/tools/knsproj/__main__.py", names)
         self.assertIn("knsproj/schema/knsproj-v1.schema.json", names)
+        self.assertIn("knsproj/schema/knsproj-v3.schema.json", names)
+        self.assertIn("knsproj/docs/expressoes.md", names)
         self.assertFalse([n for n in names if "__pycache__" in n or n.endswith(".pyc")])
 
 

@@ -1,11 +1,11 @@
-# Formato `.knsproj` — versão 2
+# Formato `.knsproj` — versão 3
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v2.schema.json`](../schema/knsproj-v2.schema.json) (JSON Schema draft 2020-12);
-  o da versão 1 continua em [`schema/knsproj-v1.schema.json`](../schema/knsproj-v1.schema.json)
+- **Schema oficial:** [`schema/knsproj-v3.schema.json`](../schema/knsproj-v3.schema.json) (JSON Schema draft 2020-12);
+  os das versões 1 e 2 continuam em [`schema/`](../schema)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
 - **Exemplos:** [`.claude/skills/knsproj/examples/`](../.claude/skills/knsproj/examples)
@@ -60,7 +60,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "generator": "Claude Code /knsproj",
   "meta": { "title": "Meu vídeo", "createdAt": "2026-10-14T12:00:00Z" },
   "composition": {
@@ -76,7 +76,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `2` (documentos da versão `1` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `3` (documentos das versões `1` e `2` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
 | `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120), `duration` (s), `background`, `motionBlur` |
@@ -106,6 +106,32 @@ Toda propriedade marcada como *animável* aceita duas formas:
 - `easing` define a curva do **segmento que começa** neste keyframe (até o próximo). Padrão: `"linear"`.
 - Antes do primeiro keyframe vale o primeiro valor; depois do último, o último valor.
 - `loop`: `"none"` (padrão), `"cycle"` (repete o intervalo dos keyframes) ou `"pingpong"` (vai e volta).
+
+### 4.1 Expressões
+
+Qualquer propriedade animável aceita ainda uma **expressão** JavaScript no estilo do After Effects:
+
+```json
+"position": { "value": [0, 0], "expression": "wiggle(3, 40)" }
+```
+
+```json
+"rotation": {
+  "keyframes": [{ "time": 0, "value": 0 }, { "time": 1, "value": 90 }],
+  "expression": "loopOut(\"pingpong\")"
+}
+```
+
+- `expression`: código JavaScript (até 20 000 caracteres), gravado exatamente como digitado. O resultado é o valor da
+  **última instrução avaliada**: número ou array de números.
+- `value`: o valor estático (obrigatório quando não há `keyframes`); dentro da expressão, `value` é o valor da propriedade
+  sem a expressão.
+- `expressionEnabled`: `false` desliga a expressão sem apagá-la (padrão `true`).
+- Dentro da expressão valem as unidades do After Effects (escala e opacidade em %, posição a partir do canto superior
+  esquerdo, cores 0..1); o arquivo continua guardando os valores do Kinesis.
+- Erros de sintaxe são `expression.syntax` na validação; em tempo de execução a propriedade usa o valor dos keyframes.
+
+APIs, unidades, limites do motor e a **matriz de compatibilidade** estão em [`expressoes.md`](expressoes.md).
 
 ### Easing
 
@@ -207,6 +233,31 @@ começa em `start + i·stagger` (tempo local) e anima por `unitDuration` segundo
 | `unit` | `character`, `word`, `line` |
 | `order` | `forward`, `backward`, `center`, `random` (aleatório determinístico) |
 | `amount` | px para *slides* e amplitude do `wave`; graus para `rotate`; escala inicial em % para `scale` (0 = do nada) |
+
+**Animadores de texto estilo After Effects** (`propertyAnimators`, versão 3): um animador tem propriedades opcionais
+(`position`, `scale`, `rotation`, `opacity`) e um seletor de expressão (`amount`, em %). A expressão do `amount` roda
+por caractere (ou palavra/linha) com `textIndex` (a partir de 1), `textTotal` e `selectorValue`.
+
+```json
+"propertyAnimators": [{
+  "name": "Bounce", "unit": "character",
+  "scale": [0, 0],
+  "amount": { "value": 100, "expression": "delay = 0.030;\nmyDelay = delay * textIndex;\nt = (time - inPoint) - myDelay;\n..." }
+}]
+```
+
+| Campo | Valores |
+|---|---|
+| `name` | nome livre do animador |
+| `enabled` | `false` desliga o animador |
+| `unit` | `character` (padrão), `word`, `line`: o que `textIndex` conta |
+| `position` | `[x, y]` em px, somado ao caractere vezes o amount |
+| `scale` | `[x, y]` em %, 100 = normal; fator `1 + (scale/100 − 1)·amount/100` |
+| `rotation` | graus, vezes o amount |
+| `opacity` | %, 100 = normal |
+| `amount` | animável, em % (padrão 100); aceita `expression` |
+
+A semântica completa e o exemplo "Bounce Text" estão em [`expressoes.md`](expressoes.md).
 
 ### 5.3 `shape`
 
@@ -635,7 +686,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v1.schema.json) (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v3.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -648,10 +699,12 @@ Um projeto é válido quando:
 | `layer.matteMissing` / `layer.matteSelf` / `layer.matteCycle` / `layer.matteKind` | matte é irmão visual, sem ciclos, aplicado a camada 2D |
 | `layer.missingAsset` / `layer.assetType` | asset existe e é do tipo certo |
 | `keyframe.order` | tempos estritamente crescentes |
+| `expression.syntax` / `expression.length` | expressão com sintaxe válida / até 20 000 caracteres |
 | `layer.duration`, `composition.*`, `media.*`, `text.*`, `shape.*`, `effect.range`, `layer.transition` | faixas de valores |
 
 Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes fora da duração da camada),
-`composition.oddSize`, `layer.masks`, `layer.effects`, `camera.multiple`, `light.count`, `layer.start`.
+`composition.oddSize`, `layer.masks`, `layer.effects`, `camera.multiple`, `light.count`, `layer.start`,
+`text.propertyAnimator` (animador de texto sem nenhuma propriedade).
 
 ## 12. Versionamento e compatibilidade
 
@@ -661,8 +714,9 @@ Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes 
   novas que conhecem, com uma mensagem pedindo atualização.
 - O app ignora campos desconhecidos ao abrir (tolerância), mas ao salvar escreve apenas o que conhece.
 - Histórico: **v1** → primeira versão pública (9 efeitos); **v2** → registro de efeitos com 60 tipos em categorias e
-  `colorAdjust` dividido em `hueShift`, `brightnessContrast` e `saturation` (seção 7). A CLI converte com
-  `python3 tools/knsproj migrate <pasta>`.
+  `colorAdjust` dividido em `hueShift`, `brightnessContrast` e `saturation` (seção 7); **v3** → expressões JavaScript nas
+  propriedades e animadores de texto por caractere (seções 4.1 e 5.2; só campos novos, documentos v2 abrem sem mudança).
+  A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.
 

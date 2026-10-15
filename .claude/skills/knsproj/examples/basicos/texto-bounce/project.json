@@ -1,0 +1,46 @@
+{
+  "format": "knsproj",
+  "formatVersion": 3,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Texto com quique (Bounce Text)"
+  },
+  "composition": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 3,
+    "background": "#101522"
+  },
+  "layers": [
+    {
+      "id": "titulo-bounce",
+      "type": "text",
+      "start": 0,
+      "duration": 3,
+      "text": {
+        "content": "BOUNCE TEXT",
+        "font": {
+          "family": "sans-serif",
+          "weight": 900
+        },
+        "fontSize": 150,
+        "color": "#FFC857",
+        "propertyAnimators": [
+          {
+            "name": "Bounce",
+            "unit": "character",
+            "scale": [
+              0,
+              0
+            ],
+            "amount": {
+              "value": 100,
+              "expression": "delay = 0.030;\nmyDelay = delay * textIndex;\nt = (time - inPoint) - myDelay;\n\nif (t >= 0) {\n    freq = 2;\n    amplitude = 50;\n    decay = 8.0;\n\n    s = amplitude * Math.cos(freq * t * 2 * Math.PI)\n        / Math.exp(decay * t);\n\n    [s, s]\n} else {\n    value\n}"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
