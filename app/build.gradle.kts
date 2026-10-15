@@ -22,13 +22,41 @@ android {
     // Instrumented tests render and export the shipped example projects.
     sourceSets.getByName("androidTest").assets.srcDir("../.claude/skills/knsproj/examples")
 
+    // Release signing. The credentials never live in the repository: CI restores the keystore from a secret and
+    // passes everything through environment variables (KINESIS_KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD).
+    val keystorePath = System.getenv("KINESIS_KEYSTORE_FILE")
+    val hasReleaseKey = !keystorePath.isNullOrEmpty() && file(keystorePath).isFile &&
+        listOf("KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD").all { !System.getenv(it).isNullOrEmpty() }
+    // The release workflow sets this so a build can never silently fall back to the debug key.
+    val requireReleaseKey = System.getenv("REQUIRE_RELEASE_SIGNING") == "true"
+
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = file(keystorePath!!)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Signed with the debug key so `assembleRelease` produces an installable APK out of the box.
-            // Replace with your own signing config before publishing.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = when {
+                hasReleaseKey -> signingConfigs.getByName("release")
+                requireReleaseKey -> throw GradleException(
+                    "REQUIRE_RELEASE_SIGNING=true but the release keystore or one of KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD is missing",
+                )
+                // Local builds without the production key: signed with the debug key so the APK still installs.
+                // Such an APK is for testing only and must never be published (the release workflow refuses it).
+                else -> signingConfigs.getByName("debug")
+            }
         }
     }
 
