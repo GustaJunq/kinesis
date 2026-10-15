@@ -1,0 +1,57 @@
+name: Release
+
+# Publishes a GitHub Release with the APK when a tag like v0.1.1 is pushed.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build, e.g. v0.1.1"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build APK and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon :core:test
+
+      - name: Build release APK
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          APK="kinesis-${VERSION}.apk"
+          cp app/build/outputs/apk/release/*.apk "$APK"
+          sha256sum "$APK" > "$APK.sha256"
+          NOTES="docs/releases/${TAG}.md"
+          if [ ! -f "$NOTES" ]; then NOTES=""; fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" "$APK.sha256" --clobber
+          elif [ -n "$NOTES" ]; then
+            gh release create "$TAG" "$APK" "$APK.sha256" --title "Kinesis Editor ${VERSION}" --notes-file "$NOTES"
+          else
+            gh release create "$TAG" "$APK" "$APK.sha256" --title "Kinesis Editor ${VERSION}" --generate-notes
+          fi
