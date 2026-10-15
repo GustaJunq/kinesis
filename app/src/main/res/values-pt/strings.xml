@@ -118,6 +118,9 @@
     <string name="line_height">Entrelinha</string>
     <string name="lock">Travar</string>
     <string name="loop">Repetir</string>
+    <string name="loop_cycle">Ciclo</string>
+    <string name="loop_none">Nenhum</string>
+    <string name="loop_pingpong">Vai e volta</string>
     <string name="mask_add">Somar</string>
     <string name="mask_intersect">Interseção</string>
     <string name="mask_n">Máscara %1$d</string>
@@ -205,6 +208,10 @@
     <string name="prop_trim_start">Início do traço</string>
     <string name="prop_value">Valor</string>
     <string name="prop_volume">Volume</string>
+    <string name="ptab_mask">Máscara</string>
+    <string name="ptab_text">Texto</string>
+    <string name="ptab_transform">Transformar</string>
+    <string name="ptab_transition">Transição</string>
     <string name="quality">Qualidade</string>
     <string name="quality_4k">4K</string>
     <string name="quality_fhd">Full HD</string>
@@ -214,6 +221,7 @@
     <string name="quality_standard">Padrão</string>
     <string name="redo">Refazer</string>
     <string name="remove">Remover</string>
+    <string name="remove_keyframe">Remover keyframe</string>
     <string name="rename">Renomear</string>
     <string name="render_error">Erro no preview: %1$s (toque para fechar)</string>
     <string name="resolution">Resolução</string>

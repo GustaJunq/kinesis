@@ -345,16 +345,33 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
 
         if (showProps || showSettings) {
             ModalBottomSheet(onDismissRequest = { showProps = false; showSettings = false; propsFocus = null }, containerColor = KColors.Sheet, shape = KShapes.Sheet) {
-                Box(Modifier.fillMaxWidth().height(sheetHeight)) {
+                Column(Modifier.fillMaxWidth().height(sheetHeight)) {
                     PropertiesPanel(
                         vm, project, time, if (showSettings) null else selection,
                         onEditCurve = { curveTarget = it },
                         onPickTexture = { id -> textureTarget = id; pickTexture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         onPickFont = { pickFont.launch(arrayOf("font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream", "*/*")) },
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.weight(1f),
                         onAddEffect = { showProps = false; showEffects = true },
                         focusSection = propsFocus,
                     )
+                    curveTarget?.let { target ->
+                        val layer = LayerTree.find(project, target.layerId)
+                        val prop = layer?.let { LayerProps.find(it, target.propId) }
+                        val animatable = layer?.let { l -> prop?.get(l) }
+                        val keyframe = animatable?.keyframes?.getOrNull(target.keyIndex)
+                        if (layer == null || prop == null || animatable == null || keyframe == null) {
+                            curveTarget = null
+                        } else {
+                            CurveEditorPanel(
+                                easing = keyframe.easing,
+                                loop = animatable.loop,
+                                onEasing = { vm.setEasing(layer.id, prop, target.keyIndex, it) },
+                                onLoop = { vm.setLoop(layer.id, prop, it) },
+                                onClose = { curveTarget = null },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -396,17 +413,4 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         )
     }
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })
-    curveTarget?.let { target ->
-        val layer = LayerTree.find(project, target.layerId)
-        val prop = layer?.let { LayerProps.find(it, target.propId) }
-        val keyframe = prop?.get(layer)?.keyframes?.getOrNull(target.keyIndex)
-        if (layer == null || prop == null || keyframe == null) {
-            curveTarget = null
-        } else {
-            CurveEditorDialog(keyframe.easing, onDismiss = { curveTarget = null }) { easing ->
-                vm.setEasing(layer.id, prop, target.keyIndex, easing)
-                curveTarget = null
-            }
-        }
-    }
 }

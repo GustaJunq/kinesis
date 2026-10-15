@@ -118,6 +118,9 @@
     <string name="line_height">Line height</string>
     <string name="lock">Lock</string>
     <string name="loop">Loop</string>
+    <string name="loop_cycle">Cycle</string>
+    <string name="loop_none">None</string>
+    <string name="loop_pingpong">Ping-pong</string>
     <string name="mask_add">Add</string>
     <string name="mask_intersect">Intersect</string>
     <string name="mask_n">Mask %1$d</string>
@@ -205,6 +208,10 @@
     <string name="prop_trim_start">Trim start</string>
     <string name="prop_value">Value</string>
     <string name="prop_volume">Volume</string>
+    <string name="ptab_mask">Mask</string>
+    <string name="ptab_text">Text</string>
+    <string name="ptab_transform">Transform</string>
+    <string name="ptab_transition">Transition</string>
     <string name="quality">Quality</string>
     <string name="quality_4k">4K</string>
     <string name="quality_fhd">Full HD</string>
@@ -214,6 +221,7 @@
     <string name="quality_standard">Standard</string>
     <string name="redo">Redo</string>
     <string name="remove">Remove</string>
+    <string name="remove_keyframe">Remove keyframe</string>
     <string name="rename">Rename</string>
     <string name="render_error">Preview error: %1$s (tap to dismiss)</string>
     <string name="resolution">Resolution</string>

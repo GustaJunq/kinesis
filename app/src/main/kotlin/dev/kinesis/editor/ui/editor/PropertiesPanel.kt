@@ -111,7 +111,14 @@ import dev.kinesis.editor.R
 import dev.kinesis.editor.ui.common.ChoiceChips
 import dev.kinesis.editor.ui.common.ColorPickerDialog
 import dev.kinesis.editor.ui.common.ColorSwatch
+import dev.kinesis.editor.ui.common.KeyframeButton
 import dev.kinesis.editor.ui.common.LabeledSlider
+import dev.kinesis.editor.ui.common.OverlineLabel
+import dev.kinesis.editor.ui.common.PillChip
+import dev.kinesis.editor.ui.theme.KDims
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.saveable.rememberSaveable
 import dev.kinesis.editor.ui.common.ScrubNumber
 import dev.kinesis.editor.ui.common.TextInputDialog
 import dev.kinesis.editor.ui.theme.KColors
@@ -125,6 +132,30 @@ private val SYSTEM_FONTS = listOf(
     "serif", "monospace", "serif-monospace", "casual", "cursive", "sans-serif-smallcaps",
 )
 
+enum class PropTab(val label: Int) {
+    TRANSFORM(R.string.ptab_transform), TEXT(R.string.ptab_text), EFFECTS(R.string.effects), MASK(R.string.ptab_mask), TRANSITION(R.string.ptab_transition),
+}
+
+/** Tabs offered for [layer] (the text tab only for text layers, masks only for 2D layers, ...). */
+fun propTabs(layer: Layer): List<PropTab> = buildList {
+    add(PropTab.TRANSFORM)
+    if (layer.type == LayerType.TEXT) add(PropTab.TEXT)
+    if (layer.type.isVisual) add(PropTab.EFFECTS)
+    if (layer.type.is2DVisual) add(PropTab.MASK)
+    if (layer.type.isVisual) add(PropTab.TRANSITION)
+}
+
+/** The tab that contains the panel item [key] (see [propertyItemKeys]). */
+private fun tabOfItem(key: String?): PropTab? = when (key) {
+    "effects" -> PropTab.EFFECTS
+    "masks", "matte" -> PropTab.MASK
+    "transitions" -> PropTab.TRANSITION
+    "animators", "content" -> PropTab.TEXT
+    else -> null
+}
+
+private fun isTextSection(id: String) = id == "text"
+
 @Composable
 fun PropertiesPanel(
     vm: EditorViewModel,
@@ -136,42 +167,66 @@ fun PropertiesPanel(
     onPickFont: () -> Unit,
     modifier: Modifier = Modifier,
     onAddEffect: () -> Unit = {},
-    /** Item key to scroll to when the panel opens (e.g. "masks", "transitions"); see [propertyItemKeys]. */
+    /** Item key to open when the panel shows (e.g. "masks", "transitions"); see [propertyItemKeys]. */
     focusSection: String? = null,
 ) {
     val layer = selection?.let { LayerTree.find(project, it) }
-    val listState = rememberLazyListState()
-    LaunchedEffect(focusSection, layer?.id) {
-        val index = if (layer != null && focusSection != null) propertyItemKeys(layer).indexOf(focusSection) else -1
-        if (index >= 0) listState.scrollToItem(index)
-    }
-    LazyColumn(modifier.fillMaxSize().background(KColors.Background), state = listState, contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 64.dp)) {
-        if (layer == null) {
+    if (layer == null) {
+        LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(KDims.Gutter, 8.dp, KDims.Gutter, 64.dp)) {
             item { CompositionSettings(vm, project) }
-            return@LazyColumn
         }
-        val local = time - LayerTree.containerOffset(project, layer.id) - layer.start
-        item(key = "header") { LayerHeader(vm, layer) }
-        item(key = "content") { ContentControls(vm, project, layer, onPickTexture, onPickFont) }
-        for (section in LayerProps.sections(layer)) {
-            if (section.id.startsWith("effects.") || section.id.startsWith("masks.")) continue
-            item(key = "section:${section.id}") {
-                SectionTitle(stringResource(sectionTitleRes(section.id)))
-                section.props.forEach { PropRow(vm, layer, it, local, onEditCurve) }
+        return
+    }
+    val tabs = propTabs(layer)
+    var tab by rememberSaveable(layer.id, focusSection) { mutableStateOf(tabOfItem(focusSection)?.takeIf { it in tabs } ?: PropTab.TRANSFORM) }
+    if (tab !in tabs) tab = PropTab.TRANSFORM
+    val listState = rememberLazyListState()
+    val local = time - LayerTree.containerOffset(project, layer.id) - layer.start
+
+    Column(modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = KDims.Gutter, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            for (entry in tabs) PillChip(stringResource(entry.label), entry == tab, { tab = entry })
+        }
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = listState, contentPadding = PaddingValues(KDims.Gutter, 4.dp, KDims.Gutter, 64.dp)) {
+            when (tab) {
+                PropTab.TRANSFORM -> {
+                    item(key = "header") { LayerHeader(vm, layer) }
+                    if (layer.type != LayerType.TEXT) item(key = "content") { ContentControls(vm, project, layer, onPickTexture, onPickFont) }
+                    for (section in LayerProps.sections(layer)) {
+                        if (section.id.startsWith("effects.") || section.id.startsWith("masks.") || isTextSection(section.id)) continue
+                        item(key = "section:${section.id}") {
+                            SectionTitle(stringResource(sectionTitleRes(section.id)))
+                            section.props.forEach { PropRow(vm, layer, it, local, onEditCurve) }
+                        }
+                    }
+                    item(key = "layer") { LayerSettings(vm, project, layer) }
+                }
+                PropTab.TEXT -> {
+                    item(key = "content") { ContentControls(vm, project, layer, onPickTexture, onPickFont) }
+                    for (section in LayerProps.sections(layer)) {
+                        if (!isTextSection(section.id)) continue
+                        item(key = "section:${section.id}") {
+                            SectionTitle(stringResource(sectionTitleRes(section.id)))
+                            section.props.forEach { PropRow(vm, layer, it, local, onEditCurve) }
+                        }
+                    }
+                    item(key = "animators") { TextAnimatorsBlock(vm, layer) }
+                }
+                PropTab.EFFECTS -> item(key = "effects") { EffectsBlock(vm, layer, local, onEditCurve, onAddEffect) }
+                PropTab.MASK -> {
+                    item(key = "masks") { MasksBlock(vm, layer, local, onEditCurve) }
+                    item(key = "matte") { MatteBlock(vm, project, layer) }
+                }
+                PropTab.TRANSITION -> item(key = "transitions") { TransitionsBlock(vm, layer) }
             }
         }
-        if (layer.type.isVisual) item(key = "effects") { EffectsBlock(vm, layer, local, onEditCurve, onAddEffect) }
-        if (layer.type.is2DVisual) {
-            item(key = "masks") { MasksBlock(vm, layer, local, onEditCurve) }
-            item(key = "matte") { MatteBlock(vm, project, layer) }
-        }
-        if (layer.type == LayerType.TEXT) item(key = "animators") { TextAnimatorsBlock(vm, layer) }
-        if (layer.type.isVisual) item(key = "transitions") { TransitionsBlock(vm, layer) }
-        item(key = "layer") { LayerSettings(vm, project, layer) }
     }
 }
 
-/** Keys of the panel items for [layer], in display order (mirrors [PropertiesPanel]). */
+/** Keys of the panel items for [layer] (used to choose the tab a shortcut opens). */
 fun propertyItemKeys(layer: Layer): List<String> = buildList {
     add("header")
     add("content")
@@ -189,7 +244,7 @@ fun propertyItemKeys(layer: Layer): List<String> = buildList {
 @Composable
 fun SectionTitle(text: String, trailing: @Composable () -> Unit = {}) {
     Row(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = KColors.Accent, modifier = Modifier.weight(1f))
+        OverlineLabel(text.uppercase(), Modifier.weight(1f), color = KColors.Accent)
         trailing()
     }
 }
@@ -224,28 +279,17 @@ fun PropRow(vm: EditorViewModel, layer: Layer, prop: AnimProp<*>, local: Double,
                 IconButton(
                     onClick = { onEditCurve(CurveTarget(layer.id, prop.id, segment)) },
                     enabled = segment >= 0 && segment < anim.keyframes.size - 1,
-                    modifier = Modifier.size(32.dp),
-                ) { Icon(Icons.Filled.ShowChart, stringResource(R.string.easing), modifier = Modifier.size(18.dp)) }
+                    modifier = Modifier.size(KDims.MinTouch),
+                ) { Icon(Icons.Filled.ShowChart, stringResource(R.string.easing), tint = KColors.TextSoft, modifier = Modifier.size(20.dp)) }
             }
-            // Keyframe toggle: filled = keyframe here, outlined accent = animated, grey = static.
-            Box(
-                Modifier
-                    .size(32.dp)
-                    .combinedClickable(
-                        onClick = { vm.toggleKeyframe(layer.id, prop) },
-                        onLongClick = { if (animated) vm.clearKeyframes(layer.id, prop) },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                val c = if (animated) KColors.Keyframe else KColors.TextSecondary
-                Box(
-                    Modifier
-                        .size(12.dp)
-                        .rotate(45f)
-                        .border(1.5.dp, c)
-                        .background(if (hasKey) c else Color.Transparent),
-                )
-            }
+            // Keyframe toggle: filled amber diamond = keyframe here, outline = none (amber outline when animated).
+            KeyframeButton(
+                hasKey = hasKey,
+                animated = animated,
+                contentDescription = stringResource(if (hasKey) R.string.remove_keyframe else R.string.add_keyframe),
+                onClick = { vm.toggleKeyframe(layer.id, prop) },
+                onLongClick = if (animated) ({ vm.clearKeyframes(layer.id, prop) }) else null,
+            )
         }
         when (val kind = prop.kind) {
             is FloatKind -> {
