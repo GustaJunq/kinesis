@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to (re)build, e.g. v0.1.1"
+        description: "Release tag, e.g. v0.1.1 (created on the selected branch if it does not exist)"
         required: true
 
 permissions:
@@ -20,8 +20,6 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: actions/setup-java@v4
         with:
@@ -51,7 +49,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" "$APK.sha256" --clobber
           elif [ -n "$NOTES" ]; then
-            gh release create "$TAG" "$APK" "$APK.sha256" --title "Kinesis Editor ${VERSION}" --notes-file "$NOTES"
+            gh release create "$TAG" "$APK" "$APK.sha256" --target "$GITHUB_SHA" --title "Kinesis Editor ${VERSION}" --notes-file "$NOTES"
           else
-            gh release create "$TAG" "$APK" "$APK.sha256" --title "Kinesis Editor ${VERSION}" --generate-notes
+            gh release create "$TAG" "$APK" "$APK.sha256" --target "$GITHUB_SHA" --title "Kinesis Editor ${VERSION}" --generate-notes
           fi
