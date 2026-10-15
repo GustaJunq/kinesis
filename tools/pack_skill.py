@@ -36,8 +36,11 @@ def entries():
     items = [(PREFIX + "SKILL.md", os.path.join(SKILL_DIR, "SKILL.md"))]
     items += list(_walk(os.path.join(SKILL_DIR, "examples"), PREFIX + "examples/"))
     items += list(_walk(os.path.join(ROOT, "tools", "knsproj"), PREFIX + "tools/knsproj/"))
-    items.append((PREFIX + "schema/knsproj-v1.schema.json", os.path.join(ROOT, "schema", "knsproj-v1.schema.json")))
+    for name in sorted(os.listdir(os.path.join(ROOT, "schema"))):
+        if name.endswith(".schema.json"):
+            items.append((PREFIX + "schema/" + name, os.path.join(ROOT, "schema", name)))
     items.append((PREFIX + "docs/knsproj.md", os.path.join(ROOT, "docs", "knsproj.md")))
+    items.append((PREFIX + "docs/expressoes.md", os.path.join(ROOT, "docs", "expressoes.md")))
     return sorted(items)
 
 

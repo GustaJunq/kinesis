@@ -11,7 +11,7 @@ SUPPORTED_KEYWORDS = {
     # validation
     "type", "properties", "required", "additionalProperties", "enum", "const", "items",
     "minItems", "maxItems", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum",
-    "pattern", "minLength", "$ref", "oneOf", "anyOf", "allOf", "if", "then", "else",
+    "pattern", "minLength", "maxLength", "$ref", "oneOf", "anyOf", "allOf", "if", "then", "else",
     # annotations / structure
     "$schema", "$id", "$defs", "title", "description", "default", "examples",
 }
@@ -114,6 +114,8 @@ class Validator:
         if isinstance(value, str):
             if "minLength" in schema and len(value) < schema["minLength"]:
                 errors.append(SchemaError(path, f"must have at least {schema['minLength']} characters"))
+            if "maxLength" in schema and len(value) > schema["maxLength"]:
+                errors.append(SchemaError(path, f"must have at most {schema['maxLength']} characters"))
             if "pattern" in schema and not re.search(schema["pattern"], value):
                 errors.append(SchemaError(path, f"{value!r} does not match {schema['pattern']}"))
 

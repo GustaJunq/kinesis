@@ -1,6 +1,7 @@
 package dev.kinesis.core.format
 
 import dev.kinesis.core.anim.Animatable
+import dev.kinesis.core.expr.ExpressionEngine
 import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.EffectRegistry
 import dev.kinesis.core.model.EffectTarget
@@ -68,6 +69,13 @@ object ProjectValidator {
         var lightCount = 0
 
         fun checkAnimatable(anim: Animatable<*>, path: String, layerDuration: Double) {
+            anim.expression?.let { src ->
+                if (src.length > ExpressionEngine.MAX_SOURCE) {
+                    err("expression.length", "$path.expression", "expression is longer than ${ExpressionEngine.MAX_SOURCE} characters")
+                } else if (src.isNotBlank()) {
+                    ExpressionEngine.check(src)?.let { e -> err("expression.syntax", "$path.expression", e.message ?: "invalid expression") }
+                }
+            }
             if (!anim.isAnimated) return
             val times = anim.keyframes.map { it.time }
             for (i in 1 until times.size) {
@@ -166,6 +174,17 @@ object ProjectValidator {
                     checkAnimatable(t.letterSpacing, "$p.text.letterSpacing", d)
                     checkAssetRef(t.font.asset, AssetType.FONT, "$p.text.font.asset")
                     if (t.font.weight !in 100..900) err("text.weight", "$p.text.font.weight", "font weight must be between 100 and 900")
+                    t.propertyAnimators.forEachIndexed { ai, a ->
+                        val ap = "$p.text.propertyAnimators[$ai]"
+                        checkAnimatable(a.amount, "$ap.amount", d)
+                        a.position?.let { checkAnimatable(it, "$ap.position", d) }
+                        a.scale?.let { checkAnimatable(it, "$ap.scale", d) }
+                        a.rotation?.let { checkAnimatable(it, "$ap.rotation", d) }
+                        a.opacity?.let { checkAnimatable(it, "$ap.opacity", d) }
+                        if (a.position == null && a.scale == null && a.rotation == null && a.opacity == null) {
+                            warn("text.propertyAnimator", ap, "the animator has no property (position, scale, rotation or opacity), so it changes nothing")
+                        }
+                    }
                     t.animators.forEachIndexed { ai, a ->
                         if (a.unitDuration <= 0.0) err("text.animator", "$p.text.animators[$ai].unitDuration", "unitDuration must be > 0")
                         if (a.stagger < 0.0) err("text.animator", "$p.text.animators[$ai].stagger", "stagger must be >= 0")

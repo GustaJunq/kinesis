@@ -9,6 +9,7 @@ lifecycle = "2.8.7"
 composeBom = "2024.12.01"
 junit = "4.13.2"
 jsonSchemaValidator = "1.5.9"
+rhino = "1.7.15"
 androidxTestRunner = "1.6.2"
 androidxTestCore = "1.6.1"
 androidxTestJunit = "1.2.1"
@@ -31,6 +32,7 @@ androidx-compose-foundation = { module = "androidx.compose.foundation:foundation
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 junit = { module = "junit:junit", version.ref = "junit" }
+rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "jsonSchemaValidator" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }

@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "generator": "tests",
   "meta": {
     "title": "Everything",

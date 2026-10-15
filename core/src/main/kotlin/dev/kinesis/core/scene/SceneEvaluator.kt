@@ -1,6 +1,9 @@
 package dev.kinesis.core.scene
 
 import dev.kinesis.core.anim.at
+import dev.kinesis.core.expr.ExprScope
+import dev.kinesis.core.expr.ExpressionResolver
+import dev.kinesis.core.expr.TextExpression
 import dev.kinesis.core.math.Affine2D
 import dev.kinesis.core.math.Color
 import dev.kinesis.core.math.Mat4
@@ -37,7 +40,9 @@ object SceneEvaluator {
     const val NEAR_PLANE = 10f
     const val FAR_PLANE = 200_000f
 
-    fun evaluate(project: KnsProject, time: Double): FrameScene {
+    fun evaluate(project: KnsProject, time: Double): FrameScene = ExprScope.with(project.composition) { evaluateScene(project, time) }
+
+    private fun evaluateScene(project: KnsProject, time: Double): FrameScene {
         val comp = project.composition
         val camera = evaluateCamera(project, time)
         val (ambient, lights) = evaluateLights(project, time)
@@ -80,7 +85,7 @@ object SceneEvaluator {
     }
 
     private fun evaluateLayer(
-        layer: Layer,
+        layer0: Layer,
         siblings: Map<String, Layer>,
         containerTime0: Double,
         containerMatrix: Affine2D,
@@ -88,7 +93,8 @@ object SceneEvaluator {
         comp: Composition,
         matte: MatteRef?,
     ): RenderNode? {
-        val containerTime = posterized(layer, containerTime0)
+        val containerTime = posterized(layer0, containerTime0)
+        val layer = ExpressionResolver.resolve(layer0, siblings, containerTime, comp)
         val t = layer.localTime(containerTime)
         val transition = Transitions.evaluate(layer, t, comp)
         fun effects(toComp: Affine2D) = resolveEffects(layer.effects, t, toComp) { index, delay, count, decay ->
@@ -122,7 +128,7 @@ object SceneEvaluator {
                 )
             }
             layer.type.is2DVisual -> {
-                val content = content2D(layer, t) ?: return null
+                val content = content2D(layer, t, siblings, containerTime, comp) ?: return null
                 val parent = parentMatrix2D(layer, siblings, containerTime)
                 val world = containerMatrix * parent * localMatrix2D(layer, t)
                 val pivot = world.apply(layer.transform.anchor.at(t))
@@ -209,7 +215,7 @@ object SceneEvaluator {
         var m = Affine2D.IDENTITY
         for (p in parentChain(layer, siblings)) {
             if (!p.type.is2DVisual) break
-            m = localMatrix2D(p, p.localTime(containerTime)) * m
+            m = localMatrix2D(resolved(p, siblings, containerTime), p.localTime(containerTime)) * m
         }
         return m
     }
@@ -218,9 +224,15 @@ object SceneEvaluator {
         var m = Mat4.identity()
         for (p in parentChain(layer, siblings)) {
             if (!p.type.isRendered3D) break
-            m = localMatrix3D(p, p.localTime(containerTime)) * m
+            m = localMatrix3D(resolved(p, siblings, containerTime), p.localTime(containerTime)) * m
         }
         return m
+    }
+
+    /** [layer] with its expressions evaluated at [containerTime] (unchanged outside an evaluation or without expressions). */
+    private fun resolved(layer: Layer, siblings: Map<String, Layer>, containerTime: Double): Layer {
+        val comp = ExprScope.comp ?: return layer
+        return ExpressionResolver.resolve(layer, siblings, containerTime, comp)
     }
 
     private fun parentChain(layer: Layer, siblings: Map<String, Layer>): List<Layer> {
@@ -236,15 +248,15 @@ object SceneEvaluator {
 
     // ------------------------------------------------------------------ content
 
-    private fun content2D(layer: Layer, t: Double): Content2D? = when (layer.type) {
-        LayerType.TEXT -> textContent(layer.text ?: TextContent(), t)
+    private fun content2D(layer: Layer, t: Double, siblings: Map<String, Layer>, containerTime: Double, comp: Composition): Content2D? = when (layer.type) {
+        LayerType.TEXT -> textContent(layer.text ?: TextContent(), t, TextExpression.evaluate(layer, siblings, containerTime, comp))
         LayerType.SHAPE -> shapeContent(layer.shape ?: ShapeContent(), t)
         LayerType.IMAGE -> layer.image?.let { Content2D.Image(it.asset) }
         LayerType.VIDEO -> layer.video?.let { Content2D.Video(it.asset, it.sourceTime(t).coerceAtLeast(0.0)) }
         else -> null
     }
 
-    private fun textContent(c: TextContent, t: Double) = Content2D.Text(
+    private fun textContent(c: TextContent, t: Double, glyphStates: Array<GlyphState>?) = Content2D.Text(
         content = c.content,
         font = c.font,
         fontSize = c.fontSize.at(t).coerceAtLeast(1f),
@@ -257,6 +269,7 @@ object SceneEvaluator {
         strokeWidth = c.stroke?.takeIf { it.enabled }?.width?.at(t)?.coerceAtLeast(0f) ?: 0f,
         animators = c.animators,
         localTime = t,
+        glyphStates = glyphStates,
     )
 
     private fun shapeContent(s: ShapeContent, t: Double) = Content2D.Shape(
@@ -374,7 +387,8 @@ object SceneEvaluator {
         var position = Vec3(0f, 0f, -defaultCameraDistance(comp.height, fov))
         var target = Vec3.ZERO
         if (active != null) {
-            val (layer, containerTime, siblings) = active
+            val (layer0, containerTime, siblings) = active
+            val layer = resolved(layer0, siblings, containerTime)
             val cam = layer.camera ?: CameraContent()
             val t = layer.localTime(containerTime)
             fov = cam.fov.at(t).clamp(1f, 170f)
@@ -392,7 +406,8 @@ object SceneEvaluator {
         if (active.isEmpty()) return DEFAULT_AMBIENT to DEFAULT_LIGHTS
         var ar = 0f; var ag = 0f; var ab = 0f
         val lights = ArrayList<LightState>()
-        for ((layer, containerTime, siblings) in active) {
+        for ((layer0, containerTime, siblings) in active) {
+            val layer = resolved(layer0, siblings, containerTime)
             val light = layer.light ?: LightContent()
             val t = layer.localTime(containerTime)
             val c = light.color.at(t)

@@ -12,7 +12,8 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
-- Schema oficial: `schema/knsproj-v2.schema.json` (formato versão 2; arquivos v1 ainda abrem e são migrados)
+- Schema oficial: `schema/knsproj-v3.schema.json` (formato versão 3; arquivos v1 e v2 ainda abrem e são migrados)
+- Expressões (APIs, unidades, matriz de compatibilidade): `docs/expressoes.md`
 - Lista completa de efeitos (parâmetros, padrões, faixas): tabela da seção 7 de `docs/knsproj.md` ou `tools/knsproj/effects.json`
 - Exemplos: `.claude/skills/knsproj/examples/` (veja "Exemplos" abaixo)
 
@@ -27,6 +28,8 @@ Tudo em `.claude/skills/knsproj/examples/`; cada pasta tem `project.json` e `REA
 | Pasta | Use quando o pedido envolve |
 |---|---|
 | `basicos/texto-animators` | texto aparecendo por caractere/palavra, typewriter, onda |
+| `basicos/texto-bounce` | texto que quica letra por letra (animador de texto com expressão, o "Bounce Text" do After Effects) |
+| `basicos/expressoes` | `wiggle`, `loopOut`, matemática na opacidade |
 | `basicos/shape-trim-path` | linha que se desenha, círculo de loading |
 | `basicos/keyframes-easing` | overshoot (`cubicBezier`), bounce, loops `pingpong` |
 | `basicos/parent-anchor` | pivô fora do centro, camada filha herdando rotação |
@@ -44,7 +47,7 @@ Tudo em `.claude/skills/knsproj/examples/`; cada pasta tem `project.json` e `REA
 | `receitas/slideshow-transicoes-musica` | sequência de slides com transições e música |
 | `receitas/video-vertical-legenda-por-palavra` | 1080x1920 com legendas palavra a palavra |
 | `efeitos/<categoria>` | um exemplo por categoria de efeito: `cor-e-luz`, `desfoque-e-nitidez`, `distorcao` (inclui **Glass**), `movimentar-e-transformar`, `estilizar`, `glitch`, `desenho-e-borda`, `procedimental`, `fosco-mascara-e-chave`, `tempo-e-transicao`, `texto`, `utilitario` |
-| `erros/*` | quando o `validate` acusar `keyframe.order`, `layer.parentKind`, `layer.matteMissing` ou `layer.missingAsset`: o README mostra a causa e o conserto |
+| `erros/*` | quando o `validate` acusar `keyframe.order`, `layer.parentKind`, `layer.matteMissing`, `layer.missingAsset` ou `expression.syntax`: o README mostra a causa e o conserto |
 
 Para usar um exemplo como ponto de partida: copie a pasta para `generated/<slug>`, ajuste textos, cores, tempos e
 mídias, e valide. Os exemplos de `basicos/`, `receitas/` e `efeitos/` validam com 0 erros e 0 avisos; os de `erros/` falham de propósito.
@@ -92,6 +95,9 @@ e rode a CLI de dentro dessa pasta (`python3 tools/knsproj validate …`). Reger
 - Cor: `"#RRGGBB"` ou `"#RRGGBBAA"`. Escala: `1` = 100%. Rotação em graus (horário). Opacidade 0..1.
 - Propriedade animável: valor simples **ou** `{"keyframes": [{"time": 0, "value": …, "easing": "easeOutCubic"}, …], "loop": "cycle"}`.
   O `easing` vale para o segmento que **começa** naquele keyframe.
+- **Expressões (formato 3):** qualquer propriedade animável aceita `"expression": "<JavaScript>"`, junto de `"value"` (sem
+  keyframes) ou de `"keyframes"`. O resultado é a **última instrução avaliada**. `"expressionEnabled": false` desliga sem apagar.
+  Veja a seção "Expressões" abaixo e `docs/expressoes.md`.
 
 Esqueleto de camada (campos comuns): `id`, `type`, `name`, `start`, `duration`, `parent`, `blendMode`,
 `motionBlur`, `transform` (2D) ou `transform3d` (3D), `effects`, `masks`, `matte`, `transitionIn`, `transitionOut`,
@@ -161,6 +167,40 @@ Valores possíveis (o schema é a fonte da verdade):
   ou `{"cubicBezier": [x1, y1, x2, y2]}`.
 - Track matte: `"matte": {"layer": "<id irmão>", "mode": "alpha"}` — a camada-fonte some automaticamente.
 - Máscaras: `"masks": [{"shape": "ellipse", "mode": "add", "size": [600, 400], "feather": 30}]`.
+
+## Expressões (opcional, formato 3)
+
+Use expressões só quando keyframes seriam trabalhosos ou impossíveis: movimento contínuo (`wiggle`), loops (`loopOut`),
+pulsos (`Math.sin`), ou animação **por caractere**. Prefira keyframes normais para entradas e saídas simples.
+
+```jsonc
+// Tremor contínuo na posição; loop de ida e volta na rotação; pulso na opacidade
+"transform": {
+  "position": { "value": [0, 0], "expression": "wiggle(3, 40)" },
+  "rotation": { "keyframes": [{ "time": 0, "value": 0 }, { "time": 1, "value": 90 }], "expression": "loopOut(\"pingpong\")" },
+  "opacity":  { "value": 1, "expression": "linear(Math.sin(time * 4), -1, 1, 20, 100)" }
+}
+
+// Texto que quica letra por letra: animador de texto cujo seletor (amount) tem a expressão
+"text": { "content": "BOUNCE", "fontSize": 150,
+  "propertyAnimators": [{ "name": "Bounce", "unit": "character", "scale": [0, 0],
+    "amount": { "value": 100, "expression": "delay = 0.030;\nmyDelay = delay * textIndex;\nt = (time - inPoint) - myDelay;\nif (t >= 0) {\n  s = 50 * Math.cos(2 * t * 2 * Math.PI) / Math.exp(8 * t);\n  [s, s]\n} else {\n  value\n}" } }] }
+```
+
+Regras que evitam erro:
+- **Unidades do After Effects dentro da expressão:** escala e opacidade em % (100 = normal), posição medida do canto
+  superior esquerdo (`[thisComp.width / 2, thisComp.height / 2]` = centro), cores `[r, g, b, a]` de 0 a 1, rotação em graus. O
+  arquivo guarda os valores no formato do Kinesis; a conversão é automática.
+- Disponíveis: `time`, `value`, `inPoint`, `outPoint`, `index`, `thisComp`, `thisLayer`, `thisProperty`, `wiggle`, `loopOut`,
+  `loopIn` (`cycle`, `pingpong`, `offset`, `continue`), `linear`, `ease`, `easeIn`, `easeOut`, `posterizeTime`, `random`,
+  `seedRandom`, `clamp`, `length`, `normalize`, `add`/`sub`/`mul`/`div`, `Math`, e em animadores de texto `textIndex` (a
+  partir de 1), `textTotal`, `selectorValue`. **Nada além disso existe** (`effect()`, `sourceText`, `gaussRandom`... não):
+  consulte a matriz em `docs/expressoes.md`.
+- Vetores são arrays: some com `add(a, b)`, não com `a + b`. Sem parâmetros padrão nem `...spread`.
+- Em animador de texto, `scale` e `opacity` do animador são em %; o `amount` (do seletor) é o quanto dessas propriedades cada
+  caractere recebe (`textIndex` conta caracteres, `index` é a camada).
+- Sempre rode `validate`: ele acusa `expression.syntax` (a CLI só confere parênteses, aspas e comentários; o app mostra a
+  linha exata do erro de JavaScript).
 
 ## Boas práticas de motion design
 

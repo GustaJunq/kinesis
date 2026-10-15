@@ -49,6 +49,8 @@ data class TextContent(
     val maxWidth: Float = 0f,
     val stroke: StrokeSpec? = null,
     val animators: List<TextAnimator> = emptyList(),
+    /** After Effects style animators: per-character properties weighted by an expression selector. */
+    val propertyAnimators: List<TextPropertyAnimator> = emptyList(),
 )
 
 @Serializable
@@ -103,6 +105,38 @@ data class TextAnimator(
     /** Pixels for slides and wave amplitude, degrees for rotate, starting scale in percent for scale (0 = from nothing). */
     val amount: Float = 60f,
     val order: TextOrder = TextOrder.FORWARD,
+)
+
+/**
+ * A text animator in the After Effects sense: it holds properties (any subset of position, scale, rotation, opacity)
+ * and an Expression Selector whose [amount] (percent) says how strongly each character receives them.
+ *
+ * Per character, with `a = amount / 100` (each axis for position and scale when the expression returns an array):
+ * - position: `offset = position · a` (pixels)
+ * - scale: `factor = 1 + (scale / 100 − 1) · a` (the property is in percent; 100 means unchanged)
+ * - rotation: `rotation · a` (degrees)
+ * - opacity: `1 + (opacity / 100 − 1) · a`
+ *
+ * The [amount] expression runs once per character (or word / line, see [unit]) and sees `textIndex` (1-based),
+ * `textTotal`, `selectorValue` and the usual context (`time`, `inPoint`, `outPoint`, `index`, `thisComp`, ...).
+ * Its `value` is the base amount (100 by default). Several animators combine multiplicatively / additively.
+ */
+@Serializable
+data class TextPropertyAnimator(
+    val name: String = "Animator 1",
+    val enabled: Boolean = true,
+    /** What `textIndex` counts: characters (spaces included, as in After Effects), words or lines. */
+    val unit: TextUnit = TextUnit.CHARACTER,
+    /** Pixels, added to the character position. */
+    val position: AnimVec2? = null,
+    /** Percent; 100 = unchanged. */
+    val scale: AnimVec2? = null,
+    /** Degrees, clockwise. */
+    val rotation: AnimFloat? = null,
+    /** Percent; 100 = unchanged. */
+    val opacity: AnimFloat? = null,
+    /** Selector amount in percent. Give it an `expression` to drive the animation per character. */
+    val amount: AnimFloat = anim(100f),
 )
 
 // ---------------------------------------------------------------- Shapes

@@ -71,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -95,6 +96,9 @@ import dev.kinesis.editor.data.ProjectImportException
 import dev.kinesis.editor.data.ProjectStore
 import dev.kinesis.editor.data.ProjectSummary
 import dev.kinesis.editor.ui.common.OverlineLabel
+import dev.kinesis.editor.ui.onboarding.LanguageChoices
+import dev.kinesis.editor.ui.onboarding.ThemeChoices
+import dev.kinesis.editor.ui.settings.AppSettings
 import dev.kinesis.editor.ui.common.PrimaryButton
 import dev.kinesis.editor.ui.common.SecondaryButton
 import dev.kinesis.editor.ui.theme.DEFAULT_COMPOSITION_BACKGROUND
@@ -334,9 +338,7 @@ private fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label
 @Composable
 private fun Brand() {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)).background(KBrushes.Accent), contentAlignment = Alignment.Center) {
-            Text("K", color = KColors.OnAccent, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-        }
+        Image(painterResource(R.drawable.kinesis_logo), contentDescription = null, modifier = Modifier.size(36.dp))
         Spacer(Modifier.width(10.dp))
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge)
     }
@@ -497,6 +499,15 @@ private fun SettingsTab() {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(KDims.Gutter), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(R.string.nav_settings), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(4.dp))
+        Column(Modifier.fillMaxWidth().clip(KShapes.Card).background(KColors.Card).border(1.dp, KColors.Line, KShapes.Card).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OverlineLabel(stringResource(R.string.settings_language))
+            LanguageChoices()
+            Spacer(Modifier.height(4.dp))
+            OverlineLabel(stringResource(R.string.settings_appearance))
+            ThemeChoices()
+        }
+        val context = LocalContext.current
+        SecondaryButton(stringResource(R.string.settings_welcome), { AppSettings.setOnboardingDone(context, false) }, Modifier.fillMaxWidth(), pill = true)
         SettingRow(stringResource(R.string.settings_version), BuildConfig.VERSION_NAME, mono = true)
         SettingRow(stringResource(R.string.settings_format), stringResource(R.string.settings_format_value))
         SettingRow(stringResource(R.string.settings_fonts), stringResource(R.string.settings_fonts_value))

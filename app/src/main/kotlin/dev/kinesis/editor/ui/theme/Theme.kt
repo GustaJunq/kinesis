@@ -6,6 +6,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
@@ -19,43 +27,92 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.kinesis.editor.R
 
+/** The colours that change between the dark and the light theme. */
+class KPalette(
+    val isDark: Boolean,
+    val background: Color,
+    val bar: Color,
+    val sheet: Color,
+    val card: Color,
+    val field: Color,
+    val line: Color,
+    val lineStrong: Color,
+    val textPrimary: Color,
+    val textSoft: Color,
+    val textSecondary: Color,
+    val disabled: Color,
+    /** Solid accent for icons, text, sliders and outlines. */
+    val accent: Color,
+    val chipActive: Color,
+    val onChipActive: Color,
+    val keyframe: Color,
+    val teal: Color,
+    val pink: Color,
+    /** Playhead and selection outline of the timeline. */
+    val selection: Color,
+)
+
+val DarkPalette = KPalette(
+    isDark = true,
+    background = Color(0xFF06050E), bar = Color(0xFF0E0C1A), sheet = Color(0xFF12102A), card = Color(0xFF14112B),
+    field = Color(0xFF1C1840), line = Color(0xFF1B1730), lineStrong = Color(0xFF2C2650),
+    textPrimary = Color(0xFFF1EEFF), textSoft = Color(0xFFB9B4D6), textSecondary = Color(0xFF8F88B8), disabled = Color(0xFF5E577F),
+    accent = Color(0xFFC084FC), chipActive = Color(0xFF2A2160), onChipActive = Color(0xFFE5D6FF),
+    keyframe = Color(0xFFFFC857), teal = Color(0xFF4FD1C5), pink = Color(0xFFFF6B8B), selection = Color(0xFFFFFFFF),
+)
+
+val LightPalette = KPalette(
+    isDark = false,
+    background = Color(0xFFF6F4FF), bar = Color(0xFFFFFFFF), sheet = Color(0xFFFFFFFF), card = Color(0xFFFFFFFF),
+    field = Color(0xFFEEEAFB), line = Color(0xFFE6E1F5), lineStrong = Color(0xFFD3CCEB),
+    textPrimary = Color(0xFF1A1530), textSoft = Color(0xFF4A4468), textSecondary = Color(0xFF666085), disabled = Color(0xFFA7A1C2),
+    accent = Color(0xFF7C3AED), chipActive = Color(0xFFE6DAFF), onChipActive = Color(0xFF3B1E8A),
+    keyframe = Color(0xFFC98A00), teal = Color(0xFF0B8F84), pink = Color(0xFFD42B52), selection = Color(0xFF1A1530),
+)
+
 /**
  * Every colour, type style and dimension of the UI. Screens use these tokens only (no hex values elsewhere).
- * Dark mode only. Contrast: TextPrimary/TextSoft/TextSecondary and Accent pass 4.5:1 on Background, Bar, Sheet and Card.
+ * The colours that depend on the theme read [palette], which is Compose state: screens recompose when it changes.
+ * Contrast (dark): TextPrimary/TextSoft/TextSecondary and Accent pass 4.5:1 on Background, Bar, Sheet and Card.
  */
 object KColors {
+    var palette: KPalette by mutableStateOf(DarkPalette)
+
     // Surfaces
-    val Background = Color(0xFF06050E)
-    val Bar = Color(0xFF0E0C1A)
-    val Sheet = Color(0xFF12102A)
-    val Card = Color(0xFF14112B)
-    val Field = Color(0xFF1C1840)
-    val Line = Color(0xFF1B1730)
-    val LineStrong = Color(0xFF2C2650)
+    val Background: Color get() = palette.background
+    val Bar: Color get() = palette.bar
+    val Sheet: Color get() = palette.sheet
+    val Card: Color get() = palette.card
+    val Field: Color get() = palette.field
+    val Line: Color get() = palette.line
+    val LineStrong: Color get() = palette.lineStrong
 
     // Text
-    val TextPrimary = Color(0xFFF1EEFF)
-    val TextSoft = Color(0xFFB9B4D6)
-    val TextSecondary = Color(0xFF8F88B8)
-    val Disabled = Color(0xFF5E577F)
+    val TextPrimary: Color get() = palette.textPrimary
+    val TextSoft: Color get() = palette.textSoft
+    val TextSecondary: Color get() = palette.textSecondary
+    val Disabled: Color get() = palette.disabled
 
     // Accent (gradient 135° from AccentStart to AccentEnd; OnAccent is text on it)
     val AccentStart = Color(0xFF8B5CF6)
     val AccentEnd = Color(0xFFC084FC)
     val OnAccent = Color(0xFF12082B)
-    /** Solid accent for icons, text, sliders and outlines (the light end of the gradient, for contrast). */
-    val Accent = AccentEnd
-    val ChipActive = Color(0xFF2A2160)
-    val OnChipActive = Color(0xFFE5D6FF)
+    /** Solid accent for icons, text, sliders and outlines (darker in the light theme, for contrast). */
+    val Accent: Color get() = palette.accent
+    val ChipActive: Color get() = palette.chipActive
+    val OnChipActive: Color get() = palette.onChipActive
 
     // Highlights
-    val Keyframe = Color(0xFFFFC857)
-    val Teal = Color(0xFF4FD1C5)
-    val Pink = Color(0xFFFF6B8B)
-    val Danger = Pink
-    val Playhead = Color(0xFFFFFFFF)
+    val Keyframe: Color get() = palette.keyframe
+    val Teal: Color get() = palette.teal
+    val Pink: Color get() = palette.pink
+    val Danger: Color get() = palette.pink
+    /** Playhead and selection outline. */
+    val Playhead: Color get() = palette.selection
+    val Selection: Color get() = palette.selection
     val Scrim = Color(0xB3000000)
     val ScrimLight = Color(0x66000000)
+    /** Pure white, for content drawn on images and clips (not a theme colour). */
     val White = Color(0xFFFFFFFF)
 
     // Viewport gizmo axes
@@ -74,11 +131,11 @@ object KColors {
     val ClipViolet = Color(0xFF4A38B8)
 
     // Legacy names still used by some panels
-    val Surface = Card
-    val SurfaceHigh = Field
-    val SurfaceHighest = ChipActive
-    val Outline = LineStrong
-    val AccentSoft = ChipActive
+    val Surface: Color get() = Card
+    val SurfaceHigh: Color get() = Field
+    val SurfaceHighest: Color get() = ChipActive
+    val Outline: Color get() = LineStrong
+    val AccentSoft: Color get() = ChipActive
 
     /** Colour picker swatch background (transparency checker). */
     val CheckerA = Color(0xFF555555)
@@ -149,34 +206,65 @@ val CONTENT_PALETTE = listOf(
 /** Default composition background of new projects (composition data, not a UI colour). */
 const val DEFAULT_COMPOSITION_BACKGROUND = "#0E0F13"
 
-private val scheme = darkColorScheme(
-    primary = KColors.Accent,
-    onPrimary = KColors.OnAccent,
-    primaryContainer = KColors.ChipActive,
-    onPrimaryContainer = KColors.OnChipActive,
-    secondary = KColors.Teal,
-    onSecondary = KColors.OnAccent,
-    secondaryContainer = KColors.ChipActive,
-    onSecondaryContainer = KColors.OnChipActive,
-    background = KColors.Background,
-    onBackground = KColors.TextPrimary,
-    surface = KColors.Sheet,
-    onSurface = KColors.TextPrimary,
-    surfaceVariant = KColors.Field,
-    onSurfaceVariant = KColors.TextSoft,
-    surfaceContainerLowest = KColors.Background,
-    surfaceContainerLow = KColors.Bar,
-    surfaceContainer = KColors.Sheet,
-    surfaceContainerHigh = KColors.Card,
-    surfaceContainerHighest = KColors.Field,
-    inverseSurface = KColors.TextPrimary,
-    inverseOnSurface = KColors.Background,
-    outline = KColors.LineStrong,
-    outlineVariant = KColors.Line,
-    error = KColors.Pink,
-    onError = KColors.OnAccent,
-    scrim = KColors.Scrim,
-)
+private fun scheme(p: KPalette) = if (p.isDark) {
+    darkColorScheme(
+        primary = p.accent,
+        onPrimary = KColors.OnAccent,
+        primaryContainer = p.chipActive,
+        onPrimaryContainer = p.onChipActive,
+        secondary = p.teal,
+        onSecondary = KColors.OnAccent,
+        secondaryContainer = p.chipActive,
+        onSecondaryContainer = p.onChipActive,
+        background = p.background,
+        onBackground = p.textPrimary,
+        surface = p.sheet,
+        onSurface = p.textPrimary,
+        surfaceVariant = p.field,
+        onSurfaceVariant = p.textSoft,
+        surfaceContainerLowest = p.background,
+        surfaceContainerLow = p.bar,
+        surfaceContainer = p.sheet,
+        surfaceContainerHigh = p.card,
+        surfaceContainerHighest = p.field,
+        inverseSurface = p.textPrimary,
+        inverseOnSurface = p.background,
+        outline = p.lineStrong,
+        outlineVariant = p.line,
+        error = p.pink,
+        onError = KColors.OnAccent,
+        scrim = KColors.Scrim,
+    )
+} else {
+    lightColorScheme(
+        primary = p.accent,
+        onPrimary = KColors.OnAccent,
+        primaryContainer = p.chipActive,
+        onPrimaryContainer = p.onChipActive,
+        secondary = p.teal,
+        onSecondary = KColors.OnAccent,
+        secondaryContainer = p.chipActive,
+        onSecondaryContainer = p.onChipActive,
+        background = p.background,
+        onBackground = p.textPrimary,
+        surface = p.sheet,
+        onSurface = p.textPrimary,
+        surfaceVariant = p.field,
+        onSurfaceVariant = p.textSoft,
+        surfaceContainerLowest = p.background,
+        surfaceContainerLow = p.bar,
+        surfaceContainer = p.sheet,
+        surfaceContainerHigh = p.card,
+        surfaceContainerHighest = p.field,
+        inverseSurface = p.textPrimary,
+        inverseOnSurface = p.background,
+        outline = p.lineStrong,
+        outlineVariant = p.line,
+        error = p.pink,
+        onError = KColors.OnAccent,
+        scrim = KColors.Scrim,
+    )
+}
 
 private fun manrope(size: Int, weight: FontWeight, line: Int = size + 6) =
     TextStyle(fontFamily = KFonts.Manrope, fontWeight = weight, fontSize = size.sp, lineHeight = line.sp)
@@ -204,9 +292,21 @@ private val shapes = Shapes(
 )
 
 @Composable
-fun KinesisTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = scheme, typography = typography, shapes = shapes) {
-        // Icons and text outside a Surface would otherwise default to black on the dark background.
+fun KinesisTheme(dark: Boolean = true, content: @Composable () -> Unit) {
+    val palette = if (dark) DarkPalette else LightPalette
+    // Set before the content composes so that every token read below sees the right palette.
+    if (KColors.palette !== palette) KColors.palette = palette
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.isAppearanceLightStatusBars = !dark
+            controller.isAppearanceLightNavigationBars = !dark
+        }
+    }
+    MaterialTheme(colorScheme = remember(dark) { scheme(palette) }, typography = typography, shapes = shapes) {
+        // Icons and text outside a Surface would otherwise default to the wrong colour.
         CompositionLocalProvider(LocalContentColor provides KColors.TextPrimary, content = content)
     }
 }

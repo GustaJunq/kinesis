@@ -10,7 +10,7 @@ object KeyframeOps {
      * (keeping its easing) or a new keyframe is inserted with [newEasing]. Static properties just change value.
      */
     fun <T> setValue(anim: Animatable<T>, time: Double, value: T, newEasing: Easing = Easing.EASE_IN_OUT): Animatable<T> {
-        if (!anim.isAnimated) return Animatable(value, loop = anim.loop)
+        if (!anim.isAnimated) return anim.copy(value = value)
         return upsert(anim, time, value, newEasing)
     }
 
@@ -37,13 +37,13 @@ object KeyframeOps {
     fun <T> removeAt(anim: Animatable<T>, index: Int, time: Double, interpolate: (T, T, Float) -> T): Animatable<T> {
         if (index !in anim.keyframes.indices) return anim
         val list = anim.keyframes.toMutableList().also { it.removeAt(index) }
-        if (list.isEmpty()) return Animatable(anim.sample(time, interpolate), loop = anim.loop)
+        if (list.isEmpty()) return anim.copy(value = anim.sample(time, interpolate), keyframes = emptyList())
         return anim.copy(value = list.first().value, keyframes = list)
     }
 
     /** Makes the property static, keeping the value it has at [time]. */
     fun <T> clear(anim: Animatable<T>, time: Double, interpolate: (T, T, Float) -> T): Animatable<T> =
-        Animatable(anim.sample(time, interpolate))
+        anim.copy(value = anim.sample(time, interpolate), keyframes = emptyList(), loop = LoopMode.NONE)
 
     fun <T> setEasing(anim: Animatable<T>, index: Int, easing: Easing): Animatable<T> {
         if (index !in anim.keyframes.indices) return anim

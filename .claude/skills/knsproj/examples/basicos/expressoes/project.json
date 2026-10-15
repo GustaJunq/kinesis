@@ -1,0 +1,106 @@
+{
+  "format": "knsproj",
+  "formatVersion": 3,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Expressões: wiggle e loopOut"
+  },
+  "composition": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 4,
+    "background": "#101522"
+  },
+  "layers": [
+    {
+      "id": "bolinha-wiggle",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": {
+          "value": [
+            -250,
+            -250
+          ],
+          "expression": "wiggle(3, 40)"
+        }
+      },
+      "shape": {
+        "kind": "ellipse",
+        "size": [
+          160,
+          160
+        ],
+        "fill": {
+          "color": "#4C8DFF"
+        }
+      }
+    },
+    {
+      "id": "quadrado-loop",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": [
+          250,
+          0
+        ],
+        "rotation": {
+          "keyframes": [
+            {
+              "time": 0,
+              "value": 0,
+              "easing": "easeInOutCubic"
+            },
+            {
+              "time": 1,
+              "value": 90,
+              "easing": "easeInOutCubic"
+            }
+          ],
+          "expression": "loopOut(\"pingpong\")"
+        }
+      },
+      "shape": {
+        "kind": "rectangle",
+        "size": [
+          220,
+          220
+        ],
+        "roundness": 24,
+        "fill": {
+          "color": "#FFC857"
+        }
+      }
+    },
+    {
+      "id": "pulso-opacidade",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": [
+          -250,
+          250
+        ],
+        "opacity": {
+          "value": 1,
+          "expression": "linear(Math.sin(time * 4), -1, 1, 20, 100)"
+        }
+      },
+      "shape": {
+        "kind": "ellipse",
+        "size": [
+          200,
+          200
+        ],
+        "fill": {
+          "color": "#FF6B8B"
+        }
+      }
+    }
+  ]
+}

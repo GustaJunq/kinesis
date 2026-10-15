@@ -28,6 +28,9 @@ pelo **Claude Code** com a skill [`/knsproj`](.claude/skills/knsproj/SKILL.md) i
 
 ## Recursos da beta
 
+> Versão **0.1.1**: expressões estilo After Effects, animadores de texto por caractere, formato `.knsproj` v3, tema claro/escuro,
+> idioma português/inglês e apresentação inicial. Veja [docs/expressoes.md](docs/expressoes.md).
+
 | Área | O que já funciona |
 |---|---|
 | **Projetos** | criar (9:16, 16:9, 1:1, 4:5, 4K; 24–60 fps), abrir, duplicar, excluir, miniaturas; salvamento automático atômico com backup |
@@ -39,6 +42,7 @@ pelo **Claude Code** com a skill [`/knsproj`](.claude/skills/knsproj/SKILL.md) i
 | **Formas** | retângulo (cantos arredondados), elipse, polígono, estrela, linha/caminho Bézier (vértices arrastáveis no viewport, pontos suaves ou de canto); preenchimento sólido ou gradiente linear/radial; traço com ponta e junção; **trim paths** |
 | **Mídia** | imagens (com orientação EXIF), vídeo (decodificação por hardware com seek preciso, velocidade, ponto de entrada), áudio (volume animável, fades, mudo, forma de onda na timeline) |
 | **Animação** | keyframes em todas as propriedades numéricas, de vetor e de cor; 36 presets de easing + **editor de curvas Bézier**; loops `cycle`/`pingpong` |
+| **Expressões (v0.1.1)** | JavaScript no estilo do After Effects em qualquer propriedade animável (`wiggle`, `loopOut`/`loopIn`, `linear`, `ease*`, `random`, `posterizeTime`, `thisComp`…) e **animadores de texto por caractere** com seletor de expressão (`textIndex`, `textTotal`, `selectorValue`); editor com destaque de sintaxe e erros com linha. Veja a [matriz de compatibilidade](docs/expressoes.md) — **não** é compatibilidade completa com o After Effects |
 | **Composição** | parenting (com compensação para a camada não "pular"), grupos, modos de mesclagem (normal, adição, multiplicação, tela), opacidade |
 | **Efeitos** | 60 efeitos procedurais e determinísticos em 13 categorias (Cor e luz, Desfoque e nitidez, Distorção — incluindo **Glass** com refração e dispersão espectral —, Movimentar e transformar, Estilizar, Glitch, Desenho e borda, Procedimental, Fosco/máscara/chave, Tempo e transição, Texto, Utilitário); tela "Adicionar efeito" com busca e prévias renderizadas; todos os parâmetros numéricos animáveis |
 | **Máscaras** | até 4 por camada (retângulo arredondado/elipse; somar, subtrair, interseção; suavização, inversão) e **track mattes** (alfa/luma, normais e invertidos) |
@@ -46,7 +50,7 @@ pelo **Claude Code** com a skill [`/knsproj`](.claude/skills/knsproj/SKILL.md) i
 | **Motion blur** | por camada, com ângulo de obturador e número de amostras |
 | **3D** | cubo, esfera, cilindro, cone, toro, plano e nó vazio (pivô); modelos **GLB/glTF**; posição/rotação/escala XYZ animáveis; materiais PBR (cor, textura, metalicidade, rugosidade, emissão); luzes ambiente, direcional e pontual; câmera com perspectiva, alvo e FOV animáveis; hierarquia 3D por parenting; gizmo de eixos X/Y/Z por toque, rotação por arraste e órbita de câmera |
 | **Exportação** | MP4 H.264 + AAC (resolução original, 720p, 1080p, 4K; três níveis de qualidade), com motion blur completo, salvo na galeria (Filmes/Kinesis) e compartilhável |
-| **Idiomas** | português e inglês |
+| **Aparência e idioma (v0.1.1)** | tema **escuro/claro/do sistema**, idioma **português/inglês/do sistema** (Ajustes) e apresentação inicial (*onboarding*) |
 
 ## Compilar o app
 
@@ -76,8 +80,9 @@ e crie `local.properties` com `sdk.dir=/caminho/do/android-sdk`.
 
 ## Usando o editor
 
-1. **Tela inicial:** *Novo projeto* (formato, fps, duração, cor de fundo) ou o ícone de pasta para importar um `.knsproj`.
-   O menu de cada projeto permite duplicar, exportar `.knsproj` e excluir.
+0. **Primeira abertura:** uma apresentação rápida (pode ser pulada) com a escolha de idioma e tema; reveja em *Ajustes*.
+1. **Tela inicial:** *Novo projeto* (formato, fps, duração, cor de fundo) ou *Abrir arquivo .knsproj*.
+   O menu de cada projeto permite duplicar, exportar `.knsproj` e excluir. Em *Ajustes*: idioma e tema.
 2. **Viewport:** toque para selecionar (toques repetidos entram em grupos). Arraste para mover, use pinça para escalar e
    gire com dois dedos. Em objetos 3D, arraste as pontas dos eixos **X (vermelho), Y (verde), Z (azul)** para mover em um
    eixo, ou alterne para a ferramenta *girar* na barra de reprodução. Com a câmera selecionada, arrastar orbita e a pinça
@@ -88,6 +93,9 @@ e crie `local.properties` com `sdk.dir=/caminho/do/android-sdk`.
 4. **Propriedades:** cada propriedade animável tem um losango — toque para criar/remover um keyframe no playhead
    (pressione e segure para remover toda a animação). Com a propriedade animada, alterar o valor grava um keyframe
    automaticamente. O ícone de gráfico abre o **editor de curvas** do segmento atual.
+   O ícone `</>` abre o **editor de expressões** da propriedade: código JavaScript com destaque de sintaxe, erro com número
+   de linha, interruptor liga/desliga, presets opcionais e *Voltar aos keyframes*. Na aba *Texto*, *Animadores de texto
+   (expressões)* cria animadores por caractere (por exemplo o *Bounce Text* do After Effects, sem alterações no código).
 5. **Camadas:** visão hierárquica com grupos, pais (↳), visibilidade, trava e ordem.
 6. **Adicionar (+):** texto, formas, linha, imagem, vídeo, áudio, primitivas 3D, modelo GLB, câmera e luzes.
 7. **Exportar:** escolha resolução e qualidade; o vídeo vai para a galeria e pode ser compartilhado.
@@ -99,12 +107,12 @@ motion blur).
 
 Um `.knsproj` é um ZIP com `project.json` (JSON versionado) e uma pasta `assets/` com as mídias. A especificação
 completa está em **[docs/knsproj.md](docs/knsproj.md)** e o schema oficial em
-**[schema/knsproj-v2.schema.json](schema/knsproj-v2.schema.json)**. Resumo:
+**[schema/knsproj-v3.schema.json](schema/knsproj-v3.schema.json)**. Resumo:
 
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "composition": { "width": 1080, "height": 1920, "fps": 30, "duration": 10, "background": "#0A2463" },
   "assets": [],
   "layers": [
@@ -162,7 +170,8 @@ usadas pelo schema oficial; com o pacote `jsonschema` instalado, `--engine jsons
 ```
 kinesis/
 ├── core/        Kotlin/JVM puro (sem Android): modelo, motor de animação, avaliação de cena,
-│                formato .knsproj, validador, operações de timeline, undo, malhas e leitor glTF
+│                formato .knsproj, validador, operações de timeline, undo, malhas e leitor glTF,
+│                motor de expressões (pacote expr, interpretador Rhino embutido)
 ├── app/         Android: Jetpack Compose (UI), OpenGL ES 3.0 (render), MediaCodec (vídeo/áudio/exportação)
 ├── schema/      JSON Schema oficial do project.json
 ├── tools/       CLI knsproj (Python) e verificação de shaders
@@ -170,6 +179,9 @@ kinesis/
 └── docs/        especificação do formato
 ```
 
+- **Expressões:** o `ExpressionResolver` troca, a cada quadro, as propriedades com expressão pelo valor calculado antes do
+  resto da avaliação; por isso preview, exportação e rolagem da timeline dão exatamente o mesmo resultado. O motor roda
+  offline, sem acesso a Java/arquivos/rede, com limite de instruções ([detalhes](docs/expressoes.md)).
 - **Avaliação determinística:** `SceneEvaluator` (core) transforma `(projeto, tempo)` em uma descrição de quadro com
   todas as matrizes, cores, efeitos e conteúdos resolvidos. O preview e a exportação usam o mesmo `Compositor`, então
   o que se vê é o que se exporta.
@@ -189,7 +201,7 @@ kinesis/
 ## Testes
 
 ```bash
-./gradlew :core:test                          # motor de animação, formato, validador, operações, glTF
+./gradlew :core:test                          # motor de animação, expressões, formato, validador, operações, glTF
 python3 -m unittest discover -s tools/tests   # CLI, schema e paridade com o validador Kotlin
 python3 tools/check_shaders.py                # compila todos os shaders com glslangValidator
 ```
@@ -207,7 +219,7 @@ Testes instrumentados (aparelho ou emulador com GLES 3.0):
   e verifica erros de GL e o conteúdo dos pixels;
 - `ExportTest` exporta MP4 (H.264 + AAC) com os codificadores do aparelho, confere duração, resolução e faixas,
   reimporta o vídeo como camada (decodificação para textura OES) e exporta de novo;
-- `UiSmokeTest` percorre a interface: cria projeto, adiciona texto, cubo e estrela, navega pelos painéis e executa
+- `UiSmokeTest` percorre a interface (apresentação inicial, tela inicial, editor): cria projeto, adiciona texto, cubo e estrela, navega pelos painéis e executa
   dividir/duplicar/agrupar.
 
 No CI eles rodam num emulador Android 14 e imprimem miniaturas dos quadros no log (linhas `KSHOT`).
@@ -216,6 +228,9 @@ No CI eles rodam num emulador Android 14 e imprimem miniaturas dos quadros no lo
 
 Funcionalidades fora desta beta, documentadas em vez de simuladas:
 
+- **Expressões:** só as APIs da [matriz](docs/expressoes.md) existem; `wiggle`/`random` não reproduzem os números do After Effects,
+  não há `effect()`/`sourceText`/seletor de intervalo de texto, o motor (Rhino) não tem limite rígido de memória e a
+  CLI Python só confere a estrutura do código (a checagem exata de sintaxe é do app).
 - **Sombras projetadas** em 3D e iluminação por mapas de ambiente (IBL) reais — hoje há um ambiente de estúdio procedural.
 - **glTF:** skinning, animações embutidas, morph targets, compressão Draco/meshopt e buffers/texturas externos.
 - **Pen tool completa:** no app é possível arrastar os vértices de um caminho no viewport, adicionar/remover pontos,
