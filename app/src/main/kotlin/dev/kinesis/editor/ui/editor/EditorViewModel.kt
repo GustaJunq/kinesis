@@ -120,7 +120,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     init {
         var error: String? = null
         val loaded = try {
-            store.load(projectId)
+            fitDuration(store.load(projectId))
         } catch (e: Exception) {
             Log.e("Kinesis", "cannot load project", e)
             error = e.message ?: e.javaClass.simpleName
@@ -156,9 +156,19 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
             notify(e.message ?: "Edit failed", true)
             return
         }
-        if (next == _project.value) return
-        history.push(next, coalesceKey)
-        apply(next)
+        // The video ends when its last layer ends (unless the edit itself set the duration).
+        val prev = _project.value
+        val fitted = if (next.layers != prev.layers && next.composition.duration == prev.composition.duration) fitDuration(next) else next
+        if (fitted == prev) return
+        history.push(fitted, coalesceKey)
+        apply(fitted)
+    }
+
+    /** Sets the composition duration to the end of the last top-level layer (empty projects keep theirs). */
+    private fun fitDuration(p: KnsProject): KnsProject {
+        if (p.layers.isEmpty()) return p
+        val end = p.layers.maxOf { it.end }.coerceAtLeast(MIN_DURATION)
+        return if (end == p.composition.duration) p else p.copy(composition = p.composition.copy(duration = end))
     }
 
     fun endGesture() = history.commit()
@@ -506,3 +516,5 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         super.onCleared()
     }
 }
+
+private const val MIN_DURATION = 0.5
