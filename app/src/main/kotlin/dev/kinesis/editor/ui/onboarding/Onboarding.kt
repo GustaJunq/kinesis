@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,6 +40,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -156,11 +158,11 @@ fun ThemeChoices() {
 @Composable
 private fun BrandArt() {
     val t = rememberInfiniteTransition(label = "brand")
-    val angle by t.animateFloat(-6f, 6f, infiniteRepeatable(tween(2200), RepeatMode.Reverse), label = "tilt")
-    Box(
-        Modifier.size(132.dp).rotate(angle).clip(RoundedCornerShape(36.dp)).background(KBrushes.Accent),
-        contentAlignment = Alignment.Center,
-    ) { Text("K", color = KColors.OnAccent, fontSize = 84.sp, fontWeight = FontWeight.ExtraBold) }
+    val angle by t.animateFloat(-5f, 5f, infiniteRepeatable(tween(2200), RepeatMode.Reverse), label = "tilt")
+    Image(
+        painterResource(R.drawable.kinesis_logo), contentDescription = stringResource(R.string.app_name),
+        modifier = Modifier.size(150.dp).rotate(angle),
+    )
 }
 
 @Composable

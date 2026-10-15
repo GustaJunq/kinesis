@@ -71,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -337,9 +338,7 @@ private fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label
 @Composable
 private fun Brand() {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)).background(KBrushes.Accent), contentAlignment = Alignment.Center) {
-            Text("K", color = KColors.OnAccent, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-        }
+        Image(painterResource(R.drawable.kinesis_logo), contentDescription = null, modifier = Modifier.size(36.dp))
         Spacer(Modifier.width(10.dp))
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge)
     }
