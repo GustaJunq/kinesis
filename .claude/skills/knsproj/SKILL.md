@@ -12,7 +12,8 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
-- Schema oficial: `schema/knsproj-v3.schema.json` (formato versão 3; arquivos v1 e v2 ainda abrem e são migrados)
+- Schema oficial: `schema/knsproj-v5.schema.json` (formato versão 5; arquivos v1 a v4 ainda abrem e são migrados). Escreva sempre `"formatVersion": 5`.
+  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`.
 - Expressões (APIs, unidades, matriz de compatibilidade): `docs/expressoes.md`
 - Lista completa de efeitos (parâmetros, padrões, faixas): tabela da seção 7 de `docs/knsproj.md` ou `tools/knsproj/effects.json`
 - Exemplos: `.claude/skills/knsproj/examples/` (veja "Exemplos" abaixo)
@@ -40,7 +41,7 @@ Tudo em `.claude/skills/knsproj/examples/`; cada pasta tem `project.json` e `REA
 | `basicos/efeitos` | glow, sombra, glitch (`chromaticAberration`) |
 | `basicos/video-audio` | trecho de vídeo (`sourceStart`, `speed`), fade de volume, trilha |
 | `basicos/grupo` | tempo relativo, efeito aplicado a um conjunto |
-| `basicos/3d-camera-orbita` | cena 3D com 3 luzes e câmera orbitando (pai `empty`) |
+| `basicos/3d-camera-orbita` | cena 3D com 3 luzes e câmera orbitando (pai `empty`; hoje prefira um nulo 3D, veja `nulo-3d-rig`) |
 | `basicos/nulo-2d` | camada nula (`null`) movendo/girando várias camadas 2D como pai |
 | `basicos/nulo-3d-rig` | câmera presa a um nulo 3D (`null.threeD`) que gira: órbita/rig |
 | `basicos/camera-rotacao` | câmera com `aim: "rotation"`: dolly (posição) e pan (rotação) independentes |
@@ -128,17 +129,26 @@ e o objeto de conteúdo com o **mesmo nome do tipo**.
              "fill": { "enabled": false }, "stroke": { "color": "#FFC857", "width": 8 },
              "trim": { "end": { "keyframes": [{ "time": 0, "value": 0, "easing": "easeInOutCubic" }, { "time": 1, "value": 1 }] } } } }
 
+// Pêndulo/pulso com 2 keyframes: easing cíclico (onda entre os dois valores; cycles com meio = sem salto)
+{ "id": "pendulo", "type": "shape", "duration": 5, "shape": { "kind": "ellipse", "size": [200, 200] },
+  "transform": { "position": { "keyframes": [
+    { "time": 0, "value": [-300, 0], "easing": { "cyclic": { "offset": 0, "cycles": 3.5 } } },
+    { "time": 5, "value": [300, 0] }] } } }
+
 // Cubo metálico girando
 { "id": "cubo", "type": "object3d", "start": 0, "duration": 10, "motionBlur": true,
   "transform3d": { "rotation": { "keyframes": [{ "time": 0, "value": [-25, 0, 0] }, { "time": 10, "value": [-25, 360, 0] }] } },
   "object3d": { "primitive": "cube", "size": 420,
                 "material": { "color": "#DDE3EA", "metallic": 1, "roughness": 0.22 } } }
 
-// Órbita: filho de um "empty" que gira (loop infinito)
-{ "id": "pivo", "type": "object3d", "duration": 10, "object3d": { "primitive": "empty" },
+// Órbita: filho de um nulo 3D que gira (loop infinito)
+{ "id": "pivo", "type": "null", "duration": 10, "null": { "threeD": true },
   "transform3d": { "rotation": { "keyframes": [{ "time": 0, "value": [0, 0, 0] }, { "time": 4, "value": [0, 360, 0] }], "loop": "cycle" } } }
 { "id": "lua", "type": "object3d", "duration": 10, "parent": "pivo", "transform3d": { "position": [380, 0, 0] },
   "object3d": { "primitive": "sphere", "size": 80, "material": { "color": "#C9CCD3", "roughness": 0.9 } } }
+
+// Pai: a posição do filho é medida A PARTIR do pai. O app, ao trocar o pai, recalcula a posição para a camada não
+// mudar de lugar; quem escreve o JSON à mão já escreve a posição relativa ao pai (ex.: [0, -220] = 220 px acima do nulo).
 
 // Nulo: camada invisível que só carrega transformação (2D por padrão; 3D com "threeD": true)
 { "id": "controle", "type": "null", "duration": 10, "transform": { "position": [0, 0] } }
@@ -225,6 +235,7 @@ Regras que evitam erro:
   colorida e ambiente fraca. Metais ficam bons com `metallic: 1` e `roughness` 0.15–0.35. Camadas `null` com `"threeD": true`
   servem de pivô para órbitas, rigs de câmera e grupos 3D (uma câmera/luz pode ser **filha** de um nulo 3D).
 - **Profundidade 2D:** halos com `blur` grande, sombras suaves (`dropShadow`) e `motionBlur: true` em elementos rápidos.
+- **Oscilações regulares** (pêndulo, pulso, balanço): use 2 keyframes com `easing: {"cyclic": {…}}` em vez de dezenas de keyframes.
 - Termine animações antes do fim da composição ou use `transitionOut` para sair de forma limpa.
 - Prefira poucos keyframes bem escolhidos a muitos keyframes lineares.
 
