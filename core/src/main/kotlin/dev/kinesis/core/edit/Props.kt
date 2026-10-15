@@ -10,6 +10,10 @@ import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.model.CameraContent
 import dev.kinesis.core.model.Effect
+import dev.kinesis.core.model.EffectParam
+import dev.kinesis.core.model.EffectRegistry
+import dev.kinesis.core.model.ParamType
+import dev.kinesis.core.model.ParamUnit
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerType
 import dev.kinesis.core.model.Material
@@ -17,7 +21,24 @@ import dev.kinesis.core.model.ShapeKind
 import dev.kinesis.core.model.StrokeSpec
 import dev.kinesis.core.scene.SceneEvaluator
 
-enum class PropUnit { NONE, PX, DEG, PERCENT, EM, MULTIPLIER }
+enum class PropUnit {
+    NONE, PX, DEG, PERCENT, EM, MULTIPLIER, SECONDS, HERTZ, FPS, DEG_PER_SECOND, EV;
+
+    companion object {
+        fun of(u: ParamUnit): PropUnit = when (u) {
+            ParamUnit.NONE -> NONE
+            ParamUnit.PX -> PX
+            ParamUnit.DEG -> DEG
+            ParamUnit.PERCENT -> PERCENT
+            ParamUnit.MULTIPLIER -> MULTIPLIER
+            ParamUnit.SECONDS -> SECONDS
+            ParamUnit.HERTZ -> HERTZ
+            ParamUnit.FPS -> FPS
+            ParamUnit.DEG_PER_SECOND -> DEG_PER_SECOND
+            ParamUnit.EV -> EV
+        }
+    }
+}
 
 sealed interface PropKind
 
@@ -32,6 +53,8 @@ data class FloatKind(
     val min: Float = Float.NEGATIVE_INFINITY,
     val max: Float = Float.POSITIVE_INFINITY,
     val display: Float = 1f,
+    /** Values are whole numbers (counts, seeds). */
+    val integer: Boolean = false,
 ) : PropKind
 
 data class Vec2Kind(val unit: PropUnit = PropUnit.PX, val display: Float = 1f, val sliderMin: Float = -2000f, val sliderMax: Float = 2000f) : PropKind
@@ -236,49 +259,34 @@ object LayerProps {
 
     fun find(layer: Layer, id: String): AnimProp<*>? = all(layer).firstOrNull { it.id == id }
 
+    /**
+     * Animatable parameters of the effect at index [i], built from [EffectRegistry]. Label keys are
+     * `fx.<type>.<param>`; the UI resolves them with [EffectRegistry]. Static parameters (switches, choices,
+     * gradient stops) are edited directly on the [Effect].
+     */
     private fun effectProps(i: Int, e: Effect): List<AnimProp<*>> {
+        val spec = EffectRegistry.get(e.type) ?: return emptyList()
         fun upd(l: Layer, f: (Effect) -> Effect) = l.copy(effects = l.effects.mapIndexed { j, x -> if (j == i) f(x) else x })
-        fun <E : Effect> eff(l: Layer): E {
-            @Suppress("UNCHECKED_CAST")
-            return l.effects[i] as E
-        }
-        val p = "effects.$i"
-        return when (e) {
-            is Effect.Blur -> listOf(fprop("$p.radius", FloatKind(0f, 100f, PropUnit.PX, 0f), { eff<Effect.Blur>(it).radius }, { l, a -> upd(l) { (it as Effect.Blur).copy(radius = a) } }, "effect.radius"))
-            is Effect.ColorAdjust -> listOf(
-                fprop("$p.brightness", FloatKind(-1f, 1f, PropUnit.PERCENT, -1f, 1f, 100f), { eff<Effect.ColorAdjust>(it).brightness }, { l, a -> upd(l) { (it as Effect.ColorAdjust).copy(brightness = a) } }, "effect.brightness"),
-                fprop("$p.contrast", FloatKind(-1f, 1f, PropUnit.PERCENT, -1f, 1f, 100f), { eff<Effect.ColorAdjust>(it).contrast }, { l, a -> upd(l) { (it as Effect.ColorAdjust).copy(contrast = a) } }, "effect.contrast"),
-                fprop("$p.saturation", FloatKind(-1f, 1f, PropUnit.PERCENT, -1f, 1f, 100f), { eff<Effect.ColorAdjust>(it).saturation }, { l, a -> upd(l) { (it as Effect.ColorAdjust).copy(saturation = a) } }, "effect.saturation"),
-                fprop("$p.hue", FloatKind(-180f, 180f, PropUnit.DEG), { eff<Effect.ColorAdjust>(it).hue }, { l, a -> upd(l) { (it as Effect.ColorAdjust).copy(hue = a) } }, "effect.hue"),
-            )
-            is Effect.Tint -> listOf(
-                cprop("$p.color", { eff<Effect.Tint>(it).color }, { l, a -> upd(l) { (it as Effect.Tint).copy(color = a) } }, "effect.color"),
-                fprop("$p.amount", FloatKind(0f, 1f, PropUnit.PERCENT, 0f, 1f, 100f), { eff<Effect.Tint>(it).amount }, { l, a -> upd(l) { (it as Effect.Tint).copy(amount = a) } }, "effect.amount"),
-            )
-            is Effect.DropShadow -> listOf(
-                cprop("$p.color", { eff<Effect.DropShadow>(it).color }, { l, a -> upd(l) { (it as Effect.DropShadow).copy(color = a) } }, "effect.color"),
-                fprop("$p.opacity", OPACITY, { eff<Effect.DropShadow>(it).opacity }, { l, a -> upd(l) { (it as Effect.DropShadow).copy(opacity = a) } }, "effect.opacity"),
-                fprop("$p.angle", FloatKind(0f, 360f, PropUnit.DEG), { eff<Effect.DropShadow>(it).angle }, { l, a -> upd(l) { (it as Effect.DropShadow).copy(angle = a) } }, "effect.angle"),
-                fprop("$p.distance", FloatKind(0f, 100f, PropUnit.PX), { eff<Effect.DropShadow>(it).distance }, { l, a -> upd(l) { (it as Effect.DropShadow).copy(distance = a) } }, "effect.distance"),
-                fprop("$p.softness", FloatKind(0f, 100f, PropUnit.PX, 0f), { eff<Effect.DropShadow>(it).softness }, { l, a -> upd(l) { (it as Effect.DropShadow).copy(softness = a) } }, "effect.softness"),
-            )
-            is Effect.Glow -> listOf(
-                cprop("$p.color", { eff<Effect.Glow>(it).color }, { l, a -> upd(l) { (it as Effect.Glow).copy(color = a) } }, "effect.color"),
-                fprop("$p.radius", FloatKind(0f, 100f, PropUnit.PX, 0f), { eff<Effect.Glow>(it).radius }, { l, a -> upd(l) { (it as Effect.Glow).copy(radius = a) } }, "effect.radius"),
-                fprop("$p.intensity", FloatKind(0f, 3f, PropUnit.MULTIPLIER, 0f), { eff<Effect.Glow>(it).intensity }, { l, a -> upd(l) { (it as Effect.Glow).copy(intensity = a) } }, "effect.intensity"),
-            )
-            is Effect.Invert -> listOf(fprop("$p.amount", FloatKind(0f, 1f, PropUnit.PERCENT, 0f, 1f, 100f), { eff<Effect.Invert>(it).amount }, { l, a -> upd(l) { (it as Effect.Invert).copy(amount = a) } }, "effect.amount"))
-            is Effect.Pixelate -> listOf(fprop("$p.size", FloatKind(1f, 100f, PropUnit.PX, 1f), { eff<Effect.Pixelate>(it).size }, { l, a -> upd(l) { (it as Effect.Pixelate).copy(size = a) } }, "effect.size"))
-            is Effect.ChromaticAberration -> listOf(
-                fprop("$p.amount", FloatKind(0f, 40f, PropUnit.PX), { eff<Effect.ChromaticAberration>(it).amount }, { l, a -> upd(l) { (it as Effect.ChromaticAberration).copy(amount = a) } }, "effect.amount"),
-                fprop("$p.angle", FloatKind(0f, 360f, PropUnit.DEG), { eff<Effect.ChromaticAberration>(it).angle }, { l, a -> upd(l) { (it as Effect.ChromaticAberration).copy(angle = a) } }, "effect.angle"),
-            )
-            is Effect.Vignette -> listOf(
-                fprop("$p.amount", FloatKind(0f, 1f, PropUnit.PERCENT, 0f, 1f, 100f), { eff<Effect.Vignette>(it).amount }, { l, a -> upd(l) { (it as Effect.Vignette).copy(amount = a) } }, "effect.amount"),
-                fprop("$p.softness", FloatKind(0.01f, 1f, PropUnit.PERCENT, 0.01f, 1f, 100f), { eff<Effect.Vignette>(it).softness }, { l, a -> upd(l) { (it as Effect.Vignette).copy(softness = a) } }, "effect.softness"),
-            )
+        return spec.params.filter { it.type.animatable }.map { p ->
+            val id = "effects.$i.${p.name}"
+            val label = "fx.${spec.id}.${p.name}"
+            when (p.type) {
+                ParamType.COLOR -> cprop(id, { it.effects[i].color(p.name) }, { l, a -> upd(l) { it.withColor(p.name, a) } }, label)
+                ParamType.POINT -> v2prop(id, Vec2Kind(PropUnit.PX, 1f, p.sliderMin ?: -2000f, p.sliderMax ?: 2000f), { it.effects[i].point(p.name) }, { l, a -> upd(l) { it.withPoint(p.name, a) } }, label)
+                else -> fprop(id, floatKind(p), { it.effects[i].number(p.name) }, { l, a -> upd(l) { it.withNumber(p.name, a) } }, label)
+            }
         }
     }
+
+    fun floatKind(p: EffectParam): FloatKind = FloatKind(
+        sliderMin = p.sliderMin ?: p.min ?: 0f,
+        sliderMax = p.sliderMax ?: p.max ?: 100f,
+        unit = PropUnit.of(p.unit),
+        min = p.min ?: Float.NEGATIVE_INFINITY,
+        max = p.max ?: Float.POSITIVE_INFINITY,
+        display = p.unit.display,
+        integer = p.type == ParamType.INTEGER,
+    )
 
     private fun maskProps(i: Int): List<AnimProp<*>> {
         fun upd(l: Layer, f: (dev.kinesis.core.model.Mask) -> dev.kinesis.core.model.Mask) = l.copy(masks = l.masks.mapIndexed { j, m -> if (j == i) f(m) else m })

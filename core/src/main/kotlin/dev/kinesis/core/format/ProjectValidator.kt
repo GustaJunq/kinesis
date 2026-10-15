@@ -2,7 +2,9 @@ package dev.kinesis.core.format
 
 import dev.kinesis.core.anim.Animatable
 import dev.kinesis.core.model.AssetType
-import dev.kinesis.core.model.Effect
+import dev.kinesis.core.model.EffectRegistry
+import dev.kinesis.core.model.EffectTarget
+import dev.kinesis.core.model.EffectValue
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerType
@@ -207,7 +209,28 @@ object ProjectValidator {
                 if (layer.masks.isNotEmpty() && !layer.type.is2DVisual) warn("layer.masks", "$p.masks", "masks apply to 2D visual layers only")
                 if (!layer.type.isVisual && (layer.effects.isNotEmpty())) warn("layer.effects", "$p.effects", "effects have no visible result on ${layer.type.name.lowercase()} layers")
                 layer.effects.forEachIndexed { ei, e ->
-                    if (e is Effect.Blur && !e.radius.isAnimated && e.radius.value < 0f) err("effect.range", "$p.effects[$ei].radius", "radius must be >= 0")
+                    val spec = EffectRegistry.get(e.type) ?: return@forEachIndexed
+                    val ep = "$p.effects[$ei]"
+                    if (spec.target == EffectTarget.LAYER_3D && !layer.type.isRendered3D && layer.type.isVisual) {
+                        warn("effect.layerKind", "$ep.type", "${spec.id} only works on object3d and model3d layers; it is ignored here")
+                    }
+                    for (param in spec.params) {
+                        val v = e.params[param.name] ?: continue
+                        when (v) {
+                            is EffectValue.Num -> {
+                                checkAnimatable(v.anim, "$ep.${param.name}", d)
+                                fun outside(x: Float) = param.clamp(x) != x
+                                val range = "${param.min ?: "-∞"}..${param.max ?: "∞"}"
+                                if (!v.anim.isAnimated && outside(v.anim.value)) err("effect.range", "$ep.${param.name}", "${param.name} must be in $range")
+                                v.anim.keyframes.forEachIndexed { k, kf ->
+                                    if (outside(kf.value)) err("effect.range", "$ep.${param.name}.keyframes[$k].value", "${param.name} must be in $range")
+                                }
+                            }
+                            is EffectValue.Col -> checkAnimatable(v.anim, "$ep.${param.name}", d)
+                            is EffectValue.Point -> checkAnimatable(v.anim, "$ep.${param.name}", d)
+                            else -> {}
+                        }
+                    }
                 }
                 listOf(layer.transitionIn to "transitionIn", layer.transitionOut to "transitionOut").forEach { (t, name) ->
                     if (t != null && !(t.duration > 0.0)) err("layer.transition", "$p.$name.duration", "transition duration must be > 0")

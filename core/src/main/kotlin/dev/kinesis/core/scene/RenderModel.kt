@@ -8,6 +8,7 @@ import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.model.BlendMode
 import dev.kinesis.core.model.FontSpec
 import dev.kinesis.core.model.Gradient
+import dev.kinesis.core.model.GradientStop
 import dev.kinesis.core.model.LayerType
 import dev.kinesis.core.model.LightKind
 import dev.kinesis.core.model.MaskMode
@@ -70,18 +71,37 @@ class LightState(
     val radius: Float,
 )
 
-/** Effects with resolved parameters. */
-sealed class ResolvedEffect {
-    data class Blur(val radius: Float) : ResolvedEffect()
-    data class ColorAdjust(val brightness: Float, val contrast: Float, val saturation: Float, val hue: Float) : ResolvedEffect()
-    data class Tint(val color: Color, val amount: Float) : ResolvedEffect()
-    data class DropShadow(val color: Color, val opacity: Float, val offset: Vec2, val softness: Float) : ResolvedEffect()
-    data class Glow(val color: Color, val radius: Float, val intensity: Float) : ResolvedEffect()
-    data class Invert(val amount: Float) : ResolvedEffect()
-    data class Pixelate(val size: Float) : ResolvedEffect()
-    data class ChromaticAberration(val offset: Vec2) : ResolvedEffect()
-    data class Vignette(val amount: Float, val softness: Float) : ResolvedEffect()
+/**
+ * An effect with its parameters evaluated at the frame time and clamped to the registry ranges.
+ * Points are in composition pixels (origin at the centre, +y down); lengths are composition pixels.
+ */
+class ResolvedEffect(
+    val type: String,
+    private val values: Map<String, Any>,
+    /** Layer-local time in seconds (drives time-based procedural effects). */
+    val time: Double,
+    /** Layer origin (pivot) in composition pixels. */
+    val origin: Vec2,
+    /** Motion effects: transform applied to the rendered layer image, in composition pixels. */
+    val transform: Affine2D? = null,
+    /** Echo: the layer at earlier times, oldest last, with their opacity. */
+    val echoes: List<EchoSample> = emptyList(),
+) {
+    fun f(name: String): Float = values[name] as Float
+    fun i(name: String): Int = Math.round(values[name] as Float)
+    fun color(name: String): Color = values[name] as Color
+    fun point(name: String): Vec2 = values[name] as Vec2
+    fun flag(name: String): Boolean = values[name] as Boolean
+    fun choice(name: String): String = values[name] as String
+
+    @Suppress("UNCHECKED_CAST")
+    fun stops(name: String): List<GradientStop> = values[name] as List<GradientStop>
+
+    /** Every value, keyed by parameter name (used by generic shader setup). */
+    val all: Map<String, Any> get() = values
 }
+
+class EchoSample(val node: RenderNode, val opacity: Float)
 
 data class ResolvedMask(
     val shape: MaskShape,

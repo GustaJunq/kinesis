@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
@@ -30,7 +31,10 @@ class UiSmokeTest {
         fun texts() = rule.onAllNodesWithText(label, useUnmergedTree = true)
         fun descs() = rule.onAllNodesWithContentDescription(label, useUnmergedTree = true)
         rule.waitUntil(20_000) { texts().fetchSemanticsNodes().isNotEmpty() || descs().fetchSemanticsNodes().isNotEmpty() }
-        (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst().performClick()
+        val node = (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst()
+        // Tool bars scroll horizontally: bring the target into view first.
+        runCatching { node.performScrollTo() }
+        node.performClick()
         rule.waitForIdle()
     }
 
@@ -41,11 +45,10 @@ class UiSmokeTest {
         click("Create")
         rule.waitUntil(20_000) { rule.onAllNodesWithContentDescription("Undo").fetchSemanticsNodes().isNotEmpty() }
 
-        click("Add")
         click("Text")
-        click("Add")
+        click("3D")
         click("Cube")
-        click("Add")
+        click("Shapes")
         click("Star")
         shot("ui-editor-timeline")
 
@@ -53,6 +56,20 @@ class UiSmokeTest {
         click("Duplicate")
         click("Group")
         shot("ui-editor-after-ops")
+
+        // Effect picker: categories, one category, add an effect (opens its parameters).
+        click("Effects")
+        Thread.sleep(3000) // previews render in the background
+        shot("ui-effects-categories")
+        click("Distort")
+        Thread.sleep(3000)
+        shot("ui-effects-distort")
+        click("Pinch/Bulge")
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Distortion", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        shot("ui-effects-params")
+        InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+        rule.waitForIdle()
+        Thread.sleep(500)
         click("Properties")
         shot("ui-editor-properties")
         rule.onNodeWithContentDescription("Undo").assertExists()

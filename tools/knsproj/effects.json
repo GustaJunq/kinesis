@@ -1,0 +1,2055 @@
+{
+  "comment": "Generated from core EffectRegistry by RegistryArtifactsTest. Do not edit.",
+  "version": 1,
+  "categories": [
+    {
+      "id": "all",
+      "pt": "Todos os efeitos",
+      "en": "All effects"
+    },
+    {
+      "id": "colorLight",
+      "pt": "Cor e luz",
+      "en": "Color & light"
+    },
+    {
+      "id": "blurSharpen",
+      "pt": "Desfoque e nitidez",
+      "en": "Blur & sharpen"
+    },
+    {
+      "id": "distort",
+      "pt": "Distorção",
+      "en": "Distort"
+    },
+    {
+      "id": "motion",
+      "pt": "Movimentar e transformar",
+      "en": "Move & transform"
+    },
+    {
+      "id": "stylize",
+      "pt": "Estilizar",
+      "en": "Stylize"
+    },
+    {
+      "id": "glitch",
+      "pt": "Glitch",
+      "en": "Glitch"
+    },
+    {
+      "id": "drawEdges",
+      "pt": "Desenho e borda",
+      "en": "Drawing & edges"
+    },
+    {
+      "id": "procedural",
+      "pt": "Procedimental",
+      "en": "Procedural"
+    },
+    {
+      "id": "keying",
+      "pt": "Fosco, máscara e chave",
+      "en": "Matte, mask & key"
+    },
+    {
+      "id": "time",
+      "pt": "Tempo e transição",
+      "en": "Time & transition"
+    },
+    {
+      "id": "text",
+      "pt": "Texto",
+      "en": "Text"
+    },
+    {
+      "id": "utility",
+      "pt": "Utilitário e expressão",
+      "en": "Utility & expression"
+    }
+  ],
+  "effects": [
+    {
+      "id": "gradientMap",
+      "category": "colorLight",
+      "pt": "Mapa de gradiente",
+      "en": "Gradient Map",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "stops",
+          "type": "stops",
+          "default": [
+            {
+              "offset": 0,
+              "color": "#000000"
+            },
+            {
+              "offset": 1,
+              "color": "#FFFFFF"
+            }
+          ]
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "exposure",
+      "category": "colorLight",
+      "pt": "Exposição",
+      "en": "Exposure",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "exposure",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "offset",
+          "type": "number",
+          "default": 0,
+          "min": -1,
+          "max": 1
+        },
+        {
+          "name": "gamma",
+          "type": "number",
+          "default": 1,
+          "min": 0.1,
+          "max": 5
+        }
+      ]
+    },
+    {
+      "id": "brightnessContrast",
+      "category": "colorLight",
+      "pt": "Brilho e contraste",
+      "en": "Brightness & Contrast",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "brightness",
+          "type": "number",
+          "default": 0,
+          "min": -1,
+          "max": 1
+        },
+        {
+          "name": "contrast",
+          "type": "number",
+          "default": 0,
+          "min": -1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "saturation",
+      "category": "colorLight",
+      "pt": "Saturação",
+      "en": "Saturation",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "saturation",
+          "type": "number",
+          "default": 0,
+          "min": -1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "hueShift",
+      "category": "colorLight",
+      "pt": "Matiz",
+      "en": "Hue Shift",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "hue",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        }
+      ]
+    },
+    {
+      "id": "invert",
+      "category": "colorLight",
+      "pt": "Inverter cores",
+      "en": "Invert Colors",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "fill",
+      "category": "colorLight",
+      "pt": "Preenchimento",
+      "en": "Fill",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "deepGlow",
+      "category": "colorLight",
+      "pt": "Brilho profundo",
+      "en": "Deep Glow",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "threshold",
+          "type": "number",
+          "default": 0.6,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "default": 60,
+          "min": 0,
+          "max": 1000
+        },
+        {
+          "name": "intensity",
+          "type": "number",
+          "default": 1.5,
+          "min": 0,
+          "max": 10
+        },
+        {
+          "name": "falloff",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "id": "lensFlare",
+      "category": "colorLight",
+      "pt": "Lens flare",
+      "en": "Lens Flare",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "position",
+          "type": "point",
+          "default": [-200, -200]
+        },
+        {
+          "name": "intensity",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 5
+        },
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#FFD9A1"
+        },
+        {
+          "name": "rings",
+          "type": "integer",
+          "default": 4,
+          "min": 0,
+          "max": 12
+        }
+      ]
+    },
+    {
+      "id": "tint",
+      "category": "colorLight",
+      "pt": "Tingir",
+      "en": "Tint",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#7D5CFF"
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "glow",
+      "category": "colorLight",
+      "pt": "Brilho simples",
+      "en": "Glow",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "default": 24,
+          "min": 0,
+          "max": 500
+        },
+        {
+          "name": "intensity",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 10
+        }
+      ]
+    },
+    {
+      "id": "colorBalance",
+      "category": "colorLight",
+      "pt": "Equilíbrio de cor",
+      "en": "Color Balance",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "shadows",
+          "type": "color",
+          "default": "#808080"
+        },
+        {
+          "name": "midtones",
+          "type": "color",
+          "default": "#808080"
+        },
+        {
+          "name": "highlights",
+          "type": "color",
+          "default": "#808080"
+        },
+        {
+          "name": "preserveLuminosity",
+          "type": "boolean",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "vibrance",
+      "category": "colorLight",
+      "pt": "Vibração",
+      "en": "Vibrance",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "vibrance",
+          "type": "number",
+          "default": 0.5,
+          "min": -1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "blur",
+      "category": "blurSharpen",
+      "pt": "Desfoque gaussiano",
+      "en": "Gaussian Blur",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "radius",
+          "type": "number",
+          "default": 12,
+          "min": 0,
+          "max": 500
+        }
+      ]
+    },
+    {
+      "id": "sharpen",
+      "category": "blurSharpen",
+      "pt": "Nitidez",
+      "en": "Sharpen",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 5
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "default": 1.5,
+          "min": 0.5,
+          "max": 20
+        }
+      ]
+    },
+    {
+      "id": "lensBlur",
+      "category": "blurSharpen",
+      "pt": "Desfoque de lente",
+      "en": "Lens Blur",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "radius",
+          "type": "number",
+          "default": 12,
+          "min": 0,
+          "max": 200
+        },
+        {
+          "name": "blades",
+          "type": "integer",
+          "default": 6,
+          "min": 0,
+          "max": 12
+        },
+        {
+          "name": "rotation",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "brightness",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 5
+        }
+      ]
+    },
+    {
+      "id": "directionalBlur",
+      "category": "blurSharpen",
+      "pt": "Desfoque direcional",
+      "en": "Directional Blur",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "length",
+          "type": "number",
+          "default": 30,
+          "min": 0,
+          "max": 1000
+        }
+      ]
+    },
+    {
+      "id": "radialBlur",
+      "category": "blurSharpen",
+      "pt": "Desfoque radial",
+      "en": "Radial Blur",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "mode",
+          "type": "choice",
+          "default": "zoom",
+          "choices": ["spin", "zoom"]
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 10,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "name": "center",
+          "type": "point",
+          "default": [0, 0]
+        }
+      ]
+    },
+    {
+      "id": "pinchBulge",
+      "category": "distort",
+      "pt": "Pinçar/Estufar",
+      "en": "Pinch/Bulge",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 0.5,
+          "min": -1,
+          "max": 1
+        },
+        {
+          "name": "center",
+          "type": "point",
+          "default": [0, 0]
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "default": 300,
+          "min": 0,
+          "max": 8000
+        },
+        {
+          "name": "falloff",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "glass",
+      "category": "distort",
+      "pt": "Glass",
+      "en": "Glass",
+      "target": "any",
+      "needsBackdrop": true,
+      "params": [
+        {
+          "name": "refraction",
+          "type": "number",
+          "default": 1.5,
+          "min": 1,
+          "max": 3
+        },
+        {
+          "name": "dispersion",
+          "type": "number",
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "edgeGlow",
+          "type": "number",
+          "default": 0.6,
+          "min": 0,
+          "max": 5
+        },
+        {
+          "name": "edgeGlowWidth",
+          "type": "number",
+          "default": 6,
+          "min": 0,
+          "max": 200
+        },
+        {
+          "name": "edgeGlowColor",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "bevel",
+          "type": "number",
+          "default": 24,
+          "min": 0,
+          "max": 400
+        },
+        {
+          "name": "useLuminanceAsHeight",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "heightScale",
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 400
+        },
+        {
+          "name": "heightSoftness",
+          "type": "number",
+          "default": 4,
+          "min": 0,
+          "max": 100
+        }
+      ]
+    },
+    {
+      "id": "warp",
+      "category": "distort",
+      "pt": "Deformar",
+      "en": "Warp",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "mode",
+          "type": "choice",
+          "default": "wave",
+          "choices": ["wave", "fractal"]
+        },
+        {
+          "name": "amplitude",
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 1000
+        },
+        {
+          "name": "frequency",
+          "type": "number",
+          "default": 3,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "name": "direction",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "phase",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 1000
+        },
+        {
+          "name": "scale",
+          "type": "number",
+          "default": 200,
+          "min": 1,
+          "max": 4000
+        },
+        {
+          "name": "complexity",
+          "type": "integer",
+          "default": 3,
+          "min": 1,
+          "max": 8
+        },
+        {
+          "name": "evolution",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "mirror",
+      "category": "distort",
+      "pt": "Espelhar",
+      "en": "Mirror",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "axis",
+          "type": "choice",
+          "default": "horizontal",
+          "choices": ["horizontal", "vertical", "both"]
+        },
+        {
+          "name": "center",
+          "type": "point",
+          "default": [0, 0]
+        },
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        }
+      ]
+    },
+    {
+      "id": "twirl",
+      "category": "distort",
+      "pt": "Redemoinho",
+      "en": "Twirl",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 180,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "default": 300,
+          "min": 0,
+          "max": 8000
+        },
+        {
+          "name": "center",
+          "type": "point",
+          "default": [0, 0]
+        }
+      ]
+    },
+    {
+      "id": "ripple",
+      "category": "distort",
+      "pt": "Ondulação",
+      "en": "Ripple",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amplitude",
+          "type": "number",
+          "default": 10,
+          "min": 0,
+          "max": 500
+        },
+        {
+          "name": "wavelength",
+          "type": "number",
+          "default": 60,
+          "min": 1,
+          "max": 4000
+        },
+        {
+          "name": "phase",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "default": 600,
+          "min": 0,
+          "max": 8000
+        },
+        {
+          "name": "center",
+          "type": "point",
+          "default": [0, 0]
+        }
+      ]
+    },
+    {
+      "id": "autoShake",
+      "category": "motion",
+      "pt": "Tremor automático",
+      "en": "Auto-Shake",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amplitude",
+          "type": "number",
+          "default": 10,
+          "min": 0,
+          "max": 1000
+        },
+        {
+          "name": "frequency",
+          "type": "number",
+          "default": 8,
+          "min": 0,
+          "max": 60
+        },
+        {
+          "name": "axes",
+          "type": "choice",
+          "default": "xy",
+          "choices": ["xy", "x", "y"]
+        },
+        {
+          "name": "rotation",
+          "type": "number",
+          "default": 2,
+          "min": 0,
+          "max": 180
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "spin",
+      "category": "motion",
+      "pt": "Girar",
+      "en": "Spin",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "speed",
+          "type": "number",
+          "default": 90,
+          "min": -36000,
+          "max": 36000
+        },
+        {
+          "name": "center",
+          "type": "point",
+          "default": [0, 0]
+        }
+      ]
+    },
+    {
+      "id": "oscillate",
+      "category": "motion",
+      "pt": "Oscilante",
+      "en": "Oscillate",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "frequency",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 60
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 20,
+          "min": 0,
+          "max": 2000
+        },
+        {
+          "name": "scaleAmount",
+          "type": "number",
+          "default": 0.05,
+          "min": 0,
+          "max": 2
+        },
+        {
+          "name": "rotationAmount",
+          "type": "number",
+          "default": 5,
+          "min": 0,
+          "max": 360
+        },
+        {
+          "name": "phase",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        }
+      ]
+    },
+    {
+      "id": "float",
+      "category": "motion",
+      "pt": "Flutuar",
+      "en": "Float",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amplitude",
+          "type": "number",
+          "default": 12,
+          "min": 0,
+          "max": 1000
+        },
+        {
+          "name": "frequency",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 20
+        },
+        {
+          "name": "phase",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        }
+      ]
+    },
+    {
+      "id": "pulse",
+      "category": "motion",
+      "pt": "Pulsar",
+      "en": "Pulse",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 0.08,
+          "min": 0,
+          "max": 2
+        },
+        {
+          "name": "frequency",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 60
+        },
+        {
+          "name": "phase",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        }
+      ]
+    },
+    {
+      "id": "pixelate",
+      "category": "stylize",
+      "pt": "Pixelizar",
+      "en": "Pixelate",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "size",
+          "type": "number",
+          "default": 16,
+          "min": 1,
+          "max": 1000
+        }
+      ]
+    },
+    {
+      "id": "dropShadow",
+      "category": "stylize",
+      "pt": "Sombra",
+      "en": "Drop Shadow",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#000000"
+        },
+        {
+          "name": "opacity",
+          "type": "number",
+          "default": 0.6,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 90,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "distance",
+          "type": "number",
+          "default": 16,
+          "min": 0,
+          "max": 2000
+        },
+        {
+          "name": "softness",
+          "type": "number",
+          "default": 16,
+          "min": 0,
+          "max": 500
+        }
+      ]
+    },
+    {
+      "id": "vignette",
+      "category": "stylize",
+      "pt": "Vinheta",
+      "en": "Vignette",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "softness",
+          "type": "number",
+          "default": 0.5,
+          "min": 0.01,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "halftone",
+      "category": "stylize",
+      "pt": "Retícula",
+      "en": "Halftone",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "dotSize",
+          "type": "number",
+          "default": 8,
+          "min": 2,
+          "max": 400
+        },
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 45,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "monochrome",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "posterize",
+      "category": "stylize",
+      "pt": "Posterizar",
+      "en": "Posterize",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "levels",
+          "type": "integer",
+          "default": 6,
+          "min": 2,
+          "max": 64
+        }
+      ]
+    },
+    {
+      "id": "filmGrain",
+      "category": "stylize",
+      "pt": "Granulação",
+      "en": "Film Grain",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 0.15,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "default": 1.5,
+          "min": 0.5,
+          "max": 20
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "scanlines",
+      "category": "stylize",
+      "pt": "Scanlines/CRT",
+      "en": "Scanlines/CRT",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "spacing",
+          "type": "number",
+          "default": 4,
+          "min": 2,
+          "max": 200
+        },
+        {
+          "name": "intensity",
+          "type": "number",
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "curvature",
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "blockGlitch",
+      "category": "glitch",
+      "pt": "Glitch em blocos",
+      "en": "Block Glitch",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "blockSize",
+          "type": "number",
+          "default": 48,
+          "min": 4,
+          "max": 2000
+        },
+        {
+          "name": "intensity",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "rate",
+          "type": "number",
+          "default": 8,
+          "min": 0,
+          "max": 60
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "lineGlitch",
+      "category": "glitch",
+      "pt": "Glitch em linhas",
+      "en": "Line Glitch",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "lineHeight",
+          "type": "number",
+          "default": 6,
+          "min": 1,
+          "max": 500
+        },
+        {
+          "name": "offset",
+          "type": "number",
+          "default": 40,
+          "min": 0,
+          "max": 2000
+        },
+        {
+          "name": "density",
+          "type": "number",
+          "default": 0.25,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "rate",
+          "type": "number",
+          "default": 12,
+          "min": 0,
+          "max": 60
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "vhs",
+      "category": "glitch",
+      "pt": "Fita VHS",
+      "en": "VHS Tape",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "tracking",
+          "type": "number",
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "jitter",
+          "type": "number",
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "colorBleed",
+          "type": "number",
+          "default": 4,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "name": "noise",
+          "type": "number",
+          "default": 0.2,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "scanlines",
+          "type": "number",
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "chromaticAberration",
+      "category": "glitch",
+      "pt": "Aberração cromática",
+      "en": "Chromatic Aberration",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 6,
+          "min": 0,
+          "max": 500
+        },
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        }
+      ]
+    },
+    {
+      "id": "rgbSplit",
+      "category": "glitch",
+      "pt": "Separação RGB",
+      "en": "RGB Split",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 8,
+          "min": 0,
+          "max": 500
+        },
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "rate",
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 60
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "staticNoise",
+      "category": "glitch",
+      "pt": "Chuvisco",
+      "en": "Static Noise",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "default": 1,
+          "min": 0.5,
+          "max": 40
+        },
+        {
+          "name": "rate",
+          "type": "number",
+          "default": 24,
+          "min": 0,
+          "max": 120
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "findEdges",
+      "category": "drawEdges",
+      "pt": "Encontrar bordas",
+      "en": "Find Edges",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "strength",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 5
+        },
+        {
+          "name": "invert",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "outline",
+      "category": "drawEdges",
+      "pt": "Contorno",
+      "en": "Outline",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "width",
+          "type": "number",
+          "default": 4,
+          "min": 0,
+          "max": 200
+        },
+        {
+          "name": "opacity",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "position",
+          "type": "choice",
+          "default": "outside",
+          "choices": ["outside", "inside", "center"]
+        }
+      ]
+    },
+    {
+      "id": "emboss",
+      "category": "drawEdges",
+      "pt": "Relevo",
+      "en": "Emboss",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 135,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "strength",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 5
+        },
+        {
+          "name": "distance",
+          "type": "number",
+          "default": 2,
+          "min": 0.5,
+          "max": 50
+        }
+      ]
+    },
+    {
+      "id": "sketch",
+      "category": "drawEdges",
+      "pt": "Esboço",
+      "en": "Sketch",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "strength",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 5
+        },
+        {
+          "name": "colored",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "fractalNoise",
+      "category": "procedural",
+      "pt": "Ruído fractal",
+      "en": "Fractal Noise",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "scale",
+          "type": "number",
+          "default": 200,
+          "min": 1,
+          "max": 4000
+        },
+        {
+          "name": "complexity",
+          "type": "integer",
+          "default": 4,
+          "min": 1,
+          "max": 8
+        },
+        {
+          "name": "evolution",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "contrast",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 5
+        },
+        {
+          "name": "brightness",
+          "type": "number",
+          "default": 0,
+          "min": -1,
+          "max": 1
+        },
+        {
+          "name": "colorA",
+          "type": "color",
+          "default": "#000000"
+        },
+        {
+          "name": "colorB",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        },
+        {
+          "name": "mode",
+          "type": "choice",
+          "default": "replace",
+          "choices": ["replace", "add", "multiply", "screen", "overlay"]
+        },
+        {
+          "name": "mix",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "gradientRamp",
+      "category": "procedural",
+      "pt": "Rampa de gradiente",
+      "en": "Gradient Ramp",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "shape",
+          "type": "choice",
+          "default": "linear",
+          "choices": ["linear", "radial"]
+        },
+        {
+          "name": "start",
+          "type": "point",
+          "default": [0, -300]
+        },
+        {
+          "name": "end",
+          "type": "point",
+          "default": [0, 300]
+        },
+        {
+          "name": "startColor",
+          "type": "color",
+          "default": "#000000"
+        },
+        {
+          "name": "endColor",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "mode",
+          "type": "choice",
+          "default": "replace",
+          "choices": ["replace", "add", "multiply", "screen", "overlay"]
+        },
+        {
+          "name": "mix",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "checkerboard",
+      "category": "procedural",
+      "pt": "Xadrez",
+      "en": "Checkerboard",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "size",
+          "type": "number",
+          "default": 64,
+          "min": 1,
+          "max": 4000
+        },
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "colorA",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "colorB",
+          "type": "color",
+          "default": "#000000"
+        },
+        {
+          "name": "offset",
+          "type": "point",
+          "default": [0, 0]
+        },
+        {
+          "name": "mode",
+          "type": "choice",
+          "default": "replace",
+          "choices": ["replace", "add", "multiply", "screen", "overlay"]
+        },
+        {
+          "name": "mix",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "grid",
+      "category": "procedural",
+      "pt": "Grade",
+      "en": "Grid",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "spacing",
+          "type": "number",
+          "default": 64,
+          "min": 2,
+          "max": 4000
+        },
+        {
+          "name": "width",
+          "type": "number",
+          "default": 2,
+          "min": 0,
+          "max": 200
+        },
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "angle",
+          "type": "number",
+          "default": 0,
+          "min": -3600,
+          "max": 3600
+        },
+        {
+          "name": "offset",
+          "type": "point",
+          "default": [0, 0]
+        },
+        {
+          "name": "mode",
+          "type": "choice",
+          "default": "replace",
+          "choices": ["replace", "add", "multiply", "screen", "overlay"]
+        },
+        {
+          "name": "mix",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "chromaKey",
+      "category": "keying",
+      "pt": "Chroma key",
+      "en": "Chroma Key",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#00FF00"
+        },
+        {
+          "name": "tolerance",
+          "type": "number",
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "softness",
+          "type": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "spill",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "choke",
+          "type": "number",
+          "default": 0,
+          "min": -50,
+          "max": 50
+        }
+      ]
+    },
+    {
+      "id": "lumaKey",
+      "category": "keying",
+      "pt": "Luma key",
+      "en": "Luma Key",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "threshold",
+          "type": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "tolerance",
+          "type": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "softness",
+          "type": "number",
+          "default": 0.05,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "invert",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "spillSuppressor",
+      "category": "keying",
+      "pt": "Supressor de spill",
+      "en": "Spill Suppressor",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#00FF00"
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "matteChoker",
+      "category": "keying",
+      "pt": "Ajuste de fosco",
+      "en": "Matte Choker",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "choke",
+          "type": "number",
+          "default": 2,
+          "min": -100,
+          "max": 100
+        },
+        {
+          "name": "softness",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 100
+        }
+      ]
+    },
+    {
+      "id": "echo",
+      "category": "time",
+      "pt": "Eco",
+      "en": "Echo",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "delay",
+          "type": "number",
+          "default": 0.1,
+          "min": 0.01,
+          "max": 5
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "default": 4,
+          "min": 1,
+          "max": 16
+        },
+        {
+          "name": "decay",
+          "type": "number",
+          "default": 0.6,
+          "min": 0,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "posterizeTime",
+      "category": "time",
+      "pt": "Posterizar tempo",
+      "en": "Posterize Time",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "fps",
+          "type": "number",
+          "default": 8,
+          "min": 1,
+          "max": 120
+        }
+      ]
+    },
+    {
+      "id": "strobe",
+      "category": "time",
+      "pt": "Estroboscópio",
+      "en": "Strobe",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "frequency",
+          "type": "number",
+          "default": 4,
+          "min": 0,
+          "max": 60
+        },
+        {
+          "name": "duty",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "mode",
+          "type": "choice",
+          "default": "flash",
+          "choices": ["flash", "hide"]
+        },
+        {
+          "name": "color",
+          "type": "color",
+          "default": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "id": "depthMap",
+      "category": "utility",
+      "pt": "Mapa de profundidade",
+      "en": "Depth Map",
+      "target": "layer_3d",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "near",
+          "type": "number",
+          "default": 500,
+          "min": 0,
+          "max": 200000
+        },
+        {
+          "name": "far",
+          "type": "number",
+          "default": 5000,
+          "min": 0,
+          "max": 200000
+        },
+        {
+          "name": "gamma",
+          "type": "number",
+          "default": 1,
+          "min": 0.1,
+          "max": 5
+        },
+        {
+          "name": "invert",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "channelShuffle",
+      "category": "utility",
+      "pt": "Trocar canais",
+      "en": "Channel Shuffle",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "red",
+          "type": "choice",
+          "default": "red",
+          "choices": ["red", "green", "blue", "alpha", "luma", "zero", "one"]
+        },
+        {
+          "name": "green",
+          "type": "choice",
+          "default": "green",
+          "choices": ["red", "green", "blue", "alpha", "luma", "zero", "one"]
+        },
+        {
+          "name": "blue",
+          "type": "choice",
+          "default": "blue",
+          "choices": ["red", "green", "blue", "alpha", "luma", "zero", "one"]
+        },
+        {
+          "name": "alpha",
+          "type": "choice",
+          "default": "alpha",
+          "choices": ["red", "green", "blue", "alpha", "luma", "zero", "one"]
+        }
+      ]
+    },
+    {
+      "id": "alphaFromLuma",
+      "category": "utility",
+      "pt": "Alfa pela luminância",
+      "en": "Set Alpha from Luma",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "invert",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    }
+  ]
+}

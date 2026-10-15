@@ -1,0 +1,42 @@
+{
+  "format": "knsproj",
+  "formatVersion": 2,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Utilitário"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "cube-near",
+      "type": "object3d",
+      "duration": 4,
+      "transform3d": {
+        "position": [-160, 0, -300],
+        "rotation": {"keyframes": [{"time": 0, "value": [-20, 0, 0]}, {"time": 4, "value": [-20, 360, 0]}]}
+      },
+      "object3d": {"primitive": "cube", "size": 300},
+      "effects": [{"type": "depthMap", "near": 1000, "far": 2400}]
+    },
+    {
+      "id": "sphere-far",
+      "type": "object3d",
+      "duration": 4,
+      "transform3d": {"position": [220, 0, 500]},
+      "object3d": {"primitive": "sphere", "size": 320},
+      "effects": [{"type": "depthMap", "near": 1000, "far": 2400}]
+    },
+    {
+      "id": "caption",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 420]},
+      "text": {
+        "content": "profundidade",
+        "font": {"family": "sans-serif", "weight": 500},
+        "fontSize": 70,
+        "color": "#FFFFFF"
+      },
+      "effects": [{"type": "channelShuffle", "red": "blue", "blue": "red"}]
+    }
+  ]
+}

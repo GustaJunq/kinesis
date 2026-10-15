@@ -214,7 +214,7 @@ fun Viewport(
                     drawLine(KColors.Keyframe.copy(alpha = 0.6f), c, toView(h.target), strokeWidth = 2f * density.density, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f)))
                 }
                 val r = 17.dp.toPx()
-                drawCircle(Color(0xE6121520), r, c)
+                drawCircle(KColors.Bar.copy(alpha = 0.9f), r, c)
                 drawCircle(if (picked) KColors.Accent else KColors.Keyframe, r, c, style = Stroke(2.dp.toPx()))
                 translate(c.x - r * 0.62f, c.y - r * 0.62f) {
                     with(bulb) { draw(androidx.compose.ui.geometry.Size(r * 1.24f, r * 1.24f), colorFilter = ColorFilter.tint(KColors.Keyframe)) }

@@ -387,8 +387,25 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     fun toggleKeyframe(layerId: String, prop: AnimProp<*>) =
         updateLayer(layerId) { l -> prop.toggleKeyframe(l, localTime(l)) }
 
+    /** Keyframes the transform of the selected layer at the playhead: every animated property, or the whole transform if none is. */
+    fun addKeyframeAtPlayhead() {
+        val layer = selectedLayer() ?: return
+        val transform = dev.kinesis.core.edit.LayerProps.sections(layer).firstOrNull()?.props ?: return
+        val targets = transform.filter { it.isAnimated(layer) }.ifEmpty { transform.take(4) }
+        updateLayer(layer.id) { l ->
+            val t = localTime(l)
+            targets.fold(l) { acc, prop -> if (prop.hasKeyframeAt(acc, t)) acc else prop.toggleKeyframe(acc, t) }
+        }
+    }
+
     fun clearKeyframes(layerId: String, prop: AnimProp<*>) =
         updateLayer(layerId) { l -> prop.clearKeyframes(l, localTime(l)) }
+
+    fun setLoop(layerId: String, prop: AnimProp<*>, mode: dev.kinesis.core.anim.LoopMode) =
+        updateLayer(layerId) { l -> withLoop(l, prop, mode) }
+
+    private fun <T> withLoop(l: Layer, prop: AnimProp<T>, mode: dev.kinesis.core.anim.LoopMode): Layer =
+        prop.set(l, prop.get(l).copy(loop = mode))
 
     fun setEasing(layerId: String, prop: AnimProp<*>, index: Int, easing: Easing) =
         updateLayer(layerId) { l -> prop.setEasing(l, index, easing) }

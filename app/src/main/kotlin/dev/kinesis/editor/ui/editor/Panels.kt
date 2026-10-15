@@ -107,6 +107,14 @@ import dev.kinesis.editor.media.ExportResolution
 import dev.kinesis.editor.media.ExportSettings
 import dev.kinesis.editor.ui.common.ChoiceChips
 import dev.kinesis.editor.ui.theme.KColors
+import dev.kinesis.editor.ui.theme.KDims
+import dev.kinesis.editor.ui.theme.KShapes
+import dev.kinesis.editor.ui.common.OverlineLabel
+import dev.kinesis.editor.ui.common.PillChip
+import dev.kinesis.editor.ui.theme.KType
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.foundation.layout.heightIn
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -201,12 +209,14 @@ enum class AddAction {
 
 private class AddItem(val action: AddAction, val label: Int, val icon: ImageVector)
 
+/** Which part of the add menu the toolbar opened. */
+enum class AddSection { SHAPES, MEDIA, MODEL3D, SCENE }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddSheet(onDismiss: () -> Unit, onAdd: (AddAction) -> Unit) {
-    val groups = listOf(
+fun AddSheet(section: AddSection, onDismiss: () -> Unit, onAdd: (AddAction) -> Unit) {
+    val all = listOf(
         R.string.add_basics to listOf(
-            AddItem(AddAction.TEXT, R.string.layer_text, Icons.Filled.TextFields),
             AddItem(AddAction.RECTANGLE, R.string.shape_rectangle, Icons.Filled.Crop54),
             AddItem(AddAction.ELLIPSE, R.string.shape_ellipse, Icons.Outlined.Circle),
             AddItem(AddAction.POLYGON, R.string.shape_polygon, Icons.Filled.Hexagon),
@@ -235,7 +245,8 @@ fun AddSheet(onDismiss: () -> Unit, onAdd: (AddAction) -> Unit) {
             AddItem(AddAction.LIGHT_AMBIENT, R.string.light_ambient, Icons.Filled.LightMode),
         ),
     )
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = KColors.Surface) {
+    val groups = listOf(all[section.ordinal])
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = KColors.Sheet, shape = KShapes.Sheet) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(84.dp),
             contentPadding = PaddingValues(16.dp, 0.dp, 16.dp, 32.dp),
@@ -244,14 +255,15 @@ fun AddSheet(onDismiss: () -> Unit, onAdd: (AddAction) -> Unit) {
         ) {
             for ((title, items) in groups) {
                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                    Text(stringResource(title).uppercase(), style = MaterialTheme.typography.labelSmall, color = KColors.Accent, modifier = Modifier.padding(top = 8.dp))
+                    OverlineLabel(stringResource(title).uppercase(), Modifier.padding(top = 8.dp), color = KColors.Accent)
                 }
                 items(items) { item ->
                     Column(
                         Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(KColors.SurfaceHigh)
+                            .clip(KShapes.Tile)
+                            .background(KColors.Field)
                             .combinedClickableCompat { onAdd(item.action) }
+                            .heightIn(min = KDims.MinTouch)
                             .padding(vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
@@ -295,94 +307,116 @@ private val CURVE_PRESETS = listOf(
     EasingPreset.EASE_IN_OUT_BACK, EasingPreset.EASE_OUT_BOUNCE, EasingPreset.EASE_OUT_ELASTIC,
 )
 
-/** Bézier curve editor for the segment that starts at a keyframe. */
+/**
+ * Bézier curve editor for the segment that starts at a keyframe, shown inline under the property list.
+ * Dragging a handle or picking a preset applies the easing; the loop chips set the property's loop mode.
+ */
 @Composable
-fun CurveEditorDialog(initial: Easing, onDismiss: () -> Unit, onApply: (Easing) -> Unit) {
-    var easing by remember { mutableStateOf(initial) }
-    var handles by remember { mutableStateOf(initial.bezierOrNull() ?: Easing.CubicBezier(0.42f, 0f, 0.58f, 1f)) }
+fun CurveEditorPanel(
+    easing: Easing,
+    loop: dev.kinesis.core.anim.LoopMode,
+    onEasing: (Easing) -> Unit,
+    onLoop: (dev.kinesis.core.anim.LoopMode) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var current by remember(easing) { mutableStateOf(easing) }
+    var handles by remember(easing) { mutableStateOf(easing.bezierOrNull() ?: Easing.CubicBezier(0.42f, 0f, 0.58f, 1f)) }
     val transition = rememberInfiniteTransition(label = "preview")
     val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart), label = "phase")
+    val latest by rememberUpdatedState(onEasing)
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.easing)) },
-        confirmButton = { TextButton(onClick = { onApply(easing) }) { Text(stringResource(R.string.apply)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // y range -0.5..1.5 so overshooting curves fit.
-                Canvas(
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(KColors.Background)
-                        .pointerInput(Unit) {
-                            var dragging = 0
-                            detectDragGestures(
-                                onDragStart = { o ->
-                                    val w = size.width.toFloat(); val h = size.height.toFloat()
-                                    fun pos(x: Float, y: Float) = Offset(x * w, h - (y + 0.5f) / 2f * h)
-                                    val h1 = pos(handles.x1, handles.y1)
-                                    val h2 = pos(handles.x2, handles.y2)
-                                    dragging = if (hypot(o.x - h1.x, o.y - h1.y) < hypot(o.x - h2.x, o.y - h2.y)) 1 else 2
-                                },
-                            ) { change, _ ->
-                                change.consume()
-                                val w = size.width.toFloat(); val h = size.height.toFloat()
-                                val x = (change.position.x / w).coerceIn(0f, 1f)
-                                val y = ((h - change.position.y) / h * 2f - 0.5f).coerceIn(-0.5f, 1.5f)
-                                handles = if (dragging == 1) handles.copy(x1 = x, y1 = y) else handles.copy(x2 = x, y2 = y)
-                                easing = handles
-                            }
+    Column(
+        modifier.fillMaxWidth().background(KColors.Card).padding(horizontal = KDims.Gutter, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OverlineLabel(stringResource(R.string.easing), Modifier.weight(1f))
+            androidx.compose.material3.IconButton(onClick = onClose, modifier = Modifier.size(KDims.MinTouch)) {
+                Icon(androidx.compose.material.icons.Icons.Outlined.Close, stringResource(R.string.close), tint = KColors.TextSoft)
+            }
+        }
+        // y range -0.5..1.5 so overshooting curves fit.
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(150.dp)
+                .clip(KShapes.Tile)
+                .background(KColors.Background)
+                .pointerInput(Unit) {
+                    var dragging = 0
+                    detectDragGestures(
+                        onDragStart = { o ->
+                            val w = size.width.toFloat(); val h = size.height.toFloat()
+                            fun pos(x: Float, y: Float) = Offset(x * w, h - (y + 0.5f) / 2f * h)
+                            val h1 = pos(handles.x1, handles.y1)
+                            val h2 = pos(handles.x2, handles.y2)
+                            dragging = if (hypot(o.x - h1.x, o.y - h1.y) < hypot(o.x - h2.x, o.y - h2.y)) 1 else 2
                         },
-                ) {
-                    val w = size.width; val h = size.height
-                    fun pos(x: Float, y: Float) = Offset(x * w, h - (y + 0.5f) / 2f * h)
-                    // Grid: 0 and 1 levels.
-                    drawLine(KColors.Outline, pos(0f, 0f), pos(1f, 0f))
-                    drawLine(KColors.Outline, pos(0f, 1f), pos(1f, 1f))
-                    drawLine(KColors.Outline, pos(0f, 0f), pos(0f, 1f))
-                    drawLine(KColors.Outline, pos(1f, 0f), pos(1f, 1f))
-                    val path = Path()
-                    for (i in 0..120) {
-                        val u = i / 120f
-                        val p = pos(u, easing.transform(u))
-                        if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
+                        onDragEnd = { latest(current) },
+                        onDragCancel = { latest(current) },
+                    ) { change, _ ->
+                        change.consume()
+                        val w = size.width.toFloat(); val h = size.height.toFloat()
+                        val x = (change.position.x / w).coerceIn(0f, 1f)
+                        val y = ((h - change.position.y) / h * 2f - 0.5f).coerceIn(-0.5f, 1.5f)
+                        handles = if (dragging == 1) handles.copy(x1 = x, y1 = y) else handles.copy(x2 = x, y2 = y)
+                        current = handles
                     }
-                    drawPath(path, KColors.Accent, style = Stroke(3.dp.toPx()))
-                    val hb = easing.bezierOrNull()
-                    if (hb != null) {
-                        drawLine(KColors.Keyframe, pos(0f, 0f), pos(hb.x1, hb.y1), strokeWidth = 2f)
-                        drawLine(KColors.Keyframe, pos(1f, 1f), pos(hb.x2, hb.y2), strokeWidth = 2f)
-                        drawCircle(KColors.Keyframe, 8.dp.toPx(), pos(hb.x1, hb.y1))
-                        drawCircle(KColors.Keyframe, 8.dp.toPx(), pos(hb.x2, hb.y2))
-                    }
-                    // Preview dot
-                    val v = easing.transform(phase)
-                    drawCircle(Color.White, 6.dp.toPx(), pos(phase, v))
-                    drawCircle(KColors.Teal, 7.dp.toPx(), Offset(w - 10.dp.toPx(), pos(0f, v).y))
-                }
-                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(CURVE_PRESETS) { p ->
-                        androidx.compose.material3.FilterChip(
-                            selected = (easing as? Easing.Preset)?.preset == p,
-                            onClick = {
-                                easing = Easing.Preset(p)
-                                p.bezier?.let { handles = it }
-                            },
-                            label = { Text(easingLabel(p), fontSize = 11.sp) },
-                        )
-                    }
-                }
-                val b = easing.bezierOrNull()
-                Text(
-                    if (b != null) "cubic-bezier(${fmt(b.x1)}, ${fmt(b.y1)}, ${fmt(b.x2)}, ${fmt(b.y2)})" else (easing as? Easing.Preset)?.preset?.id ?: "",
-                    fontSize = 11.sp, color = KColors.TextSecondary,
+                },
+        ) {
+            val w = size.width; val h = size.height
+            fun pos(x: Float, y: Float) = Offset(x * w, h - (y + 0.5f) / 2f * h)
+            // Grid: 0 and 1 levels.
+            drawLine(KColors.LineStrong, pos(0f, 0f), pos(1f, 0f))
+            drawLine(KColors.LineStrong, pos(0f, 1f), pos(1f, 1f))
+            drawLine(KColors.LineStrong, pos(0f, 0f), pos(0f, 1f))
+            drawLine(KColors.LineStrong, pos(1f, 0f), pos(1f, 1f))
+            val path = Path()
+            for (i in 0..120) {
+                val u = i / 120f
+                val p = pos(u, current.transform(u))
+                if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
+            }
+            drawPath(path, KColors.Accent, style = Stroke(3.dp.toPx()))
+            val hb = current.bezierOrNull()
+            if (hb != null) {
+                drawLine(KColors.Keyframe, pos(0f, 0f), pos(hb.x1, hb.y1), strokeWidth = 2f)
+                drawLine(KColors.Keyframe, pos(1f, 1f), pos(hb.x2, hb.y2), strokeWidth = 2f)
+                drawCircle(KColors.Keyframe, 8.dp.toPx(), pos(hb.x1, hb.y1))
+                drawCircle(KColors.Keyframe, 8.dp.toPx(), pos(hb.x2, hb.y2))
+            }
+            // Preview dot
+            val v = current.transform(phase)
+            drawCircle(KColors.White, 6.dp.toPx(), pos(phase, v))
+            drawCircle(KColors.Teal, 7.dp.toPx(), Offset(w - 10.dp.toPx(), pos(0f, v).y))
+        }
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(CURVE_PRESETS) { p ->
+                PillChip(
+                    easingLabel(p),
+                    selected = (current as? Easing.Preset)?.preset == p,
+                    onClick = {
+                        val e = Easing.Preset(p)
+                        current = e
+                        p.bezier?.let { handles = it }
+                        onEasing(e)
+                    },
                 )
             }
-        },
-    )
+        }
+        val b = current.bezierOrNull()
+        Text(
+            if (b != null) "cubic-bezier(${fmt(b.x1)}, ${fmt(b.y1)}, ${fmt(b.x2)}, ${fmt(b.y2)})" else (current as? Easing.Preset)?.preset?.id ?: "",
+            style = KType.Mono, color = KColors.TextSoft,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OverlineLabel(stringResource(R.string.loop), Modifier.padding(end = 6.dp))
+            PillChip(stringResource(R.string.loop_none), loop == dev.kinesis.core.anim.LoopMode.NONE, { onLoop(dev.kinesis.core.anim.LoopMode.NONE) })
+            PillChip(stringResource(R.string.loop_cycle), loop == dev.kinesis.core.anim.LoopMode.CYCLE, { onLoop(dev.kinesis.core.anim.LoopMode.CYCLE) })
+            PillChip(stringResource(R.string.loop_pingpong), loop == dev.kinesis.core.anim.LoopMode.PINGPONG, { onLoop(dev.kinesis.core.anim.LoopMode.PINGPONG) })
+        }
+    }
 }
 
 private fun fmt(v: Float) = ((v * 100).roundToInt() / 100f).toString()

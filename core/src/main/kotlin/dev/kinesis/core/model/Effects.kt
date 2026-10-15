@@ -1,118 +1,173 @@
 package dev.kinesis.core.model
 
-import dev.kinesis.core.anim.AnimColor
-import dev.kinesis.core.anim.AnimFloat
+import dev.kinesis.core.anim.Animatable
 import dev.kinesis.core.anim.anim
+import dev.kinesis.core.format.AnimatableSerializer
+import dev.kinesis.core.format.ColorSerializer
+import dev.kinesis.core.format.Vec2Serializer
 import dev.kinesis.core.math.Color
-import kotlinx.serialization.SerialName
+import dev.kinesis.core.math.Vec2
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
+
+/** Value of one effect parameter; the variant matches [ParamType]. */
+sealed interface EffectValue {
+    data class Num(val anim: Animatable<Float>) : EffectValue
+    data class Col(val anim: Animatable<Color>) : EffectValue
+    data class Point(val anim: Animatable<Vec2>) : EffectValue
+    data class Flag(val value: Boolean) : EffectValue
+    data class Choice(val value: String) : EffectValue
+    data class Stops(val value: List<GradientStop>) : EffectValue
+
+    companion object {
+        fun default(p: EffectParam): EffectValue = when (p.type) {
+            ParamType.NUMBER, ParamType.INTEGER -> Num(anim(p.defaultFloat))
+            ParamType.COLOR -> Col(anim(p.defaultColor))
+            ParamType.POINT -> Point(anim(p.defaultPoint))
+            ParamType.BOOLEAN -> Flag(p.defaultBoolean)
+            ParamType.CHOICE -> Choice(p.defaultChoice)
+            ParamType.STOPS -> Stops(p.defaultStops)
+        }
+    }
+}
 
 /**
- * Visual effects, applied in order to the rendered layer (in composition space).
- * Serialized with a `"type"` discriminator, e.g. `{"type": "blur", "radius": 12}`.
+ * A visual effect applied, in order, to the rendered layer (in composition space). [type] is an id of
+ * [EffectRegistry]; [params] holds the values that were set — missing parameters take the registry default.
+ * Serialized flat: `{"type": "blur", "radius": 12}`.
  */
-@Serializable
-sealed class Effect {
-    abstract val enabled: Boolean
-    abstract fun withEnabled(enabled: Boolean): Effect
+@Serializable(with = EffectSerializer::class)
+data class Effect(
+    val type: String,
+    val enabled: Boolean = true,
+    val params: Map<String, EffectValue> = emptyMap(),
+) {
+    val spec: EffectSpec get() = EffectRegistry.require(type)
 
-    /** Gaussian blur; [radius] in pixels. */
-    @Serializable
-    @SerialName("blur")
-    data class Blur(
-        override val enabled: Boolean = true,
-        val radius: AnimFloat = anim(12f),
-    ) : Effect() {
-        override fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
+    fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
+
+    fun value(name: String): EffectValue = params[name] ?: EffectValue.default(spec.param(name))
+
+    fun number(name: String): Animatable<Float> = (value(name) as EffectValue.Num).anim
+    fun color(name: String): Animatable<Color> = (value(name) as EffectValue.Col).anim
+    fun point(name: String): Animatable<Vec2> = (value(name) as EffectValue.Point).anim
+    fun flag(name: String): Boolean = (value(name) as EffectValue.Flag).value
+    fun choice(name: String): String = (value(name) as EffectValue.Choice).value
+    fun stops(name: String): List<GradientStop> = (value(name) as EffectValue.Stops).value
+
+    fun with(name: String, value: EffectValue): Effect {
+        spec.param(name)
+        return copy(params = params + (name to value))
     }
 
-    /** Brightness/contrast/saturation in -1..1, hue rotation in degrees. */
-    @Serializable
-    @SerialName("colorAdjust")
-    data class ColorAdjust(
-        override val enabled: Boolean = true,
-        val brightness: AnimFloat = anim(0f),
-        val contrast: AnimFloat = anim(0f),
-        val saturation: AnimFloat = anim(0f),
-        val hue: AnimFloat = anim(0f),
-    ) : Effect() {
-        override fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
+    fun withNumber(name: String, a: Animatable<Float>) = with(name, EffectValue.Num(a))
+    fun withColor(name: String, a: Animatable<Color>) = with(name, EffectValue.Col(a))
+    fun withPoint(name: String, a: Animatable<Vec2>) = with(name, EffectValue.Point(a))
+
+    companion object {
+        /** A new effect with every parameter at its default. */
+        fun create(type: String): Effect = Effect(EffectRegistry.require(type).id)
+
+        /** Convenience for code and tests: `Effect.of("blur", "radius" to 6f)`. */
+        fun of(type: String, vararg values: Pair<String, Any>): Effect {
+            var e = create(type)
+            for ((name, v) in values) {
+                e = e.with(
+                    name,
+                    when (v) {
+                        is Number -> EffectValue.Num(anim(v.toFloat()))
+                        is Color -> EffectValue.Col(anim(v))
+                        is Vec2 -> EffectValue.Point(anim(v))
+                        is Boolean -> EffectValue.Flag(v)
+                        is String -> EffectValue.Choice(v)
+                        is EffectValue -> v
+                        else -> throw IllegalArgumentException("unsupported value for $type.$name: $v")
+                    },
+                )
+            }
+            return e
+        }
+    }
+}
+
+/** Writes and reads effects through [EffectRegistry]. Values equal to the default are not written. */
+object EffectSerializer : KSerializer<Effect> {
+    override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor
+
+    private val floatAnim = AnimatableSerializer(Float.serializer())
+    private val colorAnim = AnimatableSerializer(ColorSerializer)
+    private val pointAnim = AnimatableSerializer(Vec2Serializer)
+    private val stopsSerializer = ListSerializer(GradientStop.serializer())
+
+    override fun serialize(encoder: Encoder, value: Effect) {
+        val json = (encoder as JsonEncoder).json
+        val spec = value.spec
+        val obj = buildJsonObject {
+            put("type", JsonPrimitive(value.type))
+            if (!value.enabled) put("enabled", JsonPrimitive(false))
+            for (p in spec.params) {
+                val v = value.params[p.name] ?: continue
+                if (v == EffectValue.default(p)) continue
+                val e: JsonElement = when (v) {
+                    is EffectValue.Num -> json.encodeToJsonElement(floatAnim, if (p.type == ParamType.INTEGER) roundInts(v.anim) else v.anim)
+                    is EffectValue.Col -> json.encodeToJsonElement(colorAnim, v.anim)
+                    is EffectValue.Point -> json.encodeToJsonElement(pointAnim, v.anim)
+                    is EffectValue.Flag -> JsonPrimitive(v.value)
+                    is EffectValue.Choice -> JsonPrimitive(v.value)
+                    is EffectValue.Stops -> json.encodeToJsonElement(stopsSerializer, v.value)
+                }
+                put(p.name, e)
+            }
+        }
+        encoder.encodeJsonElement(obj)
     }
 
-    /** Replaces the colour (keeping alpha) by [color], mixed by [amount] (0..1). */
-    @Serializable
-    @SerialName("tint")
-    data class Tint(
-        override val enabled: Boolean = true,
-        val color: AnimColor = anim(Color(0.49f, 0.36f, 1f)),
-        val amount: AnimFloat = anim(1f),
-    ) : Effect() {
-        override fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
-    }
+    private fun roundInts(a: Animatable<Float>): Animatable<Float> =
+        a.copy(value = Math.round(a.value).toFloat(), keyframes = a.keyframes.map { it.copy(value = Math.round(it.value).toFloat()) })
 
-    /** [angle] in degrees (direction the shadow is cast, 90 = down), [distance] and [softness] in pixels. */
-    @Serializable
-    @SerialName("dropShadow")
-    data class DropShadow(
-        override val enabled: Boolean = true,
-        val color: AnimColor = anim(Color.BLACK),
-        val opacity: AnimFloat = anim(0.6f),
-        val angle: AnimFloat = anim(90f),
-        val distance: AnimFloat = anim(16f),
-        val softness: AnimFloat = anim(16f),
-    ) : Effect() {
-        override fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
-    }
-
-    @Serializable
-    @SerialName("glow")
-    data class Glow(
-        override val enabled: Boolean = true,
-        val color: AnimColor = anim(Color.WHITE),
-        val radius: AnimFloat = anim(24f),
-        val intensity: AnimFloat = anim(1f),
-    ) : Effect() {
-        override fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
-    }
-
-    @Serializable
-    @SerialName("invert")
-    data class Invert(
-        override val enabled: Boolean = true,
-        val amount: AnimFloat = anim(1f),
-    ) : Effect() {
-        override fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
-    }
-
-    /** Mosaic with square cells of [size] pixels. */
-    @Serializable
-    @SerialName("pixelate")
-    data class Pixelate(
-        override val enabled: Boolean = true,
-        val size: AnimFloat = anim(16f),
-    ) : Effect() {
-        override fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
-    }
-
-    /** RGB split of [amount] pixels along [angle] degrees. */
-    @Serializable
-    @SerialName("chromaticAberration")
-    data class ChromaticAberration(
-        override val enabled: Boolean = true,
-        val amount: AnimFloat = anim(6f),
-        val angle: AnimFloat = anim(0f),
-    ) : Effect() {
-        override fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
-    }
-
-    /** Darkens the edges of the layer's frame. [amount] and [softness] in 0..1. */
-    @Serializable
-    @SerialName("vignette")
-    data class Vignette(
-        override val enabled: Boolean = true,
-        val amount: AnimFloat = anim(0.5f),
-        val softness: AnimFloat = anim(0.5f),
-    ) : Effect() {
-        override fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
+    override fun deserialize(decoder: Decoder): Effect {
+        val json = (decoder as JsonDecoder).json
+        val obj = decoder.decodeJsonElement() as? JsonObject ?: throw SerializationException("an effect must be an object")
+        val type = (obj["type"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            ?: throw SerializationException("effect is missing \"type\"")
+        val spec = EffectRegistry.get(type)
+            ?: throw SerializationException("unknown effect type '$type'. Valid types: ${EffectRegistry.all.joinToString { it.id }}")
+        val enabled = obj["enabled"]?.let { (it as? JsonPrimitive)?.booleanOrNull ?: throw SerializationException("$type.enabled must be true or false") } ?: true
+        val params = LinkedHashMap<String, EffectValue>()
+        for (p in spec.params) {
+            val e = obj[p.name] ?: continue
+            params[p.name] = try {
+                when (p.type) {
+                    ParamType.NUMBER, ParamType.INTEGER -> EffectValue.Num(json.decodeFromJsonElement(floatAnim, e))
+                    ParamType.COLOR -> EffectValue.Col(json.decodeFromJsonElement(colorAnim, e))
+                    ParamType.POINT -> EffectValue.Point(json.decodeFromJsonElement(pointAnim, e))
+                    ParamType.BOOLEAN -> EffectValue.Flag((e as? JsonPrimitive)?.booleanOrNull ?: throw SerializationException("expected true or false"))
+                    ParamType.CHOICE -> {
+                        val s = (e as? JsonPrimitive)?.takeIf { it.isString }?.content
+                        if (s == null || p.choices.none { it.id == s }) {
+                            throw SerializationException("expected one of ${p.choices.joinToString { it.id }}")
+                        }
+                        EffectValue.Choice(s)
+                    }
+                    ParamType.STOPS -> EffectValue.Stops(json.decodeFromJsonElement(stopsSerializer, e))
+                }
+            } catch (ex: SerializationException) {
+                throw SerializationException("$type.${p.name}: ${ex.message}", ex)
+            }
+        }
+        return Effect(type, enabled, params)
     }
 }

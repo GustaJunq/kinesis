@@ -1,0 +1,41 @@
+{
+  "format": "knsproj",
+  "formatVersion": 2,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Tempo e transição"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "ball",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": {
+          "keyframes": [{"time": 0, "value": [-400, 200], "easing": "easeInOutSine"}, {"time": 2, "value": [400, -200]}],
+          "loop": "pingpong"
+        }
+      },
+      "shape": {"kind": "ellipse", "size": [140, 140], "fill": {"color": "#FFC857"}},
+      "effects": [{"type": "echo", "delay": 0.06, "count": 6, "decay": 0.65}]
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 300], "rotation": {"keyframes": [{"time": 0, "value": -10}, {"time": 4, "value": 10}]}},
+      "text": {"content": "STOP", "font": {"family": "sans-serif", "weight": 800}, "fontSize": 200, "color": "#FFFFFF"},
+      "effects": [{"type": "posterizeTime", "fps": 6}]
+    },
+    {
+      "id": "flash",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 0]},
+      "shape": {"kind": "rectangle", "size": [1080, 1080], "fill": {"color": "#FFFFFF00"}},
+      "effects": [{"type": "strobe", "frequency": 2, "duty": 0.08, "mode": "flash", "color": "#FFFFFF66"}]
+    }
+  ]
+}

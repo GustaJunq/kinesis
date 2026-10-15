@@ -7,6 +7,7 @@ Usage:
   python3 tools/knsproj info <project-dir | project.json | file.knsproj>
   python3 tools/knsproj new <project-dir> [--title T] [--width W] [--height H] [--fps F] [--duration S] [--background #RRGGBB]
   python3 tools/knsproj add-asset <project-dir> <file> [--id ID] [--type image|video|audio|model|font]
+  python3 tools/knsproj migrate <project-dir>
   python3 tools/knsproj schema
 
 Only the Python standard library is required. Exit status: 0 = ok, 1 = invalid project, 2 = usage/IO error.
@@ -24,14 +25,21 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import kns_archive  # noqa: E402
+import kns_migrate  # noqa: E402
 import kns_probe  # noqa: E402
 import kns_schema  # noqa: E402
 import kns_semantic  # noqa: E402
 
 VERSION = "1.0.0"
 FORMAT_ID = "knsproj"
-FORMAT_VERSION = 1
-SCHEMA_PATH = os.path.normpath(os.path.join(HERE, "..", "..", "schema", f"knsproj-v{FORMAT_VERSION}.schema.json"))
+FORMAT_VERSION = 2
+
+
+def schema_path(version=FORMAT_VERSION):
+    return os.path.normpath(os.path.join(HERE, "..", "..", "schema", f"knsproj-v{version}.schema.json"))
+
+
+SCHEMA_PATH = schema_path()
 
 
 class Result:
@@ -50,8 +58,8 @@ class Result:
         return [i for i in self.issues if i["severity"] == "warning"]
 
 
-def load_schema():
-    with open(SCHEMA_PATH, encoding="utf-8") as f:
+def load_schema(version=FORMAT_VERSION):
+    with open(schema_path(version), encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -89,8 +97,13 @@ def validate_project(project, available_files, engine="builtin"):
         result.add("error", "format.version", "$.formatVersion",
                    f"format version {version} is newer than this tool supports ({FORMAT_VERSION})")
         return result
+    if version < 1:
+        result.add("error", "format.version", "$.formatVersion", f"invalid format version {version}")
+        return result
 
-    schema = load_schema()
+    # Older documents are checked against the schema of their own version, then migrated (like the app does
+    # when opening them) for the semantic checks.
+    schema = load_schema(version)
     if engine == "jsonschema":
         import jsonschema  # optional dependency
         validator = jsonschema.Draft202012Validator(schema)
@@ -103,6 +116,8 @@ def validate_project(project, available_files, engine="builtin"):
     if result.errors:
         # Semantic checks assume a structurally valid document.
         return result
+    if version < FORMAT_VERSION:
+        project = kns_migrate.migrate(project, FORMAT_VERSION)
     for issue in kns_semantic.validate(project, available_files):
         result.add(issue.severity, issue.code, issue.path, issue.message)
     return result
@@ -290,6 +305,23 @@ def cmd_add_asset(args):
     return 0
 
 
+def cmd_migrate(args):
+    pj = os.path.join(args.dir, "project.json")
+    with open(pj, encoding="utf-8-sig") as f:
+        project = json.load(f)
+    version = project.get("formatVersion")
+    if not isinstance(version, int) or version < 1 or version > FORMAT_VERSION:
+        print(f"cannot migrate format version {version!r}", file=sys.stderr)
+        return 2
+    if version == FORMAT_VERSION:
+        print(f"{pj} is already format version {FORMAT_VERSION}")
+        return 0
+    with open(pj, "w", encoding="utf-8") as f:
+        f.write(kns_archive.dumps_project(kns_migrate.migrate(project, FORMAT_VERSION)))
+    print(f"Migrated {pj} from format version {version} to {FORMAT_VERSION}")
+    return 0
+
+
 def cmd_schema(_args):
     print(SCHEMA_PATH)
     return 0
@@ -339,6 +371,10 @@ def main(argv=None):
     p.add_argument("--id")
     p.add_argument("--type", choices=["image", "video", "audio", "model", "font"])
     p.set_defaults(func=cmd_add_asset)
+
+    p = sub.add_parser("migrate", help="upgrade a project directory to the current format version")
+    p.add_argument("dir")
+    p.set_defaults(func=cmd_migrate)
 
     p = sub.add_parser("schema", help="print the path of the official JSON Schema")
     p.set_defaults(func=cmd_schema)

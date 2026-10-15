@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "generator": "knsproj skill examples",
   "meta": {"title": "Modelo GLB"},
   "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 6, "background": "#10162B"},

@@ -47,6 +47,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material.icons.filled.AutoAwesome
+import dev.kinesis.core.model.Effect
+import dev.kinesis.core.model.EffectShortcut
+import dev.kinesis.core.model.Mask
 import dev.kinesis.editor.ui.common.TextInputDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -100,6 +104,7 @@ import dev.kinesis.core.model.updateText
 import dev.kinesis.editor.R
 import dev.kinesis.editor.ui.common.formatTime
 import dev.kinesis.editor.ui.theme.KColors
+import dev.kinesis.editor.ui.theme.KShapes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,7 +135,9 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var showProps by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
-    var showAdd by remember { mutableStateOf(false) }
+    var addSection by remember { mutableStateOf<AddSection?>(null) }
+    var showEffects by remember { mutableStateOf(false) }
+    var propsFocus by remember { mutableStateOf<String?>(null) }
     var showExport by remember { mutableStateOf(false) }
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
     var renderError by remember { mutableStateOf<String?>(null) }
@@ -148,7 +155,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             Text(loadError, color = KColors.TextSecondary, textAlign = TextAlign.Center)
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onClose) { Text(stringResource(R.string.close)) }
+            dev.kinesis.editor.ui.common.PrimaryButton(stringResource(R.string.close), onClose)
         }
         return
     }
@@ -188,7 +195,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     }
 
     fun handleAdd(action: AddAction) {
-        showAdd = false
+        addSection = null
         val p = vm.current
         val t = vm.time.value
         when (action) {
@@ -228,16 +235,17 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         val boxMaxHeight = maxHeight
         val sheetHeight = boxMaxHeight * 0.62f
         Column(Modifier.fillMaxSize()) {
-            // Top bar: back, project name, settings, export
-            Row(Modifier.fillMaxWidth().height(56.dp).background(KColors.Surface).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { vm.flushSave(); onClose() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
-                Text(
-                    project.meta.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).clickable { renaming = true }.padding(horizontal = 8.dp, vertical = 8.dp),
-                )
-                IconButton(onClick = { vm.pause(); showSettings = true }) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
-                IconButton(onClick = { vm.pause(); showExport = true }) { Icon(Icons.Filled.FileUpload, stringResource(R.string.export), tint = KColors.Accent) }
-            }
+            EditorTopBar(
+                title = project.meta.title,
+                width = project.composition.width,
+                height = project.composition.height,
+                fps = project.composition.fps,
+                duration = project.composition.duration,
+                onClose = { vm.flushSave(); onClose() },
+                onRename = { renaming = true },
+                onSettings = { vm.pause(); showSettings = true },
+                onExport = { vm.pause(); showExport = true },
+            )
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = KColors.Accent)
 
             // Viewport
@@ -249,7 +257,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 )
                 renderError?.let { msg ->
                     Text(
-                        stringResource(R.string.render_error, msg), color = Color.White, fontSize = 12.sp,
+                        stringResource(R.string.render_error, msg), color = KColors.White, fontSize = 12.sp,
                         modifier = Modifier.align(Alignment.TopCenter).padding(8.dp).background(KColors.Danger.copy(alpha = 0.85f)).padding(8.dp)
                             .clickable { renderError = null },
                     )
@@ -257,7 +265,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 if (selectedLayer?.type?.isRendered3D == true) {
                     IconButton(
                         onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE },
-                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(KColors.Surface.copy(alpha = 0.85f), RoundedCornerShape(12.dp)),
+                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(KColors.Bar.copy(alpha = 0.85f), KShapes.Tile),
                     ) {
                         Icon(
                             if (tool3D == Tool3D.MOVE) Icons.Filled.OpenWith else Icons.Filled.ScreenRotation,
@@ -268,76 +276,107 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 }
             }
 
-            // Transport: undo, redo, keyframes, play, layers, loop
-            Row(Modifier.fillMaxWidth().height(52.dp).background(KColors.Surface), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
-                IconButton(onClick = { vm.undo() }, enabled = canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, stringResource(R.string.undo)) }
-                IconButton(onClick = { vm.redo() }, enabled = canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, stringResource(R.string.redo)) }
-                IconButton(onClick = {
+            // Timeline (always visible)
+            Timeline(vm, project, time, playing, selection, multi, Modifier.fillMaxWidth().height(boxMaxHeight * 0.30f))
+
+            EditorTransport(
+                time = time,
+                fps = project.composition.fps,
+                playing = playing,
+                canUndo = canUndo,
+                canRedo = canRedo,
+                hasSelection = selectedLayer != null,
+                onPrevKeyframe = {
                     val l = selectedLayer
                     if (l == null) vm.seek(0.0) else {
                         val offset = LayerTree.containerOffset(project, l.id) + l.start
                         l.keyframeTimes().map { it + offset }.lastOrNull { it < time - 1e-4 }?.let { vm.seek(it) } ?: vm.seek(0.0)
                     }
-                }) { Icon(Icons.Filled.SkipPrevious, stringResource(R.string.prev_keyframe)) }
-                IconButton(onClick = { vm.togglePlay() }, modifier = Modifier.size(48.dp)) {
-                    Icon(if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, stringResource(R.string.play), tint = KColors.Accent, modifier = Modifier.size(32.dp))
-                }
-                IconButton(onClick = {
-                    val l = selectedLayer ?: return@IconButton
-                    val offset = LayerTree.containerOffset(project, l.id) + l.start
-                    l.keyframeTimes().map { it + offset }.firstOrNull { it > time + 1e-4 }?.let { vm.seek(it) }
-                }, enabled = selectedLayer != null) { Icon(Icons.Filled.SkipNext, stringResource(R.string.next_keyframe)) }
-                IconButton(onClick = { showLayers = true }) { Icon(Icons.Filled.Layers, stringResource(R.string.tab_layers)) }
-                IconButton(onClick = { vm.loopPlayback.value = !loop }) {
-                    Icon(Icons.Filled.Repeat, stringResource(R.string.loop), tint = if (loop) KColors.Accent else KColors.TextSecondary)
-                }
-            }
+                },
+                onNextKeyframe = {
+                    val l = selectedLayer
+                    if (l != null) {
+                        val offset = LayerTree.containerOffset(project, l.id) + l.start
+                        l.keyframeTimes().map { it + offset }.firstOrNull { it > time + 1e-4 }?.let { vm.seek(it) }
+                    }
+                },
+                onPlay = { vm.togglePlay() },
+                onAddKeyframe = { vm.addKeyframeAtPlayhead() },
+                onUndo = { vm.undo() },
+                onRedo = { vm.redo() },
+            )
 
-            // Timeline (always visible) with the add button floating over it
-            Box(Modifier.fillMaxWidth().height(boxMaxHeight * 0.34f)) {
-                Timeline(vm, project, time, playing, selection, multi, Modifier.fillMaxSize())
-                FloatingActionButton(
-                    onClick = { vm.pause(); showAdd = true },
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-                    containerColor = KColors.Background,
-                    contentColor = KColors.Accent,
-                    shape = CircleShape,
-                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
-                ) { Icon(Icons.Filled.Add, stringResource(R.string.add), modifier = Modifier.size(30.dp)) }
-            }
-
-            // Tools for the selected layer only
             if (selectedLayer != null) {
-                Row(
-                    Modifier.fillMaxWidth().height(60.dp).background(KColors.Surface).padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    ActionButton(Icons.Filled.Tune, stringResource(R.string.tab_properties), true, highlight = true) { vm.pause(); showProps = true }
-                    ActionButton(Icons.Filled.ContentCut, stringResource(R.string.split), true) { vm.splitSelected() }
-                    ActionButton(Icons.Filled.ContentCopy, stringResource(R.string.duplicate), true) { vm.duplicateSelected() }
-                    ActionButton(Icons.Filled.CreateNewFolder, stringResource(R.string.group), true) { vm.groupSelection() }
-                    ActionButton(Icons.Filled.Delete, stringResource(R.string.delete), true) { vm.deleteSelection() }
-                }
+                SelectionActions(
+                    onProperties = { vm.pause(); propsFocus = null; showProps = true },
+                    onSplit = { vm.splitSelected() },
+                    onDuplicate = { vm.duplicateSelected() },
+                    onGroup = { vm.groupSelection() },
+                    onDelete = { vm.deleteSelection() },
+                    loop = loop,
+                    onLoop = { vm.loopPlayback.value = !loop },
+                )
             }
+            EditorToolBar(
+                enabled = { tool ->
+                    when (tool) {
+                        EditorTool.EFFECTS -> selectedLayer?.type?.isVisual == true
+                        EditorTool.MOTION -> selectedLayer != null
+                        else -> true
+                    }
+                },
+                onTool = { tool ->
+                    vm.pause()
+                    when (tool) {
+                        EditorTool.LAYERS -> showLayers = true
+                        EditorTool.TEXT -> handleAdd(AddAction.TEXT)
+                        EditorTool.SHAPES -> addSection = AddSection.SHAPES
+                        EditorTool.MEDIA -> addSection = AddSection.MEDIA
+                        EditorTool.MODEL3D -> addSection = AddSection.MODEL3D
+                        EditorTool.AUDIO -> handleAdd(AddAction.AUDIO)
+                        EditorTool.CAMERA -> addSection = AddSection.SCENE
+                        EditorTool.EFFECTS -> showEffects = true
+                        EditorTool.MOTION -> { propsFocus = null; showProps = true }
+                    }
+                },
+            )
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp))
 
         if (showProps || showSettings) {
-            ModalBottomSheet(onDismissRequest = { showProps = false; showSettings = false }, containerColor = KColors.Surface) {
-                Box(Modifier.fillMaxWidth().height(sheetHeight)) {
+            ModalBottomSheet(onDismissRequest = { showProps = false; showSettings = false; propsFocus = null }, containerColor = KColors.Sheet, shape = KShapes.Sheet) {
+                Column(Modifier.fillMaxWidth().height(sheetHeight)) {
                     PropertiesPanel(
                         vm, project, time, if (showSettings) null else selection,
                         onEditCurve = { curveTarget = it },
                         onPickTexture = { id -> textureTarget = id; pickTexture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         onPickFont = { pickFont.launch(arrayOf("font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream", "*/*")) },
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.weight(1f),
+                        onAddEffect = { showProps = false; showEffects = true },
+                        focusSection = propsFocus,
                     )
+                    curveTarget?.let { target ->
+                        val layer = LayerTree.find(project, target.layerId)
+                        val prop = layer?.let { LayerProps.find(it, target.propId) }
+                        val animatable = layer?.let { l -> prop?.get(l) }
+                        val keyframe = animatable?.keyframes?.getOrNull(target.keyIndex)
+                        if (layer == null || prop == null || animatable == null || keyframe == null) {
+                            curveTarget = null
+                        } else {
+                            CurveEditorPanel(
+                                easing = keyframe.easing,
+                                loop = animatable.loop,
+                                onEasing = { vm.setEasing(layer.id, prop, target.keyIndex, it) },
+                                onLoop = { vm.setLoop(layer.id, prop, it) },
+                                onClose = { curveTarget = null },
+                            )
+                        }
+                    }
                 }
             }
         }
         if (showLayers) {
-            ModalBottomSheet(onDismissRequest = { showLayers = false }, containerColor = KColors.Surface) {
+            ModalBottomSheet(onDismissRequest = { showLayers = false }, containerColor = KColors.Sheet, shape = KShapes.Sheet) {
                 Box(Modifier.fillMaxWidth().height(sheetHeight)) { LayersPanel(vm, project, selection, multi, Modifier.fillMaxSize()) }
             }
         }
@@ -346,35 +385,32 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     if (renaming) {
         TextInputDialog(stringResource(R.string.rename), project.meta.title, onDismiss = { renaming = false }) { vm.rename(it.ifBlank { project.meta.title }); renaming = false }
     }
-    if (showAdd) AddSheet(onDismiss = { showAdd = false }, onAdd = ::handleAdd)
+    addSection?.let { section -> AddSheet(section, onDismiss = { addSection = null }, onAdd = ::handleAdd) }
+    val effectsTarget = selection?.let { LayerTree.find(project, it) }
+    if (showEffects && effectsTarget != null) {
+        AddEffectSheet(
+            effectsTarget,
+            onDismiss = { showEffects = false },
+            onAdd = { type ->
+                vm.updateLayer(effectsTarget.id) { it.copy(effects = it.effects + Effect.create(type)) }
+                showEffects = false
+                propsFocus = "effects"
+                showProps = true
+            },
+            onShortcut = { shortcut ->
+                showEffects = false
+                if (shortcut == EffectShortcut.MASK && effectsTarget.masks.isEmpty()) {
+                    vm.updateLayer(effectsTarget.id) { it.copy(masks = listOf(Mask())) }
+                }
+                propsFocus = when (shortcut) {
+                    EffectShortcut.MASK -> "masks"
+                    EffectShortcut.TRACK_MATTE -> "matte"
+                    EffectShortcut.TRANSITIONS -> "transitions"
+                    EffectShortcut.TEXT_ANIMATORS -> "animators"
+                }
+                showProps = true
+            },
+        )
+    }
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })
-    curveTarget?.let { target ->
-        val layer = LayerTree.find(project, target.layerId)
-        val prop = layer?.let { LayerProps.find(it, target.propId) }
-        val keyframe = prop?.get(layer)?.keyframes?.getOrNull(target.keyIndex)
-        if (layer == null || prop == null || keyframe == null) {
-            curveTarget = null
-        } else {
-            CurveEditorDialog(keyframe.easing, onDismiss = { curveTarget = null }) { easing ->
-                vm.setEasing(layer.id, prop, target.keyIndex, easing)
-                curveTarget = null
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, highlight: Boolean = false, onClick: () -> Unit) {
-    Column(
-        Modifier.width(64.dp).clickable(enabled = enabled, onClick = onClick).padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        val tint = when {
-            !enabled -> KColors.TextSecondary.copy(alpha = 0.4f)
-            highlight -> KColors.Accent
-            else -> KColors.TextPrimary
-        }
-        Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
-        Text(label, fontSize = 10.sp, color = tint, maxLines = 1)
-    }
 }

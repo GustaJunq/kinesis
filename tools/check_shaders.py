@@ -29,10 +29,12 @@ def main():
         return 2
     failed = 0
     with tempfile.TemporaryDirectory() as tmp:
-        for name in sorted(os.listdir(SHADERS)):
-            if not name.endswith((".vert", ".frag")):
-                continue
-            path = os.path.join(tmp, name)
+        names = sorted(
+            os.path.relpath(os.path.join(d, f), SHADERS).replace(os.sep, "/")
+            for d, _, files in os.walk(SHADERS) for f in files if f.endswith((".vert", ".frag"))
+        )
+        for name in names:
+            path = os.path.join(tmp, name.replace("/", "__"))
             with open(path, "w", encoding="utf-8") as f:
                 f.write(expand(name))
             result = subprocess.run([tool, path], capture_output=True, text=True)

@@ -18,6 +18,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.Brush
+import dev.kinesis.core.model.Effect
+import dev.kinesis.core.model.EffectRegistry
+import dev.kinesis.core.model.EffectValue
+import dev.kinesis.core.model.GradientStop
+import dev.kinesis.core.model.ParamType
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -65,7 +76,6 @@ import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.BlendMode
 import dev.kinesis.core.model.Composition
 import dev.kinesis.core.model.Gradient
-import dev.kinesis.core.model.GradientStop
 import dev.kinesis.core.model.GradientType
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
@@ -101,7 +111,14 @@ import dev.kinesis.editor.R
 import dev.kinesis.editor.ui.common.ChoiceChips
 import dev.kinesis.editor.ui.common.ColorPickerDialog
 import dev.kinesis.editor.ui.common.ColorSwatch
+import dev.kinesis.editor.ui.common.KeyframeButton
 import dev.kinesis.editor.ui.common.LabeledSlider
+import dev.kinesis.editor.ui.common.OverlineLabel
+import dev.kinesis.editor.ui.common.PillChip
+import dev.kinesis.editor.ui.theme.KDims
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.saveable.rememberSaveable
 import dev.kinesis.editor.ui.common.ScrubNumber
 import dev.kinesis.editor.ui.common.TextInputDialog
 import dev.kinesis.editor.ui.theme.KColors
@@ -115,6 +132,30 @@ private val SYSTEM_FONTS = listOf(
     "serif", "monospace", "serif-monospace", "casual", "cursive", "sans-serif-smallcaps",
 )
 
+enum class PropTab(val label: Int) {
+    TRANSFORM(R.string.ptab_transform), TEXT(R.string.ptab_text), EFFECTS(R.string.effects), MASK(R.string.ptab_mask), TRANSITION(R.string.ptab_transition),
+}
+
+/** Tabs offered for [layer] (the text tab only for text layers, masks only for 2D layers, ...). */
+fun propTabs(layer: Layer): List<PropTab> = buildList {
+    add(PropTab.TRANSFORM)
+    if (layer.type == LayerType.TEXT) add(PropTab.TEXT)
+    if (layer.type.isVisual) add(PropTab.EFFECTS)
+    if (layer.type.is2DVisual) add(PropTab.MASK)
+    if (layer.type.isVisual) add(PropTab.TRANSITION)
+}
+
+/** The tab that contains the panel item [key] (see [propertyItemKeys]). */
+private fun tabOfItem(key: String?): PropTab? = when (key) {
+    "effects" -> PropTab.EFFECTS
+    "masks", "matte" -> PropTab.MASK
+    "transitions" -> PropTab.TRANSITION
+    "animators", "content" -> PropTab.TEXT
+    else -> null
+}
+
+private fun isTextSection(id: String) = id == "text"
+
 @Composable
 fun PropertiesPanel(
     vm: EditorViewModel,
@@ -125,38 +166,85 @@ fun PropertiesPanel(
     onPickTexture: (String) -> Unit,
     onPickFont: () -> Unit,
     modifier: Modifier = Modifier,
+    onAddEffect: () -> Unit = {},
+    /** Item key to open when the panel shows (e.g. "masks", "transitions"); see [propertyItemKeys]. */
+    focusSection: String? = null,
 ) {
     val layer = selection?.let { LayerTree.find(project, it) }
-    LazyColumn(modifier.fillMaxSize().background(KColors.Background), contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 64.dp)) {
-        if (layer == null) {
+    if (layer == null) {
+        LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(KDims.Gutter, 8.dp, KDims.Gutter, 64.dp)) {
             item { CompositionSettings(vm, project) }
-            return@LazyColumn
         }
-        val local = time - LayerTree.containerOffset(project, layer.id) - layer.start
-        item(key = "header") { LayerHeader(vm, layer) }
-        item(key = "content") { ContentControls(vm, project, layer, onPickTexture, onPickFont) }
-        for (section in LayerProps.sections(layer)) {
-            if (section.id.startsWith("effects.") || section.id.startsWith("masks.")) continue
-            item(key = "section:${section.id}") {
-                SectionTitle(stringResource(sectionTitleRes(section.id)))
-                section.props.forEach { PropRow(vm, layer, it, local, onEditCurve) }
+        return
+    }
+    val tabs = propTabs(layer)
+    var tab by rememberSaveable(layer.id, focusSection) { mutableStateOf(tabOfItem(focusSection)?.takeIf { it in tabs } ?: PropTab.TRANSFORM) }
+    if (tab !in tabs) tab = PropTab.TRANSFORM
+    val listState = rememberLazyListState()
+    val local = time - LayerTree.containerOffset(project, layer.id) - layer.start
+
+    Column(modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = KDims.Gutter, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            for (entry in tabs) PillChip(stringResource(entry.label), entry == tab, { tab = entry })
+        }
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = listState, contentPadding = PaddingValues(KDims.Gutter, 4.dp, KDims.Gutter, 64.dp)) {
+            when (tab) {
+                PropTab.TRANSFORM -> {
+                    item(key = "header") { LayerHeader(vm, layer) }
+                    if (layer.type != LayerType.TEXT) item(key = "content") { ContentControls(vm, project, layer, onPickTexture, onPickFont) }
+                    for (section in LayerProps.sections(layer)) {
+                        if (section.id.startsWith("effects.") || section.id.startsWith("masks.") || isTextSection(section.id)) continue
+                        item(key = "section:${section.id}") {
+                            SectionTitle(stringResource(sectionTitleRes(section.id)))
+                            section.props.forEach { PropRow(vm, layer, it, local, onEditCurve) }
+                        }
+                    }
+                    item(key = "layer") { LayerSettings(vm, project, layer) }
+                }
+                PropTab.TEXT -> {
+                    item(key = "content") { ContentControls(vm, project, layer, onPickTexture, onPickFont) }
+                    for (section in LayerProps.sections(layer)) {
+                        if (!isTextSection(section.id)) continue
+                        item(key = "section:${section.id}") {
+                            SectionTitle(stringResource(sectionTitleRes(section.id)))
+                            section.props.forEach { PropRow(vm, layer, it, local, onEditCurve) }
+                        }
+                    }
+                    item(key = "animators") { TextAnimatorsBlock(vm, layer) }
+                }
+                PropTab.EFFECTS -> item(key = "effects") { EffectsBlock(vm, layer, local, onEditCurve, onAddEffect) }
+                PropTab.MASK -> {
+                    item(key = "masks") { MasksBlock(vm, layer, local, onEditCurve) }
+                    item(key = "matte") { MatteBlock(vm, project, layer) }
+                }
+                PropTab.TRANSITION -> item(key = "transitions") { TransitionsBlock(vm, layer) }
             }
         }
-        if (layer.type.isVisual) item(key = "effects") { EffectsBlock(vm, layer, local, onEditCurve) }
-        if (layer.type.is2DVisual) {
-            item(key = "masks") { MasksBlock(vm, layer, local, onEditCurve) }
-            item(key = "matte") { MatteBlock(vm, project, layer) }
-        }
-        if (layer.type == LayerType.TEXT) item(key = "animators") { TextAnimatorsBlock(vm, layer) }
-        if (layer.type.isVisual) item(key = "transitions") { TransitionsBlock(vm, layer) }
-        item(key = "layer") { LayerSettings(vm, project, layer) }
     }
+}
+
+/** Keys of the panel items for [layer] (used to choose the tab a shortcut opens). */
+fun propertyItemKeys(layer: Layer): List<String> = buildList {
+    add("header")
+    add("content")
+    for (section in LayerProps.sections(layer)) {
+        if (section.id.startsWith("effects.") || section.id.startsWith("masks.")) continue
+        add("section:${section.id}")
+    }
+    if (layer.type.isVisual) add("effects")
+    if (layer.type.is2DVisual) { add("masks"); add("matte") }
+    if (layer.type == LayerType.TEXT) add("animators")
+    if (layer.type.isVisual) add("transitions")
+    add("layer")
 }
 
 @Composable
 fun SectionTitle(text: String, trailing: @Composable () -> Unit = {}) {
     Row(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = KColors.Accent, modifier = Modifier.weight(1f))
+        OverlineLabel(text.uppercase(), Modifier.weight(1f), color = KColors.Accent)
         trailing()
     }
 }
@@ -191,28 +279,17 @@ fun PropRow(vm: EditorViewModel, layer: Layer, prop: AnimProp<*>, local: Double,
                 IconButton(
                     onClick = { onEditCurve(CurveTarget(layer.id, prop.id, segment)) },
                     enabled = segment >= 0 && segment < anim.keyframes.size - 1,
-                    modifier = Modifier.size(32.dp),
-                ) { Icon(Icons.Filled.ShowChart, stringResource(R.string.easing), modifier = Modifier.size(18.dp)) }
+                    modifier = Modifier.size(KDims.MinTouch),
+                ) { Icon(Icons.Filled.ShowChart, stringResource(R.string.easing), tint = KColors.TextSoft, modifier = Modifier.size(20.dp)) }
             }
-            // Keyframe toggle: filled = keyframe here, outlined accent = animated, grey = static.
-            Box(
-                Modifier
-                    .size(32.dp)
-                    .combinedClickable(
-                        onClick = { vm.toggleKeyframe(layer.id, prop) },
-                        onLongClick = { if (animated) vm.clearKeyframes(layer.id, prop) },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                val c = if (animated) KColors.Keyframe else KColors.TextSecondary
-                Box(
-                    Modifier
-                        .size(12.dp)
-                        .rotate(45f)
-                        .border(1.5.dp, c)
-                        .background(if (hasKey) c else Color.Transparent),
-                )
-            }
+            // Keyframe toggle: filled amber diamond = keyframe here, outline = none (amber outline when animated).
+            KeyframeButton(
+                hasKey = hasKey,
+                animated = animated,
+                contentDescription = stringResource(if (hasKey) R.string.remove_keyframe else R.string.add_keyframe),
+                onClick = { vm.toggleKeyframe(layer.id, prop) },
+                onLongClick = if (animated) ({ vm.clearKeyframes(layer.id, prop) }) else null,
+            )
         }
         when (val kind = prop.kind) {
             is FloatKind -> {
@@ -223,7 +300,7 @@ fun PropRow(vm: EditorViewModel, layer: Layer, prop: AnimProp<*>, local: Double,
                     display = kind.display,
                     suffix = unitSuffix(kind.unit),
                     min = kind.min, max = kind.max,
-                    onChange = { vm.setProperty(layer.id, p, it, key) },
+                    onChange = { vm.setProperty(layer.id, p, if (kind.integer) Math.round(it).toFloat() else it, key) },
                     onDone = { vm.endGesture() },
                 )
             }
@@ -313,6 +390,11 @@ private fun unitSuffix(u: PropUnit) = when (u) {
     PropUnit.EM -> "em"
     PropUnit.MULTIPLIER -> "×"
     PropUnit.NONE -> ""
+    PropUnit.SECONDS -> " s"
+    PropUnit.HERTZ -> " Hz"
+    PropUnit.FPS -> " fps"
+    PropUnit.DEG_PER_SECOND -> "°/s"
+    PropUnit.EV -> " EV"
 }
 
 // ---------------------------------------------------------------------------------------- header & content
@@ -566,33 +648,86 @@ private fun MediaControls(vm: EditorViewModel, project: KnsProject, layer: Layer
 // ---------------------------------------------------------------------------------------- effects & masks
 
 @Composable
-private fun EffectsBlock(vm: EditorViewModel, layer: Layer, local: Double, onEditCurve: (CurveTarget) -> Unit) {
-    var menu by remember { mutableStateOf(false) }
+private fun EffectsBlock(vm: EditorViewModel, layer: Layer, local: Double, onEditCurve: (CurveTarget) -> Unit, onAddEffect: () -> Unit) {
+    val pt = isPortuguese()
     SectionTitle(stringResource(R.string.section_effects)) {
-        Box {
-            IconButton(onClick = { menu = true }, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.Add, stringResource(R.string.add_effect)) }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                ALL_EFFECTS.forEach { make ->
-                    val e = make()
-                    DropdownMenuItem(text = { Text(stringResource(effectNameRes(e))) }, onClick = {
-                        menu = false
-                        vm.updateLayer(layer.id) { it.copy(effects = it.effects + e) }
-                    })
-                }
-            }
-        }
+        IconButton(onClick = onAddEffect, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.Add, stringResource(R.string.add_effect)) }
     }
-    val sections = LayerProps.sections(layer).filter { it.id.startsWith("effects.") }
+    if (layer.effects.isEmpty()) {
+        OutlinedButton(onClick = onAddEffect, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.add_effect)) }
+    }
+    val section = { i: Int -> LayerProps.sections(layer).firstOrNull { it.id == "effects.$i" } }
     layer.effects.forEachIndexed { i, e ->
+        val spec = EffectRegistry.get(e.type) ?: return@forEachIndexed
+        fun upd(f: (Effect) -> Effect) = vm.updateLayer(layer.id) { l -> l.copy(effects = l.effects.mapIndexed { j, x -> if (j == i) f(x) else x }) }
+        fun move(to: Int) = vm.updateLayer(layer.id) { l ->
+            val list = l.effects.toMutableList()
+            list.add(to, list.removeAt(i))
+            l.copy(effects = list)
+        }
         Card {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(effectNameRes(e)), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                Switch(checked = e.enabled, onCheckedChange = { on -> vm.updateLayer(layer.id) { l -> l.copy(effects = l.effects.mapIndexed { j, x -> if (j == i) x.withEnabled(on) else x }) } })
+                Column(Modifier.weight(1f)) {
+                    Text(spec.label(pt), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(spec.category.label(pt), fontSize = 11.sp, color = KColors.TextSecondary, maxLines = 1)
+                }
+                IconButton(onClick = { move(i - 1) }, enabled = i > 0, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.move_up)) }
+                IconButton(onClick = { move(i + 1) }, enabled = i < layer.effects.lastIndex, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.move_down)) }
+                Switch(checked = e.enabled, onCheckedChange = { on -> upd { it.withEnabled(on) } })
                 IconButton(onClick = { vm.updateLayer(layer.id) { l -> l.copy(effects = l.effects.filterIndexed { j, _ -> j != i }) } }) {
                     Icon(Icons.Filled.Delete, stringResource(R.string.delete), tint = KColors.TextSecondary)
                 }
             }
-            sections.firstOrNull { it.id == "effects.$i" }?.props?.forEach { PropRow(vm, layer, it, local, onEditCurve) }
+            effectUnavailableReason(spec, layer)?.let { Text(stringResource(it), fontSize = 12.sp, color = KColors.Keyframe) }
+            val props = section(i)?.props.orEmpty()
+            for (param in spec.params) {
+                if (!param.isVisible { name -> e.choice(name) }) continue
+                when (param.type) {
+                    ParamType.CHOICE -> {
+                        SmallLabel(param.label(pt))
+                        ChoiceChips(param.choices.map { it.id to it.label(pt) }, e.choice(param.name), { v -> upd { it.with(param.name, EffectValue.Choice(v)) } })
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    ParamType.BOOLEAN -> SwitchRow(param.label(pt), e.flag(param.name)) { v -> upd { it.with(param.name, EffectValue.Flag(v)) } }
+                    ParamType.STOPS -> StopsEditor(vm, param.label(pt), e.stops(param.name)) { stops -> upd { it.with(param.name, EffectValue.Stops(stops)) } }
+                    else -> props.firstOrNull { it.id == "effects.$i.${param.name}" }?.let { PropRow(vm, layer, it, local, onEditCurve) }
+                }
+            }
+        }
+    }
+}
+
+/** Gradient stops: a preview bar, one swatch per stop, add (up to 8) and remove (down to 2). */
+@Composable
+private fun StopsEditor(vm: EditorViewModel, label: String, stops: List<GradientStop>, onChange: (List<GradientStop>) -> Unit) {
+    var editing by remember { mutableStateOf<Int?>(null) }
+    SmallLabel(label)
+    Box(
+        Modifier.fillMaxWidth().height(16.dp).clip(RoundedCornerShape(4.dp)).background(
+            Brush.horizontalGradient(colorStops = stops.map { it.offset to Color(it.color.r, it.color.g, it.color.b, it.color.a) }.toTypedArray()),
+        ),
+    )
+    Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        stops.forEachIndexed { k, st -> ColorSwatch(st.color, { editing = k }) }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = { onChange(stops.dropLast(1).mapIndexed { k, st -> st.copy(offset = k / (stops.size - 2f)) }) }, enabled = stops.size > 2, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Filled.Remove, stringResource(R.string.fx_stop_remove))
+        }
+        IconButton(onClick = {
+            val n = stops.size + 1
+            onChange((stops + stops.last()).mapIndexed { k, st -> st.copy(offset = k / (n - 1f)) })
+        }, enabled = stops.size < 8, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Filled.Add, stringResource(R.string.fx_stop_add))
+        }
+    }
+    editing?.let { k ->
+        if (k < stops.size) {
+            ColorPickerDialog(
+                stops[k].color,
+                onDismiss = { editing = null; vm.endGesture() },
+                onChange = { c -> onChange(stops.mapIndexed { j, st -> if (j == k) st.copy(color = c) else st }) },
+                onConfirm = { c -> onChange(stops.mapIndexed { j, st -> if (j == k) st.copy(color = c) else st }); vm.endGesture(); editing = null },
+            )
         }
     }
 }

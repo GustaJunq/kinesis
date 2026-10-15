@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -51,7 +50,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.kinesis.editor.R
+import dev.kinesis.editor.ui.theme.KBrushes
 import dev.kinesis.editor.ui.theme.KColors
+import dev.kinesis.editor.ui.theme.KDims
+import dev.kinesis.editor.ui.theme.KShapes
+import dev.kinesis.editor.ui.theme.KType
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -99,9 +111,9 @@ fun ScrubNumber(
     var accum by remember { mutableFloatStateOf(0f) }
     Box(
         modifier
-            .height(32.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(KColors.SurfaceHighest)
+            .height(36.dp)
+            .clip(KShapes.Field)
+            .background(KColors.Field)
             .pointerInput(step, min, max) {
                 detectHorizontalDragGestures(
                     onDragStart = { accum = currentValue },
@@ -117,7 +129,7 @@ fun ScrubNumber(
             .padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(formatNumber(value * display) + suffix, color = tint, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Clip)
+        Text(formatNumber(value * display) + suffix, color = tint, style = KType.Mono, maxLines = 1, overflow = TextOverflow.Clip)
     }
     if (editing) {
         NumberInputDialog(
@@ -186,8 +198,8 @@ fun LabeledSlider(
             onValueChange = { onChange(it.coerceIn(min, max)) },
             onValueChangeFinished = onChangeFinished,
             valueRange = range,
-            modifier = Modifier.weight(1f).height(32.dp),
-            colors = SliderDefaults.colors(thumbColor = KColors.Accent, activeTrackColor = KColors.Accent),
+            modifier = Modifier.weight(1f).height(KDims.MinTouch),
+            colors = kSliderColors(),
         )
         Spacer(Modifier.width(6.dp))
         ScrubNumber(
@@ -197,14 +209,144 @@ fun LabeledSlider(
     }
 }
 
-/** Single-choice chips. */
+/** Single-choice pill chips (active: ChipActive / OnChipActive). */
 @Composable
 fun <T> ChoiceChips(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
     LazyRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        items(options) { (value, label) ->
-            FilterChip(selected = value == selected, onClick = { onSelect(value) }, label = { Text(label, fontSize = 12.sp) })
+        items(options) { (value, label) -> PillChip(label, value == selected, { onSelect(value) }) }
+    }
+}
+
+/** A pill-shaped chip; 48 dp tall touch target around a 32 dp pill. */
+@Composable
+fun PillChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Box(
+        modifier
+            .heightIn(min = KDims.MinTouch)
+            .semantics { this.selected = selected }
+            .clip(KShapes.Pill)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .height(32.dp)
+                .clip(KShapes.Pill)
+                .background(if (selected) KColors.ChipActive else KColors.Field)
+                .border(1.dp, if (selected) KColors.AccentStart else KColors.LineStrong, KShapes.Pill)
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                label, maxLines = 1, style = MaterialTheme.typography.labelMedium,
+                color = when { !enabled -> KColors.Disabled; selected -> KColors.OnChipActive; else -> KColors.TextSoft },
+            )
         }
     }
+}
+
+@Composable
+fun kSliderColors() = SliderDefaults.colors(
+    thumbColor = KColors.White,
+    activeTrackColor = KColors.AccentStart,
+    inactiveTrackColor = KColors.LineStrong,
+    disabledThumbColor = KColors.Disabled,
+    disabledActiveTrackColor = KColors.Disabled,
+)
+
+/** Primary action: pill with the accent gradient. */
+@Composable
+fun PrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    enabled: Boolean = true,
+    loading: Boolean = false,
+    compact: Boolean = false,
+) {
+    Row(
+        modifier
+            .heightIn(min = if (compact) 40.dp else 52.dp)
+            .clip(KShapes.Pill)
+            .background(if (enabled) KBrushes.Accent else androidx.compose.ui.graphics.SolidColor(KColors.Field))
+            .clickable(enabled = enabled && !loading, onClick = onClick, role = Role.Button)
+            .padding(horizontal = if (compact) 16.dp else 22.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        val fg = if (enabled) KColors.OnAccent else KColors.Disabled
+        if (loading) {
+            CircularProgressIndicator(Modifier.size(18.dp), color = fg, strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+        } else if (icon != null) {
+            Icon(icon, null, tint = fg, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(text, color = fg, style = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleSmall)
+    }
+}
+
+/** Secondary action: card-coloured box with a thin outline. */
+@Composable
+fun SecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    enabled: Boolean = true,
+    pill: Boolean = false,
+) {
+    val shape = if (pill) KShapes.Pill else KShapes.Tile
+    Row(
+        modifier
+            .heightIn(min = KDims.MinTouch)
+            .clip(shape)
+            .background(KColors.Card)
+            .border(1.dp, KColors.LineStrong, shape)
+            .clickable(enabled = enabled, onClick = onClick, role = Role.Button)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        val fg = if (enabled) KColors.TextPrimary else KColors.Disabled
+        if (icon != null) {
+            Icon(icon, null, tint = if (enabled) KColors.TextSoft else KColors.Disabled, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(text, color = fg, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+/**
+ * Keyframe toggle: a diamond, filled amber when the property has a keyframe at the playhead, amber outline when it is
+ * animated elsewhere, grey outline when static. 48 dp touch target.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun KeyframeButton(hasKey: Boolean, animated: Boolean, contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier, onLongClick: (() -> Unit)? = null) {
+    Box(
+        modifier
+            .size(KDims.MinTouch)
+            .clip(CircleShape)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick, role = Role.Button)
+            .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
+    ) {
+        val c = if (hasKey || animated) KColors.Keyframe else KColors.TextSecondary
+        Canvas(Modifier.size(14.dp)) {
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(size.width / 2, 0f); lineTo(size.width, size.height / 2); lineTo(size.width / 2, size.height); lineTo(0f, size.height / 2); close()
+            }
+            if (hasKey) drawPath(path, c) else drawPath(path, c, style = Stroke(1.8.dp.toPx(), join = androidx.compose.ui.graphics.StrokeJoin.Round))
+        }
+    }
+}
+
+/** Small uppercase label above a group of controls. */
+@Composable
+fun OverlineLabel(text: String, modifier: Modifier = Modifier, color: Color = KColors.TextSecondary) {
+    Text(text.uppercase(), style = KType.Overline, color = color, modifier = modifier)
 }
 
 @Composable
@@ -215,12 +357,12 @@ fun ColorSwatch(color: KColor, onClick: () -> Unit, modifier: Modifier = Modifie
             .clip(RoundedCornerShape(8.dp))
             .background(checker())
             .background(Color(color.r, color.g, color.b, color.a))
-            .border(1.dp, KColors.Outline, RoundedCornerShape(8.dp))
+            .border(1.dp, KColors.LineStrong, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
     )
 }
 
-private fun checker() = Brush.linearGradient(listOf(Color(0xFF555555), Color(0xFF999999)))
+private fun checker() = Brush.linearGradient(listOf(KColors.CheckerA, KColors.CheckerB))
 
 /** HSV + alpha colour picker with hex input and a palette. */
 @Composable
@@ -325,6 +467,7 @@ fun ColorPickerDialog(initial: KColor, onDismiss: () -> Unit, onChange: (KColor)
                                 .size(26.dp)
                                 .clip(CircleShape)
                                 .background(Color(argb))
+                                .semantics { contentDescription = KColor.fromArgb(argb.toInt()).toHex() }
                                 .border(1.dp, KColors.Outline, CircleShape)
                                 .clickable {
                                     val h = FloatArray(3)
@@ -340,7 +483,4 @@ fun ColorPickerDialog(initial: KColor, onDismiss: () -> Unit, onChange: (KColor)
     )
 }
 
-private val PALETTE = listOf(
-    0xFFFFFFFF, 0xFF000000, 0xFF7C5CFF, 0xFF4FD1C5, 0xFFFF6B8B, 0xFFFFC857, 0xFF5EA8FF, 0xFF9BE564,
-    0xFFFF8A3D, 0xFF0A2463, 0xFF1E4FBF, 0xFFC0C4CC, 0xFF2B2D42, 0xFFE63946,
-)
+private val PALETTE = dev.kinesis.editor.ui.theme.CONTENT_PALETTE

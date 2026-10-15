@@ -5,7 +5,7 @@ import dev.kinesis.core.anim.Interpolators
 import dev.kinesis.core.math.Color
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
-import dev.kinesis.core.model.Effect
+import dev.kinesis.core.model.EffectValue
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.Material
 
@@ -35,17 +35,14 @@ fun Layer.mapAnimatables(m: AnimMapper): Layer {
             it.copy(position = v2(it.position), size = v2(it.size), roundness = f(it.roundness), feather = f(it.feather), opacity = f(it.opacity))
         },
         effects = effects.map { e ->
-            when (e) {
-                is Effect.Blur -> e.copy(radius = f(e.radius))
-                is Effect.ColorAdjust -> e.copy(brightness = f(e.brightness), contrast = f(e.contrast), saturation = f(e.saturation), hue = f(e.hue))
-                is Effect.Tint -> e.copy(color = c(e.color), amount = f(e.amount))
-                is Effect.DropShadow -> e.copy(color = c(e.color), opacity = f(e.opacity), angle = f(e.angle), distance = f(e.distance), softness = f(e.softness))
-                is Effect.Glow -> e.copy(color = c(e.color), radius = f(e.radius), intensity = f(e.intensity))
-                is Effect.Invert -> e.copy(amount = f(e.amount))
-                is Effect.Pixelate -> e.copy(size = f(e.size))
-                is Effect.ChromaticAberration -> e.copy(amount = f(e.amount), angle = f(e.angle))
-                is Effect.Vignette -> e.copy(amount = f(e.amount), softness = f(e.softness))
-            }
+            e.copy(params = e.params.mapValues { (_, v) ->
+                when (v) {
+                    is EffectValue.Num -> EffectValue.Num(f(v.anim))
+                    is EffectValue.Col -> EffectValue.Col(c(v.anim))
+                    is EffectValue.Point -> EffectValue.Point(v2(v.anim))
+                    else -> v
+                }
+            })
         },
         text = text?.let { t ->
             t.copy(

@@ -1,0 +1,45 @@
+{
+  "format": "knsproj",
+  "formatVersion": 2,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Glitch"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "backdrop",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "shape": {
+        "kind": "rectangle",
+        "size": [1080, 1080],
+        "fill": {
+          "gradient": {
+            "type": "radial",
+            "start": [0, 0],
+            "end": [0, 756.0],
+            "stops": [{"offset": 0, "color": "#3B1C75"}, {"offset": 1, "color": "#0B0F1E"}]
+          }
+        }
+      }
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 0]},
+      "text": {
+        "content": "GLITCH",
+        "font": {"family": "sans-serif", "weight": 800},
+        "fontSize": 220,
+        "color": "#FFFFFF"
+      },
+      "effects": [
+        {"type": "blockGlitch", "blockSize": 40, "intensity": 0.6, "rate": 10, "seed": 4},
+        {"type": "rgbSplit", "amount": 10, "rate": 8, "seed": 2},
+        {"type": "vhs", "tracking": 0.4, "jitter": 0.3, "noise": 0.15}
+      ]
+    }
+  ]
+}

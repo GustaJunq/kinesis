@@ -1,0 +1,50 @@
+{
+  "format": "knsproj",
+  "formatVersion": 2,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Desenho e borda"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "backdrop",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "shape": {
+        "kind": "rectangle",
+        "size": [1080, 1080],
+        "fill": {
+          "gradient": {
+            "type": "radial",
+            "start": [0, 0],
+            "end": [0, 756.0],
+            "stops": [{"offset": 0, "color": "#F6F1E7"}, {"offset": 1, "color": "#D9D2C3"}]
+          }
+        }
+      }
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, -150]},
+      "text": {
+        "content": "CONTORNO",
+        "font": {"family": "sans-serif", "weight": 800},
+        "fontSize": 170,
+        "color": "#FF5C7A"
+      },
+      "effects": [{"type": "outline", "color": "#1B1E2B", "width": 10, "position": "outside"}]
+    },
+    {
+      "id": "sun",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 220]},
+      "shape": {"kind": "ellipse", "size": [360, 360], "fill": {"color": "#FFC857"}},
+      "effects": [{"type": "sketch", "strength": 1.5}]
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "format": "knsproj",
+  "formatVersion": 2,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Distorção"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "backdrop",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "shape": {
+        "kind": "rectangle",
+        "size": [1080, 1080],
+        "fill": {
+          "gradient": {
+            "type": "radial",
+            "start": [0, 0],
+            "end": [0, 756.0],
+            "stops": [{"offset": 0, "color": "#FF5C7A"}, {"offset": 1, "color": "#1C3D75"}]
+          }
+        }
+      },
+      "effects": [
+        {
+          "type": "warp",
+          "mode": "fractal",
+          "amount": 40,
+          "scale": 300,
+          "evolution": {"keyframes": [{"time": 0, "value": 0}, {"time": 4, "value": 360}]}
+        }
+      ]
+    },
+    {
+      "id": "lens",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": {
+          "keyframes": [{"time": 0, "value": [-200, 0], "easing": "easeInOutSine"}, {"time": 2, "value": [200, 0]}],
+          "loop": "pingpong"
+        }
+      },
+      "shape": {"kind": "ellipse", "size": [460, 460], "fill": {"color": "#FFFFFF"}},
+      "effects": [{"type": "glass", "refraction": 1.6, "dispersion": 0.5, "edgeGlow": 0.8, "bevel": 60}]
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 380]},
+      "text": {"content": "VIDRO", "font": {"family": "sans-serif", "weight": 800}, "fontSize": 120, "color": "#FFFFFF"},
+      "effects": [
+        {
+          "type": "pinchBulge",
+          "amount": {
+            "keyframes": [{"time": 0, "value": -0.6, "easing": "easeInOutSine"}, {"time": 2, "value": 0.6}],
+            "loop": "pingpong"
+          },
+          "radius": 400
+        }
+      ]
+    }
+  ]
+}

@@ -90,7 +90,20 @@ object TestProjects {
                     stroke = StrokeSpec(color = anim(Color.WHITE), width = anim(6f)),
                     trim = TrimSpec(end = keys(0.0 to 0f, 1.0 to 1f)),
                 ),
-                effects = listOf(Effect.Glow(radius = anim(20f)), Effect.DropShadow()),
+                effects = listOf(
+                    Effect.of("glow", "radius" to 20f),
+                    Effect.create("dropShadow"),
+                    Effect.of("pinchBulge", "amount" to -0.3f, "center" to dev.kinesis.core.math.Vec2(10f, 20f)),
+                    Effect.of(
+                        "gradientMap",
+                        "stops" to dev.kinesis.core.model.EffectValue.Stops(
+                            listOf(dev.kinesis.core.model.GradientStop(0f, Color.BLACK), dev.kinesis.core.model.GradientStop(0.5f, Color.parse("#FF4D33")), dev.kinesis.core.model.GradientStop(1f, Color.WHITE)),
+                        ),
+                    ),
+                    Effect.of("warp", "mode" to "fractal", "complexity" to 5, "seed" to 7).withNumber("amount", keys(0.0 to 0f, 1.0 to 40f)),
+                    Effect.of("channelShuffle", "red" to "blue", "blue" to "red"),
+                    Effect.of("glass", "useLuminanceAsHeight" to true).copy(enabled = false),
+                ),
                 transitionIn = Transition(TransitionType.ZOOM_IN, 0.5),
                 transitionOut = Transition(TransitionType.FADE, 0.5),
             ),

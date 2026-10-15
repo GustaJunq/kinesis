@@ -1,0 +1,46 @@
+{
+  "format": "knsproj",
+  "formatVersion": 2,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Movimentar e transformar"},
+  "composition": {"width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522"},
+  "layers": [
+    {
+      "id": "badge",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, -250]},
+      "shape": {"kind": "star", "size": [260, 260], "fill": {"color": "#FFC857"}},
+      "effects": [{"type": "spin", "speed": 120}, {"type": "pulse", "amount": 0.12, "frequency": 2}]
+    },
+    {
+      "id": "title",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 150]},
+      "text": {
+        "content": "TREMOR",
+        "font": {"family": "sans-serif", "weight": 800},
+        "fontSize": 170,
+        "color": "#FFFFFF"
+      },
+      "effects": [{"type": "autoShake", "amplitude": 12, "frequency": 10, "rotation": 2, "seed": 7}]
+    },
+    {
+      "id": "subtitle",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {"position": [0, 330]},
+      "text": {
+        "content": "flutuando",
+        "font": {"family": "sans-serif", "weight": 500},
+        "fontSize": 70,
+        "color": "#9EC1FF"
+      },
+      "effects": [{"type": "float", "amplitude": 16, "frequency": 0.6}]
+    }
+  ]
+}
