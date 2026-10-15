@@ -57,7 +57,13 @@ def v3_to_v4(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4}
+def v4_to_v5(doc):
+    """Version 5 only adds the cyclic easing ({"cyclic": {...}}); v4 documents are valid as they are."""
+    doc["formatVersion"] = 5
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5}
 
 
 def migrate(doc, to_version):

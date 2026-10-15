@@ -119,7 +119,7 @@ object TestProjects {
             ),
             Layer(
                 id = "title", type = LayerType.TEXT, name = "Title", start = 0.5, duration = 5.0,
-                transform = Transform2D(position = anim(Vec2(0f, -600f)), opacity = keys(0.0 to 0f, 0.5 to 1f, easing = Easing.CubicBezier(0.2f, 0f, 0f, 1f))),
+                transform = Transform2D(position = anim(Vec2(0f, -600f)), opacity = keys(0.0 to 0f, 0.5 to 1f, easing = Easing.CubicBezier(0.2f, 0f, 0f, 1f)), rotation = keys(0.0 to 0f, 2.0 to 90f, easing = Easing.Cyclic(0.1f, 2.5f))),
                 text = TextContent(
                     content = "Hello\nKinesis", font = FontSpec("serif", 800, italic = true), fontSize = anim(120f),
                     color = keys(0.0 to Color.WHITE, 2.0 to Color.parse("#FFC857")),

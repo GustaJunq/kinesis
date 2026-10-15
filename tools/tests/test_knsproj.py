@@ -311,6 +311,32 @@ class NullAndCameraTests(unittest.TestCase):
         self.assertEqual([], [i["code"] for i in cli.validate_project(v3, None).errors])
 
 
+class CyclicEasingTests(unittest.TestCase):
+    """Format v5: the cyclic (wave) easing."""
+
+    def doc(self, easing):
+        return minimal(layers=[{"id": "s", "type": "shape", "shape": {}, "transform": {"rotation": {"keyframes": [
+            {"time": 0, "value": 0, "easing": easing}, {"time": 2, "value": 90}]}}}])
+
+    def codes(self, easing):
+        return [i["code"] for i in cli.validate_project(self.doc(easing), None).issues]
+
+    def test_cyclic_easing_is_valid_and_optional_fields_work(self):
+        self.assertEqual([], self.codes({"cyclic": {"offset": 0.1, "cycles": 2.5}}))
+        self.assertEqual([], self.codes({"cyclic": {}}))
+
+    def test_cyclic_easing_ranges_and_typos_are_rejected(self):
+        self.assertEqual("schema", self.codes({"cyclic": {"cycles": 0.2}})[0])
+        self.assertEqual("schema", self.codes({"cyclic": {"cycles": 100}})[0])
+        self.assertEqual("schema", self.codes({"cyclic": {"offset": 2}})[0])
+        self.assertEqual("schema", self.codes({"cyclic": {"cycle": 3}})[0])
+
+    def test_version_4_documents_migrate_to_5(self):
+        v4 = minimal(formatVersion=4)
+        self.assertEqual(5, kns_migrate.migrate(v4, 5)["formatVersion"])
+        self.assertEqual([], [i["code"] for i in cli.validate_project(v4, None).errors])
+
+
 class ExampleTests(unittest.TestCase):
     """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
 
@@ -319,7 +345,7 @@ class ExampleTests(unittest.TestCase):
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
     def test_expected_examples_exist(self):
-        self.assertEqual(17, len(example_dirs("basicos")))
+        self.assertEqual(18, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
         self.assertGreaterEqual(len(example_dirs("erros")), 5)
         self.assertEqual(12, len(example_dirs("efeitos")))

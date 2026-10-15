@@ -39,7 +39,7 @@ import java.io.File
 class EffectsTest {
     private val schema by lazy {
         JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
-            .getSchema(File(TestProjects.repoRoot, "schema/knsproj-v4.schema.json").readText())
+            .getSchema(File(TestProjects.repoRoot, "schema/knsproj-v5.schema.json").readText())
     }
     private val mapper = ObjectMapper()
 

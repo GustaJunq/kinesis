@@ -31,10 +31,44 @@ sealed class Easing {
         }
     }
 
+    /**
+     * Wave between the two keyframe values: `0.5 − 0.5·cos(2π · cycles · (u − offset))`. It starts at 0 and, with the
+     * default [offset] of 0 and a half-integer [cycles] (1.5, 2.5, 3.5, ...), ends at 1, so the segment reaches both
+     * keyframe values without a jump. Segment ends are always exact (u ≤ 0 → 0, u ≥ 1 → 1); another offset or a
+     * whole number of cycles makes the wave start or end mid-swing, which shows as a jump at that end.
+     *
+     * @property offset how far the wave is shifted to the right, as a fraction of the segment (−1..1); a negative
+     * value moves it earlier.
+     * @property cycles number of full waves across the segment (0.5..64).
+     */
+    data class Cyclic(val offset: Float = 0f, val cycles: Float = DEFAULT_CYCLES) : Easing() {
+        /** The unclamped wave (what the curve editor draws). */
+        fun wave(u: Float): Float = (0.5 - 0.5 * cos(2.0 * PI * cycles * (u - offset))).toFloat()
+
+        override fun transform(u: Float): Float = when {
+            u <= 0f -> 0f
+            u >= 1f -> 1f
+            else -> wave(u)
+        }
+
+        /** Where the wave first reaches 1 after its start (the handle that moves [offset]). */
+        val peak: Float get() = offset + 0.5f / cycles
+
+        /** Where the wave first returns to 0 after [peak] (the handle that sets [cycles]). */
+        val trough: Float get() = offset + 1f / cycles
+
+        companion object {
+            const val MIN_CYCLES = 0.5f
+            const val MAX_CYCLES = 64f
+            const val DEFAULT_CYCLES = 3.5f
+        }
+    }
+
     /** Bézier control points that best represent this easing in the curve editor, or null if procedural. */
     fun bezierOrNull(): CubicBezier? = when (this) {
         is CubicBezier -> this
         is Preset -> preset.bezier
+        is Cyclic -> null
     }
 
     val isHold: Boolean get() = this is Preset && preset == EasingPreset.HOLD

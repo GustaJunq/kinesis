@@ -32,6 +32,7 @@ Tudo em `.claude/skills/knsproj/examples/`; cada pasta tem `project.json` e `REA
 | `basicos/expressoes` | `wiggle`, `loopOut`, matemática na opacidade |
 | `basicos/shape-trim-path` | linha que se desenha, círculo de loading |
 | `basicos/keyframes-easing` | overshoot (`cubicBezier`), bounce, loops `pingpong` |
+| `basicos/curva-ciclica` | oscilação entre dois keyframes (pêndulo, pulso, balanço) com `{"cyclic": {"cycles": 3.5}}` |
 | `basicos/parent-anchor` | pivô fora do centro, camada filha herdando rotação |
 | `basicos/mascara-feather` | revelar uma forma/imagem com máscara de borda suave |
 | `basicos/track-matte` | texto revelado por forma (`alpha`), degradê de opacidade (`luma`) |
@@ -173,7 +174,8 @@ Valores possíveis (o schema é a fonte da verdade):
 - Animadores de texto: `typewriter`, `fade`, `slideUp`, `slideDown`, `slideLeft`, `slideRight`, `scale`, `rotate`, `wave`;
   `unit`: `character` | `word` | `line`; `order`: `forward` | `backward` | `center` | `random`; `mode`: `in` | `out`.
 - Easings: `linear`, `hold`, `ease`, `easeIn`, `easeOut`, `easeInOut`, `easeIn/Out/InOut` + `Sine|Quad|Cubic|Quart|Quint|Expo|Circ|Back|Bounce|Elastic`,
-  ou `{"cubicBezier": [x1, y1, x2, y2]}`.
+  `{"cubicBezier": [x1, y1, x2, y2]}` ou a onda `{"cyclic": {"offset": 0, "cycles": 3.5}}` (oscila entre os dois keyframes;
+  `offset` 0 e `cycles` com meio, como 2,5 ou 3,5, para começar em 0 e terminar em 1 sem salto).
 - Track matte: `"matte": {"layer": "<id irmão>", "mode": "alpha"}` — a camada-fonte some automaticamente.
 - Máscaras: `"masks": [{"shape": "ellipse", "mode": "add", "size": [600, 400], "feather": 30}]`.
 

@@ -360,4 +360,7 @@
     <string name="camera_aim_rotation">Aim by rotation</string>
     <string name="camera_aim_target">Aim at target</string>
     <string name="camera_rotation_hint">Position and rotation are independent. Drag in the viewport to turn the camera in place; pinch to dolly forward and back.</string>
+    <string name="easing_cyclic">Cyclic</string>
+    <string name="cyclic_info">cyclic · offset %1$s · %2$s waves</string>
+    <string name="cyclic_hint">Top handle: offset (slide it to shift the wave). Bottom handle: quantity (slide it to add or remove waves).</string>
 </resources>

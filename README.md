@@ -28,8 +28,9 @@ pelo **Claude Code** com a skill [`/knsproj`](.claude/skills/knsproj/SKILL.md) i
 
 ## Recursos da beta
 
-> Versão **0.1.1**: expressões estilo After Effects, animadores de texto por caractere, formato `.knsproj` v3, tema claro/escuro,
-> idioma português/inglês e apresentação inicial. Veja [docs/expressoes.md](docs/expressoes.md).
+> Versão **0.1.2**: camadas **nulas** 2D/3D, parenting que não move a camada, câmera com posição e rotação independentes e a
+> **curva cíclica** (onda entre dois keyframes), formato `.knsproj` v5. A 0.1.1 trouxe expressões estilo After Effects,
+> animadores de texto por caractere, tema claro/escuro e idioma português/inglês; veja [docs/expressoes.md](docs/expressoes.md).
 
 | Área | O que já funciona |
 |---|---|
@@ -51,6 +52,7 @@ pelo **Claude Code** com a skill [`/knsproj`](.claude/skills/knsproj/SKILL.md) i
 | **3D** | cubo, esfera, cilindro, cone, toro, plano e camadas **nulas** 2D/3D (pivôs e rigs); modelos **GLB/glTF**; posição/rotação/escala XYZ animáveis; materiais PBR (cor, textura, metalicidade, rugosidade, emissão); luzes ambiente, direcional e pontual; câmera com perspectiva e FOV animáveis, aponta por alvo ou por rotação X/Y/Z (independente da posição); hierarquia 2D/3D por parenting sem saltos; gizmo de eixos X/Y/Z por toque, rotação por arraste e órbita de câmera |
 | **Exportação** | MP4 H.264 + AAC (resolução original, 720p, 1080p, 4K; três níveis de qualidade), com motion blur completo, salvo na galeria (Filmes/Kinesis) e compartilhável |
 | **Aparência e idioma (v0.1.1)** | tema **escuro/claro/do sistema**, idioma **português/inglês/do sistema** (Ajustes) e apresentação inicial (*onboarding*) |
+| **Curva cíclica (v0.1.2)** | no editor de curvas, o modo **Cíclico** faz o valor oscilar entre dois keyframes como uma onda; a alça amarela superior ajusta o *offset* e a inferior a quantidade de ondas |
 
 ## Compilar o app
 
@@ -111,12 +113,12 @@ motion blur).
 
 Um `.knsproj` é um ZIP com `project.json` (JSON versionado) e uma pasta `assets/` com as mídias. A especificação
 completa está em **[docs/knsproj.md](docs/knsproj.md)** e o schema oficial em
-**[schema/knsproj-v4.schema.json](schema/knsproj-v4.schema.json)**. Resumo:
+**[schema/knsproj-v5.schema.json](schema/knsproj-v5.schema.json)**. Resumo:
 
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 4,
+  "formatVersion": 5,
   "composition": { "width": 1080, "height": 1920, "fps": 30, "duration": 10, "background": "#0A2463" },
   "assets": [],
   "layers": [

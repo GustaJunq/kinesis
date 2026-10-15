@@ -24,6 +24,7 @@ import java.io.File
  * - `schema/knsproj-v2.schema.json` — the v1 schema with the format version and the effect definitions replaced;
  * - `schema/knsproj-v3.schema.json` — the v2 schema plus expressions and text property animators;
  * - `schema/knsproj-v4.schema.json` — the v3 schema plus null layers and independent camera rotation;
+ * - `schema/knsproj-v5.schema.json` — the v4 schema plus the cyclic (wave) easing;
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -46,6 +47,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV4() = check(File(root, "schema/knsproj-v4.schema.json"), JsonPretty.print(buildSchemaV4()) + "\n")
+
+    @Test
+    fun schemaV5() = check(File(root, "schema/knsproj-v5.schema.json"), JsonPretty.print(buildSchemaV5()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -183,6 +187,40 @@ class RegistryArtifactsTest {
         val m = LinkedHashMap(v3)
         m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v4.schema.json")
         m["title"] = str("Kinesis project (.knsproj) — project.json, format version 4")
+        m["properties"] = JsonObject(props)
+        m["\$defs"] = JsonObject(defs)
+        return JsonObject(m)
+    }
+
+    /** Version 5 = version 4 plus the cyclic easing `{"cyclic": {"offset": 0, "cycles": 3.5}}`. */
+    private fun buildSchemaV5(): JsonObject {
+        val v4 = buildSchemaV4()
+        val defs = LinkedHashMap(v4.getValue("\$defs").jsonObject)
+        val easing = defs.getValue("easing").jsonObject
+        val cyclic = obj(
+            "type" to str("object"),
+            "properties" to obj(
+                "cyclic" to obj(
+                    "type" to str("object"),
+                    "description" to str("Wave between the two keyframe values: 0.5 − 0.5·cos(2π·cycles·(u − offset)). With offset 0 and a half-integer number of cycles (1.5, 2.5, 3.5...) it starts at 0 and ends at 1."),
+                    "properties" to obj(
+                        "offset" to obj("type" to str("number"), "minimum" to JsonPrimitive(-1), "maximum" to JsonPrimitive(1), "description" to str("Shifts the wave to the right by this fraction of the segment (default 0).")),
+                        "cycles" to obj("type" to str("number"), "minimum" to JsonPrimitive(0.5), "maximum" to JsonPrimitive(64), "description" to str("Full waves across the segment (default 3.5).")),
+                    ),
+                    "additionalProperties" to JsonPrimitive(false),
+                ),
+            ),
+            "additionalProperties" to JsonPrimitive(false),
+            "required" to JsonArray(listOf(str("cyclic"))),
+        )
+        val newEasing = LinkedHashMap(easing)
+        newEasing["anyOf"] = JsonArray(easing.getValue("anyOf").jsonArray + cyclic)
+        defs["easing"] = JsonObject(newEasing)
+        val props = LinkedHashMap(v4.getValue("properties").jsonObject)
+        props["formatVersion"] = obj("const" to JsonPrimitive(5))
+        val m = LinkedHashMap(v4)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v5.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 5")
         m["properties"] = JsonObject(props)
         m["\$defs"] = JsonObject(defs)
         return JsonObject(m)

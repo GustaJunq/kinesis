@@ -60,7 +60,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 4,
+  "formatVersion": 5,
   "generator": "Claude Code /knsproj",
   "meta": { "title": "Meu vídeo", "createdAt": "2026-10-14T12:00:00Z" },
   "composition": {
@@ -76,7 +76,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `4` (documentos das versões `1`, `2` e `3` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `5` (documentos das versões `1` a `4` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
 | `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120), `duration` (s), `background`, `motionBlur` |
@@ -152,6 +152,20 @@ Ou uma Bézier cúbica como no CSS (`x1` e `x2` entre 0 e 1; `y` pode extrapolar
 
 Os presets `Back` usam Béziers com *overshoot*; `Bounce` e `Elastic` são calculados proceduralmente
 (equações de easings.net).
+
+Ou uma **curva cíclica** (formato v5): o valor *oscila* entre o do keyframe e o do próximo, como uma onda:
+
+```json
+"easing": { "cyclic": { "offset": 0, "cycles": 3.5 } }
+```
+
+- Progresso `0,5 − 0,5·cos(2π · cycles · (u − offset))`, com `u` de 0 a 1 no trecho. `cycles` (0,5 a 64, padrão 3,5)
+  é o número de ondas completas; `offset` (−1 a 1, padrão 0) desloca a onda para a direita, como fração do trecho.
+- Com `offset: 0` e `cycles` com meio (1,5; 2,5; 3,5…) a onda sai de 0 e chega em 1, então o trecho vai do valor de um
+  keyframe ao do outro sem salto. Outros valores fazem a onda começar ou terminar no meio de um balanço (as pontas do
+  trecho continuam exatas, então aparece um salto nessa ponta).
+- No app, o editor de curvas tem o modo **Cíclico** com duas alças amarelas: a **superior** é o primeiro pico
+  (arrastar muda o `offset`) e a **inferior** é o vale seguinte (arrastar muda a quantidade, `cycles`).
 
 ## 5. Camadas
 
@@ -722,7 +736,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v4.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v5.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -753,7 +767,8 @@ Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes 
   `colorAdjust` dividido em `hueShift`, `brightnessContrast` e `saturation` (seção 7); **v3** → expressões JavaScript nas
   propriedades e animadores de texto por caractere (seções 4.1 e 5.2; só campos novos, documentos v2 abrem sem mudança);
   **v4** → camada `null` (nulos 2D e 3D, seção 5.10) e câmera com `rotation`/`aim` independentes da posição (seção 5.8;
-  só campos novos, documentos v3 abrem sem mudança).
+  só campos novos, documentos v3 abrem sem mudança); **v5** → easing cíclico `{"cyclic": …}` (seção 4, Easing; só um
+  campo novo, documentos v4 abrem sem mudança).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.
