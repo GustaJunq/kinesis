@@ -40,6 +40,12 @@ class UiSmokeTest {
 
     @Test
     fun createEditAndBrowse() {
+        // First run shows the welcome tour: capture it, then skip it.
+        rule.waitUntil(20_000) { rule.onAllNodesWithText("Skip").fetchSemanticsNodes().isNotEmpty() || rule.onAllNodesWithText("New project").fetchSemanticsNodes().isNotEmpty() }
+        if (rule.onAllNodesWithText("Skip").fetchSemanticsNodes().isNotEmpty()) {
+            shot("ui-onboarding")
+            click("Skip")
+        }
         shot("ui-home")
         click("New project")
         click("Create")

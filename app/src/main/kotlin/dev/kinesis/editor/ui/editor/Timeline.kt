@@ -405,7 +405,7 @@ private fun ClipView(
             .background(if (layer.type == LayerType.TEXT) KBrushes.ClipText else SolidColor(color), alpha = if (layer.visible) 1f else 0.3f)
             .border(
                 width = if (selected || inMulti) 1.5.dp else 0.dp,
-                color = if (selected) KColors.White else if (inMulti) KColors.Keyframe else Color.Transparent,
+                color = if (selected) KColors.Selection else if (inMulti) KColors.Keyframe else Color.Transparent,
                 shape = KShapes.Clip,
             )
             .pointerInput(layer.id, selected) {
@@ -462,8 +462,8 @@ private fun ClipView(
         )
         if (selected) {
             // Trim handles
-            Box(Modifier.align(Alignment.CenterStart).padding(start = 2.dp).width(4.dp).height(18.dp).clip(KShapes.Pill).background(KColors.White))
-            Box(Modifier.align(Alignment.CenterEnd).padding(end = 2.dp).width(4.dp).height(18.dp).clip(KShapes.Pill).background(KColors.White))
+            Box(Modifier.align(Alignment.CenterStart).padding(start = 2.dp).width(4.dp).height(18.dp).clip(KShapes.Pill).background(KColors.Selection))
+            Box(Modifier.align(Alignment.CenterEnd).padding(end = 2.dp).width(4.dp).height(18.dp).clip(KShapes.Pill).background(KColors.Selection))
         }
         // Keyframes of every property of the layer
         for (kt in layer.keyframeTimes()) {
