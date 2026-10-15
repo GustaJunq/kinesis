@@ -40,6 +40,9 @@ Tudo em `.claude/skills/knsproj/examples/`; cada pasta tem `project.json` e `REA
 | `basicos/video-audio` | trecho de vídeo (`sourceStart`, `speed`), fade de volume, trilha |
 | `basicos/grupo` | tempo relativo, efeito aplicado a um conjunto |
 | `basicos/3d-camera-orbita` | cena 3D com 3 luzes e câmera orbitando (pai `empty`) |
+| `basicos/nulo-2d` | camada nula (`null`) movendo/girando várias camadas 2D como pai |
+| `basicos/nulo-3d-rig` | câmera presa a um nulo 3D (`null.threeD`) que gira: órbita/rig |
+| `basicos/camera-rotacao` | câmera com `aim: "rotation"`: dolly (posição) e pan (rotação) independentes |
 | `basicos/model3d` | modelo GLB com câmera girando |
 | `receitas/lower-third` | tarja de nome/cargo em 16:9 |
 | `receitas/intro-logo-glow` | abertura de logo com brilho |
@@ -136,14 +139,20 @@ e o objeto de conteúdo com o **mesmo nome do tipo**.
 { "id": "lua", "type": "object3d", "duration": 10, "parent": "pivo", "transform3d": { "position": [380, 0, 0] },
   "object3d": { "primitive": "sphere", "size": 80, "material": { "color": "#C9CCD3", "roughness": 0.9 } } }
 
-// Câmera e luzes
+// Nulo: camada invisível que só carrega transformação (2D por padrão; 3D com "threeD": true)
+{ "id": "controle", "type": "null", "duration": 10, "transform": { "position": [0, 0] } }
+{ "id": "rig", "type": "null", "duration": 10, "null": { "threeD": true }, "transform3d": { "rotation": [0, 45, 0] } }
+
+// Câmera por alvo (órbita) e luzes
 { "id": "camera", "type": "camera", "duration": 10, "camera": { "position": [0, -250, -2600], "target": [0, 0, 0], "fov": 40 } }
+// Câmera por rotação: posição X/Y/Z independente da rotação X/Y/Z (rotação 0 olha para +z)
+{ "id": "camera2", "type": "camera", "duration": 10, "camera": { "aim": "rotation", "position": [0, 0, -2600], "rotation": [0, -15, 0], "fov": 40 } }
 { "id": "luz", "type": "light", "duration": 10, "light": { "kind": "directional", "intensity": 1.3, "position": [-900, -1300, -1400] } }
 { "id": "ambiente", "type": "light", "duration": 10, "light": { "kind": "ambient", "color": "#A8C0FF", "intensity": 0.3 } }
 ```
 
 Valores possíveis (o schema é a fonte da verdade):
-- `type` de camada: `text`, `shape`, `image`, `video`, `audio`, `group`, `object3d`, `model3d`, `camera`, `light`.
+- `type` de camada: `text`, `shape`, `image`, `video`, `audio`, `group`, `object3d`, `model3d`, `camera`, `light`, `null`.
 - `shape.kind`: `rectangle`, `ellipse`, `polygon`, `star`, `path`. `primitive`: `cube`, `sphere`, `cylinder`, `cone`, `torus`, `plane`, `empty`.
 - Efeitos (`effects[].type`): 60 efeitos em 11 categorias (Cor e luz, Desfoque e nitidez, Distorção, Movimentar e
   transformar, Estilizar, Glitch, Desenho e borda, Procedimental, Fosco/máscara/chave, Tempo e transição, Utilitário).
@@ -211,8 +220,8 @@ Regras que evitam erro:
 - **Leitura:** cada texto fica legível por pelo menos ~1,5 s. Em 1080×1920 use 120–180 px para títulos e 40–64 px para
   apoio; mantenha textos dentro de ±470 px em x e ±820 px em y (margem de segurança).
 - **3D:** uma câmera levemente acima (`y` negativo) e afastada dá profundidade; combine luz principal, contraluz
-  colorida e ambiente fraca. Metais ficam bons com `metallic: 1` e `roughness` 0.15–0.35. Primitivas `empty` servem de
-  pivô para órbitas e grupos 3D.
+  colorida e ambiente fraca. Metais ficam bons com `metallic: 1` e `roughness` 0.15–0.35. Camadas `null` com `"threeD": true`
+  servem de pivô para órbitas, rigs de câmera e grupos 3D (uma câmera/luz pode ser **filha** de um nulo 3D).
 - **Profundidade 2D:** halos com `blur` grande, sombras suaves (`dropShadow`) e `motionBlur: true` em elementos rápidos.
 - Termine animações antes do fim da composição ou use `transitionOut` para sair de forma limpa.
 - Prefira poucos keyframes bem escolhidos a muitos keyframes lineares.
@@ -220,7 +229,7 @@ Regras que evitam erro:
 ## Checklist antes de entregar
 
 - [ ] `validate` sem erros (e avisos compreendidos)
-- [ ] Todos os `parent`/`matte` apontam para irmãos do mesmo contêiner; 2D só com 2D, 3D só com 3D
+- [ ] Todos os `parent`/`matte` apontam para irmãos do mesmo contêiner; 2D só com 2D, 3D só com 3D (nulo 3D = `null.threeD`)
 - [ ] Assets copiados com `add-asset`; nenhum caminho fora de `assets/`
 - [ ] Tempos de keyframe relativos ao início de cada camada
 - [ ] `.knsproj` gerado com `pack` e caminho informado ao usuário

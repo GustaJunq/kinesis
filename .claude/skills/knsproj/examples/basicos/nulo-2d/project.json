@@ -1,0 +1,37 @@
+{
+  "format": "knsproj",
+  "formatVersion": 4,
+  "generator": "knsproj skill examples",
+  "meta": {"title": "Nulo 2D controlando duas formas"},
+  "composition": {"width": 1080, "height": 1920, "fps": 30, "duration": 6, "background": "#0B0F1E"},
+  "layers": [
+    {
+      "id": "controle",
+      "type": "null",
+      "name": "Controle",
+      "duration": 6,
+      "transform": {
+        "position": {"keyframes": [{"time": 0, "value": [-260, 0]}, {"time": 3, "value": [260, 0], "easing": "easeInOut"}, {"time": 6, "value": [-260, 0], "easing": "easeInOut"}]},
+        "rotation": {"keyframes": [{"time": 0, "value": 0}, {"time": 6, "value": 360}]}
+      }
+    },
+    {
+      "id": "disco",
+      "type": "shape",
+      "name": "Disco",
+      "duration": 6,
+      "parent": "controle",
+      "transform": {"position": [0, -220]},
+      "shape": {"kind": "ellipse", "size": [220, 220], "fill": {"color": "#4C8DFF"}}
+    },
+    {
+      "id": "quadrado",
+      "type": "shape",
+      "name": "Quadrado",
+      "duration": 6,
+      "parent": "controle",
+      "transform": {"position": [0, 220]},
+      "shape": {"kind": "rectangle", "size": [200, 200], "roundness": 28, "fill": {"color": "#FF6B8B"}}
+    }
+  ]
+}

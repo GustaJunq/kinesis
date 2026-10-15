@@ -198,13 +198,14 @@ fun layerIcon(layer: Layer): ImageVector = when (layer.type) {
     LayerType.MODEL3D -> Icons.Filled.Token
     LayerType.CAMERA -> Icons.Filled.CameraAlt
     LayerType.LIGHT -> Icons.Filled.Lightbulb
+    LayerType.NULL -> Icons.Filled.CenterFocusStrong
 }
 
 // ---------------------------------------------------------------------------------------- add menu
 
 enum class AddAction {
     TEXT, RECTANGLE, ELLIPSE, POLYGON, STAR, LINE, IMAGE, VIDEO, AUDIO,
-    CUBE, SPHERE, CYLINDER, CONE, TORUS, PLANE, EMPTY, MODEL, CAMERA, LIGHT_DIRECTIONAL, LIGHT_POINT, LIGHT_AMBIENT,
+    CUBE, SPHERE, CYLINDER, CONE, TORUS, PLANE, NULL_2D, NULL_3D, MODEL, CAMERA, LIGHT_DIRECTIONAL, LIGHT_POINT, LIGHT_AMBIENT,
 }
 
 private class AddItem(val action: AddAction, val label: Int, val icon: ImageVector)
@@ -222,6 +223,7 @@ fun AddSheet(section: AddSection, onDismiss: () -> Unit, onAdd: (AddAction) -> U
             AddItem(AddAction.POLYGON, R.string.shape_polygon, Icons.Filled.Hexagon),
             AddItem(AddAction.STAR, R.string.shape_star, Icons.Filled.Star),
             AddItem(AddAction.LINE, R.string.shape_line, Icons.Filled.Remove),
+            AddItem(AddAction.NULL_2D, R.string.layer_null, Icons.Filled.CenterFocusStrong),
         ),
         R.string.add_media to listOf(
             AddItem(AddAction.IMAGE, R.string.layer_image, Icons.Filled.Image),
@@ -235,7 +237,7 @@ fun AddSheet(section: AddSection, onDismiss: () -> Unit, onAdd: (AddAction) -> U
             AddItem(AddAction.CONE, R.string.prim_cone, Icons.Filled.Category),
             AddItem(AddAction.TORUS, R.string.prim_torus, Icons.Filled.DonutLarge),
             AddItem(AddAction.PLANE, R.string.prim_plane, Icons.Filled.Square),
-            AddItem(AddAction.EMPTY, R.string.prim_empty, Icons.Filled.CenterFocusStrong),
+            AddItem(AddAction.NULL_3D, R.string.null_3d, Icons.Filled.CenterFocusStrong),
             AddItem(AddAction.MODEL, R.string.layer_model3d, Icons.Filled.Token),
         ),
         R.string.add_scene to listOf(
@@ -287,7 +289,6 @@ fun primitiveFor(action: AddAction): Primitive? = when (action) {
     AddAction.CONE -> Primitive.CONE
     AddAction.TORUS -> Primitive.TORUS
     AddAction.PLANE -> Primitive.PLANE
-    AddAction.EMPTY -> Primitive.EMPTY
     else -> null
 }
 

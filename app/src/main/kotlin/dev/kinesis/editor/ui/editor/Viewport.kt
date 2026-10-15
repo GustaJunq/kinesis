@@ -46,6 +46,7 @@ import dev.kinesis.core.math.Affine2D
 import dev.kinesis.core.math.Mat4
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
+import dev.kinesis.core.model.CameraAim
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerTree
@@ -53,6 +54,7 @@ import dev.kinesis.core.model.LayerType
 import dev.kinesis.core.model.LightKind
 import dev.kinesis.core.model.updateShape
 import dev.kinesis.core.scene.FrameScene
+import dev.kinesis.core.scene.NullNode
 import dev.kinesis.core.scene.SceneEvaluator
 import dev.kinesis.editor.render.PreviewRenderer
 import dev.kinesis.editor.render.PreviewState
@@ -206,6 +208,30 @@ fun Viewport(
                 size = androidx.compose.ui.geometry.Size(vp.width, vp.height),
                 style = Stroke(1f),
             )
+            // Null objects are not in the video: show them as outlines so they can be seen and tapped.
+            geometry.topDown(scene).forEach { n ->
+                if (n !is NullNode || n.layerId == selection) return@forEach
+                val nullColor = KColors.Keyframe.copy(alpha = 0.6f)
+                when (val o = geometry.outline(n, scene.camera)) {
+                    is Outline.Quad -> {
+                        val c = o.corners.map { toView(it) }
+                        val nullPath = Path().apply {
+                            moveTo(c[0].x, c[0].y)
+                            for (i in 1 until 4) lineTo(c[i].x, c[i].y)
+                            close()
+                        }
+                        drawPath(nullPath, nullColor, style = Stroke(1.5f * density.density))
+                        drawCircle(nullColor, 3f * density.density, toView(o.pivot))
+                    }
+                    is Outline.Box3D -> {
+                        val a = toView(o.min)
+                        val b = toView(o.max)
+                        drawRect(nullColor, a, androidx.compose.ui.geometry.Size(b.x - a.x, b.y - a.y), style = Stroke(1.5f * density.density))
+                        drawCircle(nullColor, 3f * density.density, toView(o.center))
+                    }
+                    null -> Unit
+                }
+            }
             // Light indicators: a bulb you can drag with a finger (kept inside the view when the light is far away).
             lightHandles(vm.current, scene).forEach { h ->
                 val c = compToViewClamped(h.comp, vp, project.composition.width, project.composition.height, size.width.toInt(), size.height.toInt(), lightMargin)
@@ -257,6 +283,9 @@ fun Viewport(
     }
 }
 
+/** Distance a camera moves along its view direction for a pinch that doubles the zoom. */
+private const val CAMERA_DOLLY = 1000f
+
 /** A point or directional light on screen. [comp] is in composition pixels (may lie outside the frame). */
 private class LightHandle(val layerId: String, val comp: Vec2, val target: Vec2?, val kind: LightKind)
 
@@ -297,7 +326,7 @@ private fun pathHandles(project: KnsProject, id: String, scene: FrameScene, geom
 /** Screen-space handles of the selected 3D layer's local axes: (axis index, origin, tip) in composition pixels. */
 private fun axisHandles(project: KnsProject, id: String, scene: FrameScene): List<Triple<Int, Vec2, Vec2>>? {
     val layer = LayerTree.find(project, id) ?: return null
-    if (!layer.type.isRendered3D) return null
+    if (!layer.hasTransform3D) return null
     val parent = SceneEvaluator.parentSpace3D(project, id, scene.time) ?: return null
     val local = scene.time - LayerTree.containerOffset(project, id) - layer.start
     val pos = layer.transform3d.position.at(local)
@@ -331,6 +360,20 @@ private fun startGesture(
                 layer = LayerTree.find(vm.current, id) ?: return null
             }
             val prop = LayerProps.typed<Vec3>(LayerProps.find(layer, "camera.position") ?: return null)
+            if (layer.camera!!.aim == CameraAim.ROTATION) {
+                // Position and rotation are independent: a drag turns the camera in place, a pinch dollies along the view direction.
+                val rotProp = LayerProps.typed<Vec3>(LayerProps.find(layer, "camera.rotation") ?: return null)
+                val pos0 = prop.valueAt(layer, local)
+                val rot0 = rotProp.valueAt(layer, local)
+                val forward = Mat4.rotationXYZ(rot0).transformVector(Vec3(0f, 0f, 1f))
+                return Gesture { pan, zoom, rotation ->
+                    vm.updateLayer(id, key) { l ->
+                        var x = rotProp.setValue(l, local, Vec3(rot0.x + pan.y * 0.2f, rot0.y - pan.x * 0.2f, rot0.z + rotation))
+                        if (abs(zoom - 1f) > 0.001f) x = prop.setValue(x, local, pos0 + forward * ((zoom - 1f) * CAMERA_DOLLY))
+                        x
+                    }
+                }
+            }
             val target = layer.camera!!.target.at(local)
             val start = prop.valueAt(layer, local) - target
             val r0 = start.length().coerceAtLeast(1f)
@@ -368,7 +411,7 @@ private fun startGesture(
                 vm.setProperty(id, prop, Vec3(start.x + dx, start.y + dy, start.z), key)
             }
         }
-        layer.type.isRendered3D -> return start3D(vm, layer, scene, downComp, viewScale, handleRadiusPx, tool, key, local)
+        layer.hasTransform3D -> return start3D(vm, layer, scene, downComp, viewScale, handleRadiusPx, tool, key, local)
         layer.type.is2DVisual && pathVertexAt(project, id, scene, geometry, downComp, handleRadiusPx / viewScale) != null -> {
             val index = pathVertexAt(project, id, scene, geometry, downComp, handleRadiusPx / viewScale)!!
             val node = geometry.findNode(scene, id) as? dev.kinesis.core.scene.Node2D ?: return null
@@ -382,7 +425,7 @@ private fun startGesture(
                 }
             }
         }
-        layer.type.is2DVisual -> {
+        layer.hasTransform2D -> {
             val parent = SceneEvaluator.parentSpace2D(project, id, vm.time.value) ?: Affine2D.IDENTITY
             val inv = parent.inverse() ?: Affine2D.IDENTITY
             val posProp = LayerProps.typed<Vec2>(LayerProps.find(layer, "transform.position")!!)

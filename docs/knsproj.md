@@ -60,7 +60,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "generator": "Claude Code /knsproj",
   "meta": { "title": "Meu vídeo", "createdAt": "2026-10-14T12:00:00Z" },
   "composition": {
@@ -76,7 +76,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `3` (documentos das versões `1` e `2` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `4` (documentos das versões `1`, `2` e `3` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
 | `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120), `duration` (s), `background`, `motionBlur` |
@@ -160,25 +160,25 @@ Campos comuns a todas as camadas:
 | Campo | Padrão | Descrição |
 |---|---|---|
 | `id` | — | obrigatório, único em todo o projeto |
-| `type` | — | `text`, `shape`, `image`, `video`, `audio`, `group`, `object3d`, `model3d`, `camera`, `light` |
+| `type` | — | `text`, `shape`, `image`, `video`, `audio`, `group`, `object3d`, `model3d`, `camera`, `light`, `null` |
 | `name` | `""` | nome exibido |
 | `start` | `0` | início, em segundos, no tempo do contêiner (composição ou grupo) |
 | `duration` | `5` | duração em segundos (> 0) |
 | `visible` | `true` | camadas ocultas não aparecem nem tocam áudio |
 | `locked` | `false` | impede edição por gestos no app |
-| `parent` | — | `id` de uma camada **irmã** cuja transformação é herdada (opacidade não é herdada) |
+| `parent` | — | `id` de uma camada **irmã** cuja transformação é herdada (opacidade não é herdada); ver 5.11 |
 | `label` | — | cor da etiqueta na timeline |
 | `blendMode` | `normal` | `normal`, `add`, `multiply`, `screen` |
 | `motionBlur` | `false` | ativa motion blur nesta camada (se `composition.motionBlur.enabled`) |
 | `transform` | identidade | transformação 2D (camadas 2D e grupos) |
-| `transform3d` | identidade | transformação 3D (`object3d`, `model3d`) |
+| `transform3d` | identidade | transformação 3D (`object3d`, `model3d` e `null` com `threeD`) |
 | `effects` | `[]` | efeitos aplicados em ordem |
 | `masks` | `[]` | até 4 máscaras (camadas 2D) |
 | `matte` | — | track matte |
 | `transitionIn` / `transitionOut` | — | transições de entrada/saída |
 
 Cada tipo tem um objeto de conteúdo **com o mesmo nome do tipo** (`"type": "text"` → `"text": {…}`), exceto `group`,
-cujo conteúdo é `layers`.
+cujo conteúdo é `layers`. No tipo `null` o objeto `"null"` é opcional.
 
 ### 5.1 Transformações
 
@@ -338,9 +338,20 @@ Não suportado na versão 1: skinning, animações internas do glTF, morph targe
 "camera": { "position": [0, -200, -2600], "target": [0, 0, 0], "fov": 40 }
 ```
 
+```json
+"camera": { "aim": "rotation", "position": [300, 0, -2000], "rotation": [0, -15, 0], "fov": 40 }
+```
+
 - `position` (animável). Se omitida, a câmera fica em `[0, 0, -d]` com `d = (altura/2) / tan(fov/2)`, de modo que o
   plano `z = 0` corresponde aos pixels da composição.
-- `target` (animável): ponto para onde a câmera olha. `fov`: campo de visão vertical em graus.
+- `aim` define como a câmera é apontada (padrão `target`):
+  - `"target"`: olha para o ponto `target` (animável, padrão `[0, 0, 0]`); `rotation` é ignorada. Arrastar a câmera
+    no app a orbita em torno do alvo.
+  - `"rotation"`: olha ao longo dos próprios eixos, girados por `rotation` (animável, `[x, y, z]` em graus, aplicados
+    em X, depois Y, depois Z); `target` é ignorado. Com rotação zero a câmera olha para `+z` (`+x` à direita, `+y`
+    para baixo). **Posição e rotação são independentes**: mover a câmera não a gira e girá-la não a move. É o modo
+    das câmeras novas do app (`"position": [0, 0, -d]`, `"rotation": [0, 0, 0]` equivale à câmera padrão).
+- `fov`: campo de visão vertical em graus.
 - A câmera ativa é a camada `camera` mais acima (última na ordem) que está ativa no instante. Pode ter `parent`
   (camada 3D) — por exemplo, um `empty` girando para fazer uma órbita.
 - Camadas 2D não passam pela câmera.
@@ -357,7 +368,32 @@ Não suportado na versão 1: skinning, animações internas do glTF, morph targe
 - Sem nenhuma luz no projeto, é usada uma iluminação de estúdio padrão (ambiente + luz principal + preenchimento).
 - Sombras projetadas não fazem parte da versão 1.
 
-### 5.10 Composição 2D/3D
+### 5.10 `null`
+
+Camada **nula** (null object): não desenha nada, só carrega uma transformação para outras camadas herdarem.
+
+```json
+{ "id": "rig", "type": "null", "duration": 10, "null": { "threeD": true },
+  "transform3d": { "rotation": { "keyframes": [{ "time": 0, "value": [0, 0, 0] }, { "time": 10, "value": [0, 360, 0] }] } } }
+```
+
+- `null.threeD` (padrão `false`): nulo 2D usa `transform` (sem `opacity`, que não tem efeito); nulo 3D usa `transform3d`.
+- Um nulo 2D pode ser pai de camadas 2D, grupos e outros nulos 2D; um nulo 3D, de `object3d`, `model3d`, **câmeras**,
+  **luzes** e outros nulos 3D (uma câmera presa a um nulo faz órbitas, travellings e *rigs*).
+- No editor o nulo aparece como um quadrado (2D) ou cubo (3D) de contorno, selecionável e arrastável, que não sai no
+  vídeo exportado. Efeitos, máscaras e mattes não se aplicam a ele.
+- Substitui o `object3d` com `primitive: "empty"` como pivô (que continua válido).
+
+### 5.11 Pai (`parent`)
+
+A camada filha herda a transformação do pai (posição, rotação, escala e âncora), mas **não** a opacidade. A posição
+da filha é medida a partir do pai; por isso, ao **trocar ou remover** o pai o app recalcula a transformação da filha
+para que ela **não mude de lugar na tela** naquele instante (2D e 3D; câmeras e luzes têm posição, alvo e rotação
+recalculados). Propriedades animadas mantêm os keyframes, deslocados pela diferença naquele instante — a camada só fica
+exatamente no lugar no instante em que o pai foi definido e, daí em diante, acompanha o pai. Quem escreve o
+`project.json` à mão define `position` já relativo ao pai.
+
+### 5.12 Composição 2D/3D
 
 Camadas 3D (`object3d`, `model3d`) **consecutivas** na pilha compartilham o mesmo buffer de profundidade e se ocultam
 corretamente entre si. Uma camada 2D entre elas "quebra" o grupo: o que está acima é desenhado por cima. Uma camada
@@ -686,7 +722,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v3.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v4.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -695,7 +731,7 @@ Um projeto é válido quando:
 | `layer.duplicateId` / `asset.duplicateId` | ids únicos |
 | `asset.path` / `asset.missingFile` | caminho seguro em `assets/` / arquivo presente no contêiner |
 | `layer.missingContent` | objeto de conteúdo do tipo presente |
-| `layer.parentMissing` / `layer.parentSelf` / `layer.parentCycle` / `layer.parentKind` | parent é irmão, sem ciclos, 2D↔2D e 3D↔3D, nunca câmera/luz/áudio |
+| `layer.parentMissing` / `layer.parentSelf` / `layer.parentCycle` / `layer.parentKind` | parent é irmão, sem ciclos, 2D↔2D e 3D↔3D (um `null` é 3D quando `null.threeD`), nunca câmera/luz/áudio |
 | `layer.matteMissing` / `layer.matteSelf` / `layer.matteCycle` / `layer.matteKind` | matte é irmão visual, sem ciclos, aplicado a camada 2D |
 | `layer.missingAsset` / `layer.assetType` | asset existe e é do tipo certo |
 | `keyframe.order` | tempos estritamente crescentes |
@@ -704,7 +740,7 @@ Um projeto é válido quando:
 
 Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes fora da duração da camada),
 `composition.oddSize`, `layer.masks`, `layer.effects`, `camera.multiple`, `light.count`, `layer.start`,
-`text.propertyAnimator` (animador de texto sem nenhuma propriedade).
+`text.propertyAnimator` (animador de texto sem nenhuma propriedade), `layer.nullContent` (objeto `null` em camada que não é `null`).
 
 ## 12. Versionamento e compatibilidade
 
@@ -715,7 +751,9 @@ Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes 
 - O app ignora campos desconhecidos ao abrir (tolerância), mas ao salvar escreve apenas o que conhece.
 - Histórico: **v1** → primeira versão pública (9 efeitos); **v2** → registro de efeitos com 60 tipos em categorias e
   `colorAdjust` dividido em `hueShift`, `brightnessContrast` e `saturation` (seção 7); **v3** → expressões JavaScript nas
-  propriedades e animadores de texto por caractere (seções 4.1 e 5.2; só campos novos, documentos v2 abrem sem mudança).
+  propriedades e animadores de texto por caractere (seções 4.1 e 5.2; só campos novos, documentos v2 abrem sem mudança);
+  **v4** → camada `null` (nulos 2D e 3D, seção 5.10) e câmera com `rotation`/`aim` independentes da posição (seção 5.8;
+  só campos novos, documentos v3 abrem sem mudança).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.

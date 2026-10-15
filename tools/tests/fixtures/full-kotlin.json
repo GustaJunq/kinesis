@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "generator": "tests",
   "meta": {
     "title": "Everything",
@@ -449,14 +449,40 @@
       }
     },
     {
+      "id": "rig",
+      "type": "null",
+      "name": "Rig",
+      "start": 0,
+      "duration": 10,
+      "transform3d": {
+        "position": [0, 0, 100]
+      },
+      "null": {
+        "threeD": true
+      }
+    },
+    {
       "id": "cam",
       "type": "camera",
       "name": "Camera",
       "start": 0,
       "duration": 10,
+      "parent": "rig",
       "camera": {
         "position": [0, -300, -2500],
+        "rotation": [5, 0, 0],
+        "aim": "rotation",
         "fov": 45
+      }
+    },
+    {
+      "id": "pin",
+      "type": "null",
+      "name": "Pin",
+      "start": 0,
+      "duration": 10,
+      "transform": {
+        "position": [40, -20]
       }
     },
     {

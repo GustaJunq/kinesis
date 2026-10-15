@@ -48,7 +48,7 @@ pelo **Claude Code** com a skill [`/knsproj`](.claude/skills/knsproj/SKILL.md) i
 | **Máscaras** | até 4 por camada (retângulo arredondado/elipse; somar, subtrair, interseção; suavização, inversão) e **track mattes** (alfa/luma, normais e invertidos) |
 | **Transições** | fade, slides, zoom, giro, desfoque e cortina — de entrada e de saída |
 | **Motion blur** | por camada, com ângulo de obturador e número de amostras |
-| **3D** | cubo, esfera, cilindro, cone, toro, plano e nó vazio (pivô); modelos **GLB/glTF**; posição/rotação/escala XYZ animáveis; materiais PBR (cor, textura, metalicidade, rugosidade, emissão); luzes ambiente, direcional e pontual; câmera com perspectiva, alvo e FOV animáveis; hierarquia 3D por parenting; gizmo de eixos X/Y/Z por toque, rotação por arraste e órbita de câmera |
+| **3D** | cubo, esfera, cilindro, cone, toro, plano e camadas **nulas** 2D/3D (pivôs e rigs); modelos **GLB/glTF**; posição/rotação/escala XYZ animáveis; materiais PBR (cor, textura, metalicidade, rugosidade, emissão); luzes ambiente, direcional e pontual; câmera com perspectiva e FOV animáveis, aponta por alvo ou por rotação X/Y/Z (independente da posição); hierarquia 2D/3D por parenting sem saltos; gizmo de eixos X/Y/Z por toque, rotação por arraste e órbita de câmera |
 | **Exportação** | MP4 H.264 + AAC (resolução original, 720p, 1080p, 4K; três níveis de qualidade), com motion blur completo, salvo na galeria (Filmes/Kinesis) e compartilhável |
 | **Aparência e idioma (v0.1.1)** | tema **escuro/claro/do sistema**, idioma **português/inglês/do sistema** (Ajustes) e apresentação inicial (*onboarding*) |
 
@@ -88,8 +88,8 @@ e crie `local.properties` com `sdk.dir=/caminho/do/android-sdk`.
    O menu de cada projeto permite duplicar, exportar `.knsproj` e excluir. Em *Ajustes*: idioma e tema.
 2. **Viewport:** toque para selecionar (toques repetidos entram em grupos). Arraste para mover, use pinça para escalar e
    gire com dois dedos. Em objetos 3D, arraste as pontas dos eixos **X (vermelho), Y (verde), Z (azul)** para mover em um
-   eixo, ou alterne para a ferramenta *girar* na barra de reprodução. Com a câmera selecionada, arrastar orbita e a pinça
-   aproxima.
+   eixo, ou alterne para a ferramenta *girar* na barra de reprodução. Com a câmera selecionada, arrastar orbita em torno do alvo (câmera por alvo) ou gira a câmera sem mover
+   a posição (câmera por rotação); a pinça aproxima.
 3. **Timeline:** arraste clipes para mover, as bordas para aparar; pinça para zoom; toque longo no nome para
    multisseleção, ou mantenha pressionado e arraste para reordenar. Os losangos amarelos são keyframes: toque para ir até
    eles, arraste para retemporizar.
@@ -99,8 +99,9 @@ e crie `local.properties` com `sdk.dir=/caminho/do/android-sdk`.
    O ícone `</>` abre o **editor de expressões** da propriedade: código JavaScript com destaque de sintaxe, erro com número
    de linha, interruptor liga/desliga, presets opcionais e *Voltar aos keyframes*. Na aba *Texto*, *Animadores de texto
    (expressões)* cria animadores por caractere (por exemplo o *Bounce Text* do After Effects, sem alterações no código).
-5. **Camadas:** visão hierárquica com grupos, pais (↳), visibilidade, trava e ordem.
-6. **Adicionar (+):** texto, formas, linha, imagem, vídeo, áudio, primitivas 3D, modelo GLB, câmera e luzes.
+5. **Camadas:** visão hierárquica com grupos, pais (↳), visibilidade, trava e ordem. Trocar o pai **não move** a camada na
+   tela: a transformação dela é recalculada para ficar no mesmo lugar.
+6. **Adicionar (+):** texto, formas, linha, imagem, vídeo, áudio, primitivas 3D, nulo 2D/3D, modelo GLB, câmera e luzes.
 7. **Exportar:** escolha resolução e qualidade; o vídeo vai para a galeria e pode ser compartilhado.
 
 Sem nada selecionado, o painel de propriedades mostra as configurações da composição (formato, fps, duração, fundo e
@@ -110,12 +111,12 @@ motion blur).
 
 Um `.knsproj` é um ZIP com `project.json` (JSON versionado) e uma pasta `assets/` com as mídias. A especificação
 completa está em **[docs/knsproj.md](docs/knsproj.md)** e o schema oficial em
-**[schema/knsproj-v3.schema.json](schema/knsproj-v3.schema.json)**. Resumo:
+**[schema/knsproj-v4.schema.json](schema/knsproj-v4.schema.json)**. Resumo:
 
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "composition": { "width": 1080, "height": 1920, "fps": 30, "duration": 10, "background": "#0A2463" },
   "assets": [],
   "layers": [

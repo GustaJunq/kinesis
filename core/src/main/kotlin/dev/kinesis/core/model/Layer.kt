@@ -27,6 +27,8 @@ enum class LayerType(val is3D: Boolean = false, val isVisual: Boolean = true) {
     @SerialName("model3d") MODEL3D(is3D = true),
     @SerialName("camera") CAMERA(is3D = true, isVisual = false),
     @SerialName("light") LIGHT(is3D = true, isVisual = false),
+    /** Invisible layer that only carries a transform for other layers to inherit (2D, or 3D with `null.threeD`). */
+    @SerialName("null") NULL(isVisual = false),
     ;
 
     /** Layers whose geometry lives in 3D space and that are drawn through the camera. */
@@ -46,7 +48,7 @@ enum class BlendMode {
 
 /**
  * A layer of the composition. Every layer has a [type] and the content object with the same name
- * (`text`, `shape`, `image`, `video`, `audio`, `object3d`, `model3d`, `camera`, `light`), except
+ * (`text`, `shape`, `image`, `video`, `audio`, `object3d`, `model3d`, `camera`, `light`, `null`), except
  * groups, whose content is [layers].
  *
  * Timing: the layer is visible from [start] to [start] + [duration] (seconds, in the time of its container).
@@ -85,10 +87,20 @@ data class Layer(
     val model3d: Model3DContent? = null,
     val camera: CameraContent? = null,
     val light: LightContent? = null,
+    @SerialName("null") val nullObject: NullContent? = null,
     /** Children of a group, in painter's order. Their times are relative to the group's start. */
     val layers: List<Layer> = emptyList(),
 ) {
     val end: Double get() = start + duration
+
+    /** True for layers that live in 3D space: 3D objects, cameras, lights and 3D null objects. */
+    val is3DLayer: Boolean get() = type.is3D || (type == LayerType.NULL && nullObject?.threeD == true)
+
+    /** Layers whose [transform] (2D) is inherited by children: drawn 2D layers, groups and 2D null objects. */
+    val hasTransform2D: Boolean get() = type.is2DVisual || (type == LayerType.NULL && !is3DLayer)
+
+    /** Layers whose [transform3d] is inherited by children: 3D objects, models and 3D null objects. */
+    val hasTransform3D: Boolean get() = type.isRendered3D || (type == LayerType.NULL && is3DLayer)
 
     fun isActiveAt(time: Double): Boolean = visible && time >= start && time < end
 

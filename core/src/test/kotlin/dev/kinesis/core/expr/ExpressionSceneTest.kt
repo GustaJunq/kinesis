@@ -237,12 +237,12 @@ class ExpressionSceneTest {
         assertEquals("loopOut()", back.layers[0].transform.rotation.expression)
         assertTrue(back.layers[0].transform.rotation.isAnimated)
         assertEquals("Bounce", back.layers[1].text!!.propertyAnimators[0].name)
-        // Valid against the official schema, and the format version is 3.
+        // Valid against the official schema, and the format version is 4.
         val schema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
-            .getSchema(File(TestProjects.repoRoot, "schema/knsproj-v3.schema.json").readText())
+            .getSchema(File(TestProjects.repoRoot, "schema/knsproj-v4.schema.json").readText())
         val errors = schema.validate(ObjectMapper().readTree(json)).map { it.message }
         assertEquals(emptyList<String>(), errors)
-        assertTrue(json.contains("\"formatVersion\": 3"))
+        assertTrue(json.contains("\"formatVersion\": 4"))
     }
 
     @Test
@@ -257,7 +257,7 @@ class ExpressionSceneTest {
     fun version2DocumentsStillOpen() {
         val v2 = """{"format":"knsproj","formatVersion":2,"layers":[{"id":"a","type":"shape","shape":{},"transform":{"opacity":{"keyframes":[{"time":0,"value":0},{"time":1,"value":1}]}}}]}"""
         val p = KnsprojJson.decode(v2)
-        assertEquals(3, p.formatVersion)
+        assertEquals(4, p.formatVersion)
         assertNull(p.layers[0].transform.opacity.expression)
         assertEquals(2, p.layers[0].transform.opacity.keyframes.size)
     }

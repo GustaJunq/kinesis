@@ -98,6 +98,7 @@ fun layerColor(type: LayerType): Color = when (type) {
     LayerType.GROUP -> KColors.ClipTextSecondary
     LayerType.OBJECT3D, LayerType.MODEL3D -> KColors.ClipTextSecondary
     LayerType.CAMERA, LayerType.LIGHT -> KColors.ClipViolet
+    LayerType.NULL -> KColors.ClipTeal
 }
 
 /** Text on top of a clip of this type. */

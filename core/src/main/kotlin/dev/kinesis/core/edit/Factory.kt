@@ -6,6 +6,7 @@ import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.model.Asset
 import dev.kinesis.core.model.AssetType
+import dev.kinesis.core.model.CameraAim
 import dev.kinesis.core.model.CameraContent
 import dev.kinesis.core.model.Composition
 import dev.kinesis.core.model.FillSpec
@@ -19,6 +20,7 @@ import dev.kinesis.core.model.LightKind
 import dev.kinesis.core.model.Material
 import dev.kinesis.core.model.MediaContent
 import dev.kinesis.core.model.Model3DContent
+import dev.kinesis.core.model.NullContent
 import dev.kinesis.core.model.Object3DContent
 import dev.kinesis.core.model.Primitive
 import dev.kinesis.core.model.ProjectMeta
@@ -113,8 +115,16 @@ object Factory {
         return base(project, LayerType.MODEL3D, name, start).copy(model3d = Model3DContent(asset.id, size = anim(size)))
     }
 
+    /** A camera aimed by its own rotation, so position X/Y/Z and rotation X/Y/Z are independent. */
     fun camera(project: KnsProject, start: Double, name: String) =
-        LayerProps.withExplicitCameraPosition(base(project, LayerType.CAMERA, name, start).copy(camera = CameraContent()), project.composition.height)
+        LayerProps.withExplicitCameraPosition(
+            base(project, LayerType.CAMERA, name, start).copy(camera = CameraContent(aim = CameraAim.ROTATION)),
+            project.composition.height,
+        )
+
+    /** A null object: invisible, only carries a transform for other layers to inherit. */
+    fun nullObject(project: KnsProject, start: Double, threeD: Boolean, name: String) =
+        base(project, LayerType.NULL, name, start).copy(nullObject = NullContent(threeD = threeD))
 
     fun light(project: KnsProject, start: Double, kind: LightKind, name: String) =
         base(project, LayerType.LIGHT, name, start).copy(light = LightContent(

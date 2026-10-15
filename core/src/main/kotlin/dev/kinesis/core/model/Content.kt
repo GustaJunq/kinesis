@@ -307,12 +307,32 @@ data class Model3DContent(
     val material: Material? = null,
 )
 
+/** How a camera is aimed. */
+@Serializable
+enum class CameraAim {
+    /** The camera looks at [CameraContent.target]; `rotation` is ignored. */
+    @SerialName("target") TARGET,
+
+    /** The camera looks along its own axes, turned by [CameraContent.rotation]; `target` is ignored. */
+    @SerialName("rotation") ROTATION,
+}
+
+/** Content of a `null` layer: a transform-only layer. 3D null objects use [Layer.transform3d], 2D ones [Layer.transform]. */
+@Serializable
+data class NullContent(val threeD: Boolean = false)
+
 @Serializable
 data class CameraContent(
     /** Camera position; when absent the camera sits in front of the composition so z = 0 maps 1:1 to pixels. */
     val position: AnimVec3? = null,
-    /** Point the camera looks at. */
+    /** Point the camera looks at (when [aim] is [CameraAim.TARGET]). */
     val target: AnimVec3 = anim(Vec3.ZERO),
+    /**
+     * Orientation in degrees applied X, then Y, then Z (when [aim] is [CameraAim.ROTATION]). With zero rotation the
+     * camera looks along +z, with +x to the right and +y down. Independent of [position].
+     */
+    val rotation: AnimVec3 = anim(Vec3.ZERO),
+    val aim: CameraAim = CameraAim.TARGET,
     /** Vertical field of view in degrees. */
     val fov: AnimFloat = anim(DEFAULT_FOV),
 ) {

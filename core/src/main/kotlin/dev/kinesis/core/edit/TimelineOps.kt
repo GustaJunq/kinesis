@@ -3,13 +3,17 @@ package dev.kinesis.core.edit
 import dev.kinesis.core.anim.Animatable
 import dev.kinesis.core.anim.at
 import dev.kinesis.core.math.Affine2D
+import dev.kinesis.core.math.Mat4
 import dev.kinesis.core.math.Vec2
+import dev.kinesis.core.math.Vec3
+import dev.kinesis.core.model.CameraAim
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerTree
 import dev.kinesis.core.model.LayerType
 import dev.kinesis.core.model.Transform2D
 import dev.kinesis.core.scene.SceneEvaluator
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -193,48 +197,131 @@ object TimelineOps {
         group.transform == Transform2D() && group.effects.isEmpty() && group.masks.isEmpty() && group.matte == null &&
             group.transitionIn == null && group.transitionOut == null
 
+    /** Whether [parent] can be the parent of [child]: same dimension, and not a camera, light or audio layer. */
+    fun canParent(child: Layer, parent: Layer): Boolean =
+        child.id != parent.id && child.is3DLayer == parent.is3DLayer &&
+            parent.type != LayerType.CAMERA && parent.type != LayerType.LIGHT && parent.type != LayerType.AUDIO
+
     /**
-     * Sets (or clears) the parent of a layer. For 2D layers with a static transform the local transform is
-     * recomputed so the layer does not jump on screen at composition time [time].
+     * Sets (or clears) the parent of a layer **without moving it on screen**: the layer's own transform (or, for
+     * cameras and lights, its position/orientation) is recomputed so that at composition time [time] the layer is
+     * exactly where it was. Animated properties keep their animation, shifted by the difference at [time], so
+     * the layer is only exact at [time] and follows the new parent from then on.
      */
     fun setParent(project: KnsProject, id: String, parentId: String?, time: Double): KnsProject {
         val layer = LayerTree.find(project, id) ?: return project
-        if (parentId == id) return project
+        if (parentId == id || parentId == layer.parent) return project
+        val siblings = LayerTree.siblings(project, id).associateBy { it.id }
         if (parentId != null) {
+            val parent = siblings[parentId] ?: return project
+            if (!canParent(layer, parent)) return project
             // Refuse cycles.
-            val siblings = LayerTree.siblings(project, id).associateBy { it.id }
-            var cur = siblings[parentId]
+            var cur: Layer? = parent
             while (cur != null) {
                 if (cur.id == id) return project
                 cur = cur.parent?.let { siblings[it] }
             }
         }
-        val before = SceneEvaluator.parentSpace2D(project, id, time)
-        var p = LayerTree.update(project, id) { it.copy(parent = parentId) }
+        val local = layer.localTime(time - LayerTree.containerOffset(project, id))
+        val updated = LayerTree.update(project, id) { it.copy(parent = parentId) }
+        return if (layer.is3DLayer) {
+            val before = SceneEvaluator.parentSpace3D(project, id, time)
+            val after = SceneEvaluator.parentSpace3D(updated, id, time)?.inverse()
+            if (before == null || after == null) updated
+            else LayerTree.update(updated, id) { keepWorld3D(it, after * before, local, project.composition.height) }
+        } else {
+            val before = SceneEvaluator.parentSpace2D(project, id, time)
+            val after = SceneEvaluator.parentSpace2D(updated, id, time)?.inverse()
+            if (before == null || after == null) updated
+            else LayerTree.update(updated, id) { keepWorld2D(it, after * before, local) }
+        }
+    }
+
+    /** [layer]'s transform after its parent space changed by [delta] (new parent space⁻¹ · old parent space). */
+    private fun keepWorld2D(layer: Layer, delta: Affine2D, local: Double): Layer {
+        if (!layer.hasTransform2D) return layer
         val tr = layer.transform
-        if (layer.type.is2DVisual && before != null && !tr.position.isAnimated && !tr.rotation.isAnimated && !tr.scale.isAnimated) {
-            val after = SceneEvaluator.parentSpace2D(p, id, time)?.inverse()
-            if (after != null) {
-                val local = layer.localTime(time - LayerTree.containerOffset(project, id))
-                val oldLocal = Affine2D.layer(tr.position.value, tr.anchor.at(local), tr.scale.value, tr.rotation.value)
-                val m = after * before * oldLocal * Affine2D.translate(tr.anchor.at(local))
-                val sx = sqrt(m.a * m.a + m.b * m.b)
-                val det = m.a * m.d - m.b * m.c
-                val sy = det / sx.coerceAtLeast(1e-6f)
-                val rotation = Math.toDegrees(atan2(m.b, m.a).toDouble()).toFloat()
-                p = LayerTree.update(p, id) {
-                    it.copy(
-                        transform = it.transform.copy(
-                            position = Animatable(Vec2(m.tx, m.ty)),
-                            rotation = Animatable(rotation),
-                            scale = Animatable(Vec2(sx, sy)),
-                        ),
-                    )
+        val anchor = tr.anchor.at(local)
+        val old = Affine2D.layer(tr.position.at(local), anchor, tr.scale.at(local), tr.rotation.at(local))
+        val m = delta * old * Affine2D.translate(anchor)
+        val sx = sqrt(m.a * m.a + m.b * m.b).coerceAtLeast(1e-6f)
+        val det = m.a * m.d - m.b * m.c
+        val scale = Vec2(sx, det / sx)
+        val rotation = Math.toDegrees(atan2(m.b, m.a).toDouble()).toFloat()
+        return layer.copy(
+            transform = tr.copy(
+                position = tr.position.shifted(tr.position.at(local), Vec2(m.tx, m.ty)),
+                rotation = tr.rotation.shifted(tr.rotation.at(local), rotation),
+                scale = tr.scale.scaled(tr.scale.at(local), scale),
+            ),
+        )
+    }
+
+    private fun keepWorld3D(layer: Layer, delta: Mat4, local: Double, compHeight: Int): Layer {
+        return when {
+            layer.hasTransform3D -> {
+                val tr = layer.transform3d
+                val anchor = tr.anchor.at(local)
+                val old = Mat4.layer(tr.position.at(local), anchor, tr.scale.at(local), tr.rotation.at(local))
+                val d = (delta * old * Mat4.translation(anchor)).decompose()
+                layer.copy(
+                    transform3d = tr.copy(
+                        position = tr.position.shifted(tr.position.at(local), d.translation),
+                        rotation = tr.rotation.shifted(tr.rotation.at(local), d.rotation),
+                        scale = tr.scale.scaled(tr.scale.at(local), d.scale),
+                    ),
+                )
+            }
+            layer.type == LayerType.CAMERA -> {
+                val cam = layer.camera ?: return layer
+                val pos = cam.position?.at(local) ?: Vec3(0f, 0f, -SceneEvaluator.defaultCameraDistance(compHeight, cam.fov.at(local)))
+                val position = (cam.position ?: Animatable(pos)).shifted(pos, delta.transformPoint(pos))
+                if (cam.aim == CameraAim.ROTATION) {
+                    val r = Mat4.rotationXYZ(cam.rotation.at(local))
+                    val turned = Mat4(delta.m.copyOf().also { it[12] = 0f; it[13] = 0f; it[14] = 0f }) * r
+                    val e = turned.decompose().rotation
+                    layer.copy(camera = cam.copy(position = position, rotation = cam.rotation.shifted(cam.rotation.at(local), e)))
+                } else {
+                    val tg = cam.target.at(local)
+                    layer.copy(camera = cam.copy(position = position, target = cam.target.shifted(tg, delta.transformPoint(tg))))
                 }
             }
+            layer.type == LayerType.LIGHT -> {
+                val light = layer.light ?: return layer
+                val pos = light.position.at(local)
+                val tg = light.target.at(local)
+                layer.copy(light = light.copy(position = light.position.shifted(pos, delta.transformPoint(pos)), target = light.target.shifted(tg, delta.transformPoint(tg))))
+            }
+            else -> layer
         }
-        return p
     }
+
+    /** Static → [new]; animated → every keyframe moved by `new - old` so the value at the sampled time becomes [new]. */
+    private fun Animatable<Float>.shifted(old: Float, new: Float): Animatable<Float> =
+        if (!isAnimated) withStatic(new) else shift { it + (new - old) }
+
+    private fun Animatable<Vec2>.shifted(old: Vec2, new: Vec2): Animatable<Vec2> =
+        if (!isAnimated) withStatic(new) else (new - old).let { d -> shift { it + d } }
+
+    private fun Animatable<Vec3>.shifted(old: Vec3, new: Vec3): Animatable<Vec3> =
+        if (!isAnimated) withStatic(new) else (new - old).let { d -> shift { it + d } }
+
+    private fun Animatable<Vec2>.scaled(old: Vec2, new: Vec2): Animatable<Vec2> =
+        if (!isAnimated) withStatic(new) else {
+            val k = Vec2(ratio(new.x, old.x), ratio(new.y, old.y))
+            shift { Vec2(it.x * k.x, it.y * k.y) }
+        }
+
+    private fun Animatable<Vec3>.scaled(old: Vec3, new: Vec3): Animatable<Vec3> =
+        if (!isAnimated) withStatic(new) else {
+            val k = Vec3(ratio(new.x, old.x), ratio(new.y, old.y), ratio(new.z, old.z))
+            shift { Vec3(it.x * k.x, it.y * k.y, it.z * k.z) }
+        }
+
+    private fun ratio(new: Float, old: Float) = if (abs(old) < 1e-6f) 1f else new / old
+
+    private fun <T> Animatable<T>.shift(f: (T) -> T): Animatable<T> =
+        copy(value = f(value), keyframes = keyframes.map { it.copy(value = f(it.value)) })
 
     /** Top-level times that clips and the playhead snap to: composition bounds and layer edges. */
     fun snapPoints(project: KnsProject, excludeId: String? = null): List<Double> {
@@ -258,6 +345,7 @@ object TimelineOps {
         LayerType.MODEL3D -> "model"
         LayerType.CAMERA -> "camera"
         LayerType.LIGHT -> "light"
+        LayerType.NULL -> "null"
     }
 
     private fun copyName(name: String): String = if (name.isBlank()) "" else "$name copy"
