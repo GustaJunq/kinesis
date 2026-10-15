@@ -117,8 +117,13 @@ jobs:
             exit 1
           fi
 
-          APK_SHA256=$(grep -i 'Signer #1 certificate SHA-256 digest' apksigner.txt | head -n 1 | sed 's/.*: *//' | tr 'A-F' 'a-f')
-          [ "${#APK_SHA256}" -eq 64 ] || { echo "::error::Could not read the signer certificate from apksigner"; exit 1; }
+          # apksigner labels the certificate "Signer #1 certificate SHA-256 digest" when the APK has a v1 (JAR) signature and
+          # "V3.0 Signer: certificate SHA-256 digest" when it is verified through v3 only (minSdk 24+). Accept both, and
+          # require exactly one distinct signer certificate.
+          SIGNER_DIGESTS=$(sed -nE 's/^(Signer #[0-9]+|V[0-9.]+ Signer):? certificate SHA-256 digest: *([0-9A-Fa-f]{64}) *$/\2/p' apksigner.txt | tr 'A-F' 'a-f' | sort -u)
+          if [ -z "$SIGNER_DIGESTS" ]; then echo "::error::Could not read the signer certificate from apksigner"; exit 1; fi
+          if [ "$(printf '%s\n' "$SIGNER_DIGESTS" | wc -l)" -ne 1 ]; then echo "::error::The APK has more than one signer certificate"; exit 1; fi
+          APK_SHA256="$SIGNER_DIGESTS"
           if [ "$APK_SHA256" != "$KEYSTORE_SHA256" ]; then
             echo "::error::The APK certificate does not match the certificate of the configured keystore alias"
             exit 1
