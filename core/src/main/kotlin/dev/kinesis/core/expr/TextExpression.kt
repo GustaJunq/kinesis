@@ -93,34 +93,10 @@ object TextExpression {
         count: Int,
     ): Array<DoubleArray> {
         val local = containerTime - layer.start
-        val plain = a.amount.copy(loop = LoopMode.NONE, expression = null)
         val base = a.amount.copy(expression = null).sample(local) { x, y, u -> x + (y - x) * u }.toDouble()
-        val dims = if (a.position != null || a.scale != null) 2 else 1
         if (!a.amount.hasActiveExpression) return Array(count) { doubleArrayOf(base, base) }
-        val baseVec = DoubleArray(dims) { base }
-        val index = ExpressionResolver.aeIndex(layer, siblings)
-        val seed = ExpressionResolver.seedOf(layer.id, "text.animator.$animatorIndex")
-        val info = ExpressionResolver.layerInfo(layer, siblings, containerTime, comp)
-        val lookup = ExpressionResolver.lookup(siblings, containerTime, comp)
-        val expr = ExprComp(comp.width.toDouble(), comp.height.toDouble(), comp.duration, comp.frameDuration, siblings.size)
         return Array(count) { u ->
-            val input = ExprInput(
-                time = containerTime,
-                value = baseVec,
-                valueIsArray = dims > 1,
-                inPoint = layer.start,
-                outPoint = layer.end,
-                layerIndex = index,
-                comp = expr,
-                seed = seed,
-                keys = a.amount.keyframes.map { ExprKey(layer.start + it.time, doubleArrayOf(it.value.toDouble())) },
-                valueAtTime = { t -> DoubleArray(dims) { plain.sample(t - layer.start) { x, y, f -> x + (y - x) * f }.toDouble() } },
-                ownLayer = info,
-                layerLookup = lookup,
-                textIndex = u + 1,
-                textTotal = count,
-                selectorValue = baseVec,
-            )
+            val input = amountInput(layer, siblings, containerTime, comp, a, animatorIndex, u + 1, count)
             try {
                 val r = ExpressionEngine.evaluate(a.amount.expression!!, input).values
                 doubleArrayOf(r[0], if (r.size > 1) r[1] else r[0])
@@ -128,6 +104,54 @@ object TextExpression {
                 ExpressionResolver.onError?.invoke(layer.id, "text.animator.$animatorIndex.amount", e)
                 doubleArrayOf(base, base)
             }
+        }
+    }
+
+    /** The input of the selector expression for the unit [textIndex] (1-based) of [textTotal]. */
+    fun amountInput(
+        layer: Layer,
+        siblings: Map<String, Layer>,
+        containerTime: Double,
+        comp: Composition,
+        a: TextPropertyAnimator,
+        animatorIndex: Int,
+        textIndex: Int,
+        textTotal: Int,
+    ): ExprInput {
+        val local = containerTime - layer.start
+        val plain = a.amount.copy(loop = LoopMode.NONE, expression = null)
+        val dims = if (a.position != null || a.scale != null) 2 else 1
+        val base = a.amount.copy(expression = null).sample(local) { x, y, u -> x + (y - x) * u }.toDouble()
+        val baseVec = DoubleArray(dims) { base }
+        return ExprInput(
+            time = containerTime,
+            value = baseVec,
+            valueIsArray = dims > 1,
+            inPoint = layer.start,
+            outPoint = layer.end,
+            layerIndex = ExpressionResolver.aeIndex(layer, siblings),
+            comp = ExprComp(comp.width.toDouble(), comp.height.toDouble(), comp.duration, comp.frameDuration, siblings.size),
+            seed = ExpressionResolver.seedOf(layer.id, "text.animator.$animatorIndex"),
+            keys = a.amount.keyframes.map { ExprKey(layer.start + it.time, doubleArrayOf(it.value.toDouble())) },
+            valueAtTime = { t -> DoubleArray(dims) { plain.sample(t - layer.start) { x, y, f -> x + (y - x) * f }.toDouble() } },
+            ownLayer = ExpressionResolver.layerInfo(layer, siblings, containerTime, comp),
+            layerLookup = ExpressionResolver.lookup(siblings, containerTime, comp),
+            textIndex = textIndex,
+            textTotal = textTotal,
+            selectorValue = baseVec,
+        )
+    }
+
+    /** Runs [source] as the selector expression of animator [animatorIndex] for the first character; null if it works. */
+    fun diagnose(layer: Layer, animatorIndex: Int, source: String, siblings: Map<String, Layer>, containerTime: Double, comp: Composition): ExpressionError? {
+        ExpressionEngine.check(source)?.let { return it }
+        val a = layer.text?.propertyAnimators?.getOrNull(animatorIndex) ?: return null
+        val (_, count) = units(layer.text.content, a.unit)
+        return try {
+            ExpressionEngine.evaluate(source, amountInput(layer, siblings, containerTime, comp, a, animatorIndex, 1, count.coerceAtLeast(1)))
+            null
+        } catch (e: ExpressionError) {
+            e
         }
     }
 

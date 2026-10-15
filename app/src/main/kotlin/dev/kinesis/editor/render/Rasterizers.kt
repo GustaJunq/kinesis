@@ -23,6 +23,7 @@ import dev.kinesis.core.model.StrokeJoin
 import dev.kinesis.core.model.TextAlign
 import dev.kinesis.core.model.TextAnimatorType
 import dev.kinesis.core.scene.Content2D
+import dev.kinesis.core.scene.GlyphState
 import dev.kinesis.core.scene.TextAnimation
 import java.io.File
 import kotlin.math.PI
@@ -105,7 +106,7 @@ object TextRasterizer {
 
         val fill = t.color.toArgb()
         val stroke = t.strokeColor?.takeIf { t.strokeWidth > 0f }
-        if (t.animators.isEmpty()) {
+        if (t.animators.isEmpty() && t.glyphStates == null) {
             if (stroke != null) {
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = t.strokeWidth * s
@@ -118,13 +119,14 @@ object TextRasterizer {
             layout.draw(canvas)
         } else {
             val lines = IntArray(text.length) { layout.getLineForOffset(it) }
-            val states = TextAnimation.evaluate(text, t.animators, t.localTime, lines)
+            val presets = if (t.animators.isEmpty()) null else TextAnimation.evaluate(text, t.animators, t.localTime, lines)
+            val expr = t.glyphStates
             var i = 0
             while (i < text.length) {
                 val cp = Character.codePointAt(text, i)
                 val n = Character.charCount(cp)
                 if (!Character.isWhitespace(cp)) {
-                    val st = states[i]
+                    val st = combine(presets?.getOrNull(i), expr?.getOrNull(i))
                     if (st.opacity > 0.002f) {
                         val line = lines[i]
                         val x = layout.getPrimaryHorizontal(i)
@@ -177,9 +179,24 @@ object TextRasterizer {
         return RectF(-w / 2f, -h / 2f, w / 2f, h / 2f)
     }
 
+    private fun combine(a: GlyphState?, b: GlyphState?): GlyphState = when {
+        a == null -> b ?: GlyphState.IDENTITY
+        b == null -> a
+        else -> GlyphState(a.dx + b.dx, a.dy + b.dy, a.scale * b.scale, a.rotation + b.rotation, a.opacity * b.opacity)
+    }
+
     /** Extra room (layer pixels) so animated glyphs are not clipped. */
     private fun animatorPadding(t: Content2D.Text): Float {
         var pad = 0f
+        t.glyphStates?.let { g ->
+            var shift = 0f; var grow = 1f; var spin = false
+            for (s in g) {
+                shift = max(shift, max(abs(s.dx), abs(s.dy)))
+                grow = max(grow, abs(s.scale))
+                if (s.rotation != 0f) spin = true
+            }
+            pad += shift + t.fontSize * (grow - 1f) * 0.6f + (if (spin) t.fontSize * 0.5f else 0f)
+        }
         for (a in t.animators) {
             pad += when (a.type) {
                 TextAnimatorType.SLIDE_UP, TextAnimatorType.SLIDE_DOWN, TextAnimatorType.SLIDE_LEFT,

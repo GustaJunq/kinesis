@@ -116,6 +116,7 @@ import dev.kinesis.editor.ui.common.LabeledSlider
 import dev.kinesis.editor.ui.common.OverlineLabel
 import dev.kinesis.editor.ui.common.PillChip
 import dev.kinesis.editor.ui.theme.KDims
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -214,6 +215,7 @@ fun PropertiesPanel(
                         }
                     }
                     item(key = "animators") { TextAnimatorsBlock(vm, layer) }
+                    item(key = "expressionAnimators") { TextExpressionAnimatorsBlock(vm, layer) }
                 }
                 PropTab.EFFECTS -> item(key = "effects") { EffectsBlock(vm, layer, local, onEditCurve, onAddEffect) }
                 PropTab.MASK -> {
@@ -272,6 +274,7 @@ fun PropRow(vm: EditorViewModel, layer: Layer, prop: AnimProp<*>, local: Double,
     val hasKey = prop.hasKeyframeAt(layer, local)
     val segment = KeyframeOps.segmentStartIndex(anim, local)
     val key = "prop:${layer.id}:${prop.id}"
+    var showExpression by rememberSaveable(layer.id, prop.id) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SmallLabel(propLabel(prop.labelKey), Modifier.weight(1f))
@@ -282,6 +285,25 @@ fun PropRow(vm: EditorViewModel, layer: Layer, prop: AnimProp<*>, local: Double,
                     modifier = Modifier.size(KDims.MinTouch),
                 ) { Icon(Icons.Filled.ShowChart, stringResource(R.string.easing), tint = KColors.TextSoft, modifier = Modifier.size(20.dp)) }
             }
+            // Expression: opens the editor (creating `value` as the first expression); accent when it is active.
+            val expressionOn = anim.hasActiveExpression
+            IconButton(
+                onClick = {
+                    if (anim.expression == null) vm.setExpression(layer.id, prop, "value") else showExpression = !showExpression
+                    if (anim.expression == null) showExpression = true
+                },
+                modifier = Modifier.size(KDims.MinTouch),
+            ) {
+                Icon(
+                    Icons.Outlined.Code, stringResource(R.string.expr_open),
+                    tint = when {
+                        expressionOn -> KColors.Accent
+                        anim.expression != null -> KColors.Disabled
+                        else -> KColors.TextSecondary
+                    },
+                    modifier = Modifier.size(20.dp),
+                )
+            }
             // Keyframe toggle: filled amber diamond = keyframe here, outline = none (amber outline when animated).
             KeyframeButton(
                 hasKey = hasKey,
@@ -289,6 +311,20 @@ fun PropRow(vm: EditorViewModel, layer: Layer, prop: AnimProp<*>, local: Double,
                 contentDescription = stringResource(if (hasKey) R.string.remove_keyframe else R.string.add_keyframe),
                 onClick = { vm.toggleKeyframe(layer.id, prop) },
                 onLongClick = if (animated) ({ vm.clearKeyframes(layer.id, prop) }) else null,
+            )
+        }
+        val expressionSource = anim.expression
+        if (expressionSource != null && showExpression) {
+            val error = remember(expressionSource, vm.current) { vm.diagnoseExpression(layer.id, prop, expressionSource) }
+            ExpressionEditor(
+                source = expressionSource,
+                enabled = anim.expressionEnabled,
+                error = error,
+                presets = PROPERTY_PRESETS,
+                onSource = { code -> vm.setExpression(layer.id, prop, code, anim.expressionEnabled, "expr:${layer.id}:${prop.id}") },
+                onEnabled = { on -> vm.setExpression(layer.id, prop, expressionSource, on) },
+                onRemove = { vm.setExpression(layer.id, prop, null); showExpression = false },
+                modifier = Modifier.padding(vertical = 4.dp),
             )
         }
         when (val kind = prop.kind) {

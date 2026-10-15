@@ -411,6 +411,31 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     fun clearKeyframes(layerId: String, prop: AnimProp<*>) =
         updateLayer(layerId) { l -> prop.clearKeyframes(l, localTime(l)) }
 
+    /** Sets (or removes, with a null [source]) the expression of a property; the code is kept when [enabled] is false. */
+    fun setExpression(layerId: String, prop: AnimProp<*>, source: String?, enabled: Boolean = true, coalesceKey: String? = null) =
+        updateLayer(layerId, coalesceKey) { l -> withExpression(l, prop, source, enabled) }
+
+    private fun <T> withExpression(l: Layer, prop: AnimProp<T>, source: String?, enabled: Boolean): Layer =
+        prop.set(l, prop.get(l).copy(expression = source, expressionEnabled = enabled))
+
+    /** Runs [source] as if it were the expression of [prop] at the playhead; null when it is valid. */
+    fun diagnoseExpression(layerId: String, prop: AnimProp<*>, source: String): dev.kinesis.core.expr.ExpressionError? {
+        val p = current
+        val layer = LayerTree.find(p, layerId) ?: return null
+        val siblings = LayerTree.siblings(p, layerId).associateBy { it.id }
+        val containerTime = _time.value - LayerTree.containerOffset(p, layerId)
+        return dev.kinesis.core.expr.ExpressionResolver.diagnose(layer, prop, source, siblings, containerTime, p.composition)
+    }
+
+    /** Same for the selector expression of a text property animator. */
+    fun diagnoseTextExpression(layerId: String, animatorIndex: Int, source: String): dev.kinesis.core.expr.ExpressionError? {
+        val p = current
+        val layer = LayerTree.find(p, layerId) ?: return null
+        val siblings = LayerTree.siblings(p, layerId).associateBy { it.id }
+        val containerTime = _time.value - LayerTree.containerOffset(p, layerId)
+        return dev.kinesis.core.expr.TextExpression.diagnose(layer, animatorIndex, source, siblings, containerTime, p.composition)
+    }
+
     fun setLoop(layerId: String, prop: AnimProp<*>, mode: dev.kinesis.core.anim.LoopMode) =
         updateLayer(layerId) { l -> withLoop(l, prop, mode) }
 

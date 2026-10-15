@@ -156,15 +156,14 @@ object ExpressionResolver {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun resolveProp(
-        out: Layer,
+    private fun inputFor(
         layer: Layer,
         prop: AnimProp<*>,
         siblings: Map<String, Layer>,
         containerTime: Double,
         comp: Composition,
         index: Int,
-    ): Layer {
+    ): Triple<ExprInput, Codec, AnimProp<Any?>> {
         val p = prop as AnimProp<Any?>
         val anim = p.get(layer)
         val codec = Codec(p.kind, p.id, comp)
@@ -184,9 +183,40 @@ object ExpressionResolver {
             ownLayer = layerInfo(layer, siblings, containerTime, comp),
             layerLookup = lookup(siblings, containerTime, comp),
         )
+        return Triple(input, codec, p)
+    }
+
+    private fun resolveProp(
+        out: Layer,
+        layer: Layer,
+        prop: AnimProp<*>,
+        siblings: Map<String, Layer>,
+        containerTime: Double,
+        comp: Composition,
+        index: Int,
+    ): Layer {
+        val (input, codec, p) = inputFor(layer, prop, siblings, containerTime, comp, index)
+        val anim = p.get(layer)
         val result = ExpressionEngine.evaluate(anim.expression!!, input)
+        val local = containerTime - layer.start
         val value = codec.fromAe(result.values, anim.copy(expression = null).sample(local, p.interpolate))
         return p.set(out, Animatable(value))
+    }
+
+    /**
+     * Runs [source] once as if it were the expression of [prop] at [containerTime] (for the editor: syntax and runtime
+     * errors with their line). Returns null when it works and yields a value valid for the property.
+     */
+    fun diagnose(layer: Layer, prop: AnimProp<*>, source: String, siblings: Map<String, Layer>, containerTime: Double, comp: Composition): ExpressionError? {
+        ExpressionEngine.check(source)?.let { return it }
+        return try {
+            val (input, codec, p) = inputFor(layer, prop, siblings, containerTime, comp, aeIndex(layer, siblings))
+            val result = ExpressionEngine.evaluate(source, input)
+            codec.fromAe(result.values, p.get(layer).copy(expression = null).sample(containerTime - layer.start, p.interpolate))
+            null
+        } catch (e: ExpressionError) {
+            e
+        }
     }
 
     fun seedOf(layerId: String, propertyId: String): Long {

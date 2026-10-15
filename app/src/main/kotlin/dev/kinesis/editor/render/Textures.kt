@@ -56,7 +56,7 @@ class ContentTextures(private val typefaces: TypefaceProvider) {
 
     fun text(slotId: String, t: Content2D.Text, scale: Float): TexturedRect? {
         val sc = bucket(scale)
-        val key = TextKey(t.content, t.font, t.fontSize, t.color, t.align, t.lineHeight, t.letterSpacing, t.maxWidth, t.strokeColor, t.strokeWidth, t.animators, if (t.animators.isEmpty()) 0.0 else t.localTime, sc)
+        val key = TextKey(t.content, t.font, t.fontSize, t.color, t.align, t.lineHeight, t.letterSpacing, t.maxWidth, t.strokeColor, t.strokeWidth, t.animators, if (t.animators.isEmpty()) 0.0 else t.localTime, t.glyphStates?.toList(), sc)
         return slot(slotId, key) { TextRasterizer.rasterize(t, sc, typefaces) }
     }
 
@@ -113,7 +113,7 @@ class ContentTextures(private val typefaces: TypefaceProvider) {
     private data class TextKey(
         val content: String, val font: Any, val size: Float, val color: Any, val align: Any, val lineHeight: Float,
         val letterSpacing: Float, val maxWidth: Float, val stroke: Any?, val strokeWidth: Float, val animators: Any,
-        val time: Double, val scale: Float,
+        val time: Double, val glyphs: Any?, val scale: Float,
     )
 
     private data class ShapeKey(
