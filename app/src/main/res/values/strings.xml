@@ -4,6 +4,7 @@
     <string name="add_3d">3D objects</string>
     <string name="add_basics">Text &amp; shapes</string>
     <string name="add_effect">Add effect</string>
+    <string name="add_keyframe">Add keyframe</string>
     <string name="add_mask">Add mask</string>
     <string name="add_media">Media</string>
     <string name="add_point">Add point</string>
@@ -45,6 +46,7 @@
     <string name="duration_seconds">Duration (s)</string>
     <string name="easing">Easing curve</string>
     <string name="edit_text">Edit text</string>
+    <string name="edit_title">Rename project</string>
     <string name="effects">Effects</string>
     <string name="enabled">Enabled</string>
     <string name="enter_value">Enter value</string>
@@ -62,6 +64,7 @@
     <string name="fade_in">Fade in</string>
     <string name="fade_out">Fade out</string>
     <string name="fill">Fill</string>
+    <string name="fit_timeline">Fit timeline to screen</string>
     <string name="fit_to_frame">Fit to frame</string>
     <string name="font">Font</string>
     <string name="font_weight">Weight</string>
@@ -85,6 +88,7 @@
     <string name="group">Group</string>
     <string name="group_children">%1$d layers inside</string>
     <string name="height">Height</string>
+    <string name="hide_layer">Hide layer</string>
     <string name="import_error_title">Could not import the file</string>
     <string name="import_failed">Import failed: %1$s</string>
     <string name="import_font">Import font</string>
@@ -96,11 +100,13 @@
     <string name="join_bevel">Bevel</string>
     <string name="join_miter">Miter</string>
     <string name="join_round">Round</string>
+    <string name="layer_actions">Selected layer</string>
     <string name="layer_audio">Audio</string>
     <string name="layer_camera">Camera</string>
     <string name="layer_group">Group</string>
     <string name="layer_image">Image</string>
     <string name="layer_light">Light</string>
+    <string name="layer_locked">Layer locked</string>
     <string name="layer_model3d">3D model</string>
     <string name="layer_object3d">3D object</string>
     <string name="layer_shape">Shape</string>
@@ -150,6 +156,7 @@
     <string name="override_material">Override material</string>
     <string name="parent">Parent</string>
     <string name="path_hint">Drag the square handles in the viewport to move points.</string>
+    <string name="pause">Pause</string>
     <string name="play">Play</string>
     <string name="point_corner">Corner</string>
     <string name="point_smooth">Smooth</string>
@@ -234,6 +241,7 @@
     <string name="shape_rectangle">Rectangle</string>
     <string name="shape_star">Star</string>
     <string name="share">Share</string>
+    <string name="show_layer">Show layer</string>
     <string name="shutter_angle">Shutter angle</string>
     <string name="source_start">Source in-point</string>
     <string name="speed">Speed</string>
@@ -251,8 +259,17 @@
     <string name="text_animators">Text animation</string>
     <string name="texture">Texture</string>
     <string name="title">Title</string>
+    <string name="toggle_loop">Loop playback</string>
+    <string name="tool_3d">3D</string>
+    <string name="tool_audio">Audio</string>
+    <string name="tool_camera">Camera</string>
+    <string name="tool_layers">Layers</string>
+    <string name="tool_media">Media</string>
+    <string name="tool_motion">Motion</string>
     <string name="tool_move">Move tool</string>
     <string name="tool_rotate">Rotate tool</string>
+    <string name="tool_shapes">Shapes</string>
+    <string name="tool_text">Text</string>
     <string name="tr_blur">Blur</string>
     <string name="tr_fade">Fade</string>
     <string name="tr_slide_down">Slide down</string>

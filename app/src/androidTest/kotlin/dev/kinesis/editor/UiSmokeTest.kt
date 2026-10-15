@@ -41,11 +41,10 @@ class UiSmokeTest {
         click("Create")
         rule.waitUntil(20_000) { rule.onAllNodesWithContentDescription("Undo").fetchSemanticsNodes().isNotEmpty() }
 
-        click("Add")
         click("Text")
-        click("Add")
+        click("3D")
         click("Cube")
-        click("Add")
+        click("Shapes")
         click("Star")
         shot("ui-editor-timeline")
 

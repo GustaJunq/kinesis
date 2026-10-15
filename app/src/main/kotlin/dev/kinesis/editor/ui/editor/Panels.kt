@@ -107,6 +107,10 @@ import dev.kinesis.editor.media.ExportResolution
 import dev.kinesis.editor.media.ExportSettings
 import dev.kinesis.editor.ui.common.ChoiceChips
 import dev.kinesis.editor.ui.theme.KColors
+import dev.kinesis.editor.ui.theme.KDims
+import dev.kinesis.editor.ui.theme.KShapes
+import dev.kinesis.editor.ui.common.OverlineLabel
+import androidx.compose.foundation.layout.heightIn
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -201,12 +205,14 @@ enum class AddAction {
 
 private class AddItem(val action: AddAction, val label: Int, val icon: ImageVector)
 
+/** Which part of the add menu the toolbar opened. */
+enum class AddSection { SHAPES, MEDIA, MODEL3D, SCENE }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddSheet(onDismiss: () -> Unit, onAdd: (AddAction) -> Unit) {
-    val groups = listOf(
+fun AddSheet(section: AddSection, onDismiss: () -> Unit, onAdd: (AddAction) -> Unit) {
+    val all = listOf(
         R.string.add_basics to listOf(
-            AddItem(AddAction.TEXT, R.string.layer_text, Icons.Filled.TextFields),
             AddItem(AddAction.RECTANGLE, R.string.shape_rectangle, Icons.Filled.Crop54),
             AddItem(AddAction.ELLIPSE, R.string.shape_ellipse, Icons.Outlined.Circle),
             AddItem(AddAction.POLYGON, R.string.shape_polygon, Icons.Filled.Hexagon),
@@ -235,7 +241,8 @@ fun AddSheet(onDismiss: () -> Unit, onAdd: (AddAction) -> Unit) {
             AddItem(AddAction.LIGHT_AMBIENT, R.string.light_ambient, Icons.Filled.LightMode),
         ),
     )
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = KColors.Surface) {
+    val groups = listOf(all[section.ordinal])
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = KColors.Sheet, shape = KShapes.Sheet) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(84.dp),
             contentPadding = PaddingValues(16.dp, 0.dp, 16.dp, 32.dp),
@@ -244,14 +251,15 @@ fun AddSheet(onDismiss: () -> Unit, onAdd: (AddAction) -> Unit) {
         ) {
             for ((title, items) in groups) {
                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                    Text(stringResource(title).uppercase(), style = MaterialTheme.typography.labelSmall, color = KColors.Accent, modifier = Modifier.padding(top = 8.dp))
+                    OverlineLabel(stringResource(title).uppercase(), Modifier.padding(top = 8.dp), color = KColors.Accent)
                 }
                 items(items) { item ->
                     Column(
                         Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(KColors.SurfaceHigh)
+                            .clip(KShapes.Tile)
+                            .background(KColors.Field)
                             .combinedClickableCompat { onAdd(item.action) }
+                            .heightIn(min = KDims.MinTouch)
                             .padding(vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {

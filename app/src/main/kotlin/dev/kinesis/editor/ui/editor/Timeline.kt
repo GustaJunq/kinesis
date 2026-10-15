@@ -67,27 +67,41 @@ import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerTree
 import dev.kinesis.core.model.LayerType
 import dev.kinesis.editor.ui.common.formatTime
+import dev.kinesis.editor.R
+import dev.kinesis.editor.ui.theme.KBrushes
 import dev.kinesis.editor.ui.theme.KColors
+import dev.kinesis.editor.ui.theme.KDims
+import dev.kinesis.editor.ui.theme.KShapes
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** A visible timeline row: a layer, its nesting depth and the absolute start of its container. */
 private data class Row(val layer: Layer, val depth: Int, val containerOffset: Double, val containerId: String?)
 
-private val HEADER_WIDTH = 120.dp
+private val HEADER_WIDTH = 80.dp
 private val ROW_HEIGHT = 44.dp
 private val RULER_HEIGHT = 28.dp
 
 fun layerColor(type: LayerType): Color = when (type) {
-    LayerType.TEXT -> KColors.ClipText
-    LayerType.SHAPE -> KColors.ClipShape
-    LayerType.IMAGE -> KColors.ClipImage
-    LayerType.VIDEO -> KColors.ClipVideo
-    LayerType.AUDIO -> KColors.ClipAudio
-    LayerType.GROUP -> KColors.ClipGroup
-    LayerType.OBJECT3D, LayerType.MODEL3D -> KColors.Clip3D
-    LayerType.CAMERA, LayerType.LIGHT -> KColors.ClipCamera
+    LayerType.TEXT -> KColors.ClipTextStart
+    LayerType.SHAPE -> KColors.ClipPink
+    LayerType.IMAGE -> KColors.ClipAmber
+    LayerType.VIDEO -> KColors.ClipViolet
+    LayerType.AUDIO -> KColors.ClipTeal
+    LayerType.GROUP -> KColors.ClipTextSecondary
+    LayerType.OBJECT3D, LayerType.MODEL3D -> KColors.ClipTextSecondary
+    LayerType.CAMERA, LayerType.LIGHT -> KColors.ClipViolet
 }
+
+/** Text on top of a clip of this type. */
+private fun onClipColor(type: LayerType): Color = if (type == LayerType.IMAGE) KColors.OnClipAmber else KColors.White
 
 @Composable
 fun Timeline(
@@ -159,18 +173,12 @@ fun Timeline(
         ) {
             // Ruler
             Row(Modifier.fillMaxWidth().height(RULER_HEIGHT)) {
-                Box(Modifier.width(HEADER_WIDTH).fillMaxHeight().background(KColors.Surface), contentAlignment = Alignment.CenterStart) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            formatTime(time, project.composition.fps),
-                            fontSize = 11.sp, color = KColors.TextPrimary, modifier = Modifier.padding(start = 8.dp).weight(1f),
-                        )
-                        IconButton(onClick = {
-                            pxPerSecond = (trackWidthPx / duration.toFloat() * 0.95f).coerceIn(8f, 2000f)
-                            scrollPx = 0f
-                        }, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Filled.FitScreen, null, tint = KColors.TextSecondary, modifier = Modifier.size(16.dp))
-                        }
+                Box(Modifier.width(HEADER_WIDTH).fillMaxHeight().background(KColors.Bar), contentAlignment = Alignment.Center) {
+                    IconButton(onClick = {
+                        pxPerSecond = (trackWidthPx / duration.toFloat() * 0.95f).coerceIn(8f, 2000f)
+                        scrollPx = 0f
+                    }, modifier = Modifier.size(KDims.MinTouch)) {
+                        Icon(Icons.Filled.FitScreen, stringResource(R.string.fit_timeline), tint = KColors.TextSecondary, modifier = Modifier.size(18.dp))
                     }
                 }
                 Ruler(
@@ -199,11 +207,14 @@ fun Timeline(
                     }
                     item { Spacer(Modifier.height(48.dp)) }
                 }
-                // Playhead
-                Canvas(Modifier.fillMaxSize()) {
-                    val x = HEADER_WIDTH.toPx() + time.toFloat() * pxPerSecond - scrollPx
-                    if (x >= HEADER_WIDTH.toPx()) drawLine(KColors.Playhead, Offset(x, 0f), Offset(x, size.height), strokeWidth = 2.dp.toPx())
-                }
+            }
+        }
+        // Playhead: white line with a round cap on the ruler.
+        Canvas(Modifier.fillMaxSize()) {
+            val x = HEADER_WIDTH.toPx() + time.toFloat() * pxPerSecond - scrollPx
+            if (x >= HEADER_WIDTH.toPx()) {
+                drawLine(KColors.Playhead, Offset(x, 0f), Offset(x, size.height), strokeWidth = 2.dp.toPx())
+                drawCircle(KColors.Playhead, 5.dp.toPx(), Offset(x, 6.dp.toPx()))
             }
         }
     }
@@ -217,7 +228,7 @@ private fun Ruler(duration: Double, pxPerSecond: Float, scrollPx: Float, fps: Do
     val density = LocalDensity.current
     Canvas(
         modifier
-            .background(KColors.Surface)
+            .background(KColors.Bar)
             .clipToBounds()
             .pointerInput(Unit) { detectTapGestures { seek(((it.x + currentScroll) / currentPx).toDouble()) } }
             .pointerInput(Unit) {
@@ -232,7 +243,8 @@ private fun Ruler(duration: Double, pxPerSecond: Float, scrollPx: Float, fps: Do
         val major = steps.firstOrNull { it * pxPerSecond >= minGap } ?: 300.0
         val minor = major / 4
         val paint = android.graphics.Paint().apply {
-            color = android.graphics.Color.argb(200, 158, 161, 179)
+            color = KColors.TextSecondary.toArgb()
+            typeface = android.graphics.Typeface.MONOSPACE
             textSize = 10.sp.toPx()
             isAntiAlias = true
         }
@@ -242,10 +254,10 @@ private fun Ruler(duration: Double, pxPerSecond: Float, scrollPx: Float, fps: Do
             if (x > size.width) break
             val isMajor = abs(t / major - (t / major).roundToInt()) < 1e-6
             drawLine(
-                Color(0xFF555A70), Offset(x, size.height), Offset(x, size.height - if (isMajor) 12.dp.toPx() else 6.dp.toPx()),
+                KColors.LineStrong, Offset(x, size.height), Offset(x, size.height - if (isMajor) 12.dp.toPx() else 6.dp.toPx()),
                 strokeWidth = 1f,
             )
-            if (isMajor) drawContext.canvas.nativeCanvas.drawText(formatTime(t), x + 3.dp.toPx(), 12.dp.toPx(), paint)
+            if (isMajor) drawContext.canvas.nativeCanvas.drawText(secondsLabel(t), x + 3.dp.toPx(), 12.dp.toPx(), paint)
             t += minor
         }
         val endX = (duration * pxPerSecond - scrollPx).toFloat()
@@ -279,14 +291,14 @@ private fun LayerRow(
         Modifier
             .fillMaxWidth()
             .height(ROW_HEIGHT)
-            .background(if (selected) KColors.SurfaceHigh else Color.Transparent),
+            .background(if (selected) KColors.Field.copy(alpha = 0.6f) else Color.Transparent),
     ) {
         // Header: name, visibility, group expansion; long-press drag reorders.
         Row(
             Modifier
                 .width(HEADER_WIDTH)
                 .fillMaxHeight()
-                .background(KColors.Surface)
+                .background(KColors.Bar)
                 .pointerInput(layer.id) {
                     detectTapGestures(
                         onTap = { vm.select(layer.id) },
@@ -319,19 +331,18 @@ private fun LayerRow(
                     modifier = Modifier.size(18.dp).pointerInput(Unit) { detectTapGestures { onToggleExpand() } },
                 )
             }
-            Box(Modifier.size(8.dp).clip(RoundedCornerShape(2.dp)).background(layerColor(layer.type)))
-            Spacer(Modifier.width(6.dp))
             Text(
-                layerDisplayName(layer), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                color = if (layer.visible) KColors.TextPrimary else KColors.TextSecondary,
+                layerDisplayName(layer), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                color = if (layer.visible) KColors.TextSoft else KColors.Disabled,
                 modifier = Modifier.weight(1f),
             )
-            if (layer.locked) Icon(Icons.Filled.Lock, null, tint = KColors.TextSecondary, modifier = Modifier.size(12.dp))
+            if (layer.locked) Icon(Icons.Outlined.Lock, stringResource(R.string.layer_locked), tint = KColors.TextSecondary, modifier = Modifier.size(12.dp))
             Icon(
-                if (layer.visible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, null,
+                if (layer.visible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                stringResource(if (layer.visible) R.string.hide_layer else R.string.show_layer),
                 tint = KColors.TextSecondary,
                 modifier = Modifier
-                    .padding(horizontal = 6.dp)
+                    .padding(horizontal = 4.dp)
                     .size(16.dp)
                     .pointerInput(layer.id) { detectTapGestures { vm.updateLayer(layer.id) { it.copy(visible = !it.visible) } } },
             )
@@ -390,12 +401,12 @@ private fun ClipView(
             .offset { IntOffset(x.roundToInt(), with(density) { 6.dp.roundToPx() }) }
             .width(with(density) { w.toDp() })
             .height(ROW_HEIGHT - 12.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (layer.visible) color.copy(alpha = if (selected) 1f else 0.75f) else color.copy(alpha = 0.3f))
+            .clip(KShapes.Clip)
+            .background(if (layer.type == LayerType.TEXT) KBrushes.ClipText else SolidColor(color), alpha = if (layer.visible) 1f else 0.3f)
             .border(
-                width = if (selected || inMulti) 2.dp else 0.dp,
-                color = if (selected) Color.White else if (inMulti) KColors.Keyframe else Color.Transparent,
-                shape = RoundedCornerShape(6.dp),
+                width = if (selected || inMulti) 1.5.dp else 0.dp,
+                color = if (selected) KColors.White else if (inMulti) KColors.Keyframe else Color.Transparent,
+                shape = KShapes.Clip,
             )
             .pointerInput(layer.id, selected) {
                 var startStart = 0.0
@@ -446,18 +457,18 @@ private fun ClipView(
             Waveform(pcm, media.sourceStart, media.speed, pxPerSecond, visibleFrom = -x, visibleTo = trackWidthPx - x)
         }
         Text(
-            layerDisplayName(layer), fontSize = 11.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            layerDisplayName(layer), style = MaterialTheme.typography.labelSmall, color = onClipColor(layer.type), maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.CenterStart).padding(horizontal = 16.dp),
         )
         if (selected) {
             // Trim handles
-            Box(Modifier.align(Alignment.CenterStart).width(4.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.85f)))
-            Box(Modifier.align(Alignment.CenterEnd).width(4.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.85f)))
-            // Keyframes of every property of the layer
-            for (kt in layer.keyframeTimes()) {
-                if (kt < -1e-6 || kt > layer.duration + 1e-6) continue
-                KeyframeDiamond(vm, layer, kt, pxPerSecond = pxPerSecond, absLayerStart = absStart)
-            }
+            Box(Modifier.align(Alignment.CenterStart).padding(start = 2.dp).width(4.dp).height(18.dp).clip(KShapes.Pill).background(KColors.White))
+            Box(Modifier.align(Alignment.CenterEnd).padding(end = 2.dp).width(4.dp).height(18.dp).clip(KShapes.Pill).background(KColors.White))
+        }
+        // Keyframes of every property of the layer
+        for (kt in layer.keyframeTimes()) {
+            if (kt < -1e-6 || kt > layer.duration + 1e-6) continue
+            KeyframeDiamond(vm, layer, kt, pxPerSecond = pxPerSecond, absLayerStart = absStart)
         }
     }
 }
@@ -471,7 +482,7 @@ private fun Waveform(pcm: java.nio.ShortBuffer, sourceStart: Double, speed: Doub
         val mid = size.height / 2
         val from = visibleFrom.coerceAtLeast(0f).toInt()
         val to = visibleTo.coerceAtMost(size.width).toInt()
-        val color = Color.White.copy(alpha = 0.35f)
+        val color = KColors.White.copy(alpha = 0.35f)
         for (x in from until to step 2) {
             val t0 = sourceStart + x / pxPerSecond * speed
             val t1 = sourceStart + (x + 2) / pxPerSecond * speed
@@ -522,9 +533,12 @@ private fun KeyframeDiamond(vm: EditorViewModel, layer: Layer, localTime: Double
             .pointerInput(layer.id, localTime) { detectTapGestures { vm.seek(absLayerStart + localTime) } },
         contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.size(9.dp).rotate(45f).background(KColors.Keyframe).border(1.dp, Color.Black.copy(alpha = 0.5f)))
+        Box(Modifier.size(9.dp).rotate(45f).background(KColors.Keyframe).border(1.dp, KColors.Background.copy(alpha = 0.6f)))
     }
 }
+
+private fun secondsLabel(t: Double): String =
+    if (abs(t - t.roundToInt()) < 1e-6) "${t.roundToInt()}s" else String.format(java.util.Locale.US, "%.1fs", t)
 
 /** Name shown for a layer (falls back to its content). */
 fun layerDisplayName(layer: Layer): String = layer.name.ifBlank {
