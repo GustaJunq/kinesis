@@ -244,7 +244,7 @@ private fun EffectGrid(
 
 /** Image tile: example preview cropped to the tile, name centred on a dark scrim. */
 @Composable
-private fun TileFrame(enabled: Boolean, title: String, subtitle: String, onClick: () -> Unit, background: @Composable () -> Unit) {
+private fun TileFrame(enabled: Boolean, title: String, subtitle: String, onClick: () -> Unit, background: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     Box(
