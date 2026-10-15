@@ -13,6 +13,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -21,6 +22,7 @@ import java.io.File
 /**
  * Files generated from [EffectRegistry] (the single source of truth for effects):
  * - `schema/knsproj-v2.schema.json` — the v1 schema with the format version and the effect definitions replaced;
+ * - `schema/knsproj-v3.schema.json` — the v2 schema plus expressions and text property animators;
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -37,6 +39,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV2() = check(File(root, "schema/knsproj-v2.schema.json"), JsonPretty.print(buildSchemaV2()) + "\n")
+
+    @Test
+    fun schemaV3() = check(File(root, "schema/knsproj-v3.schema.json"), JsonPretty.print(buildSchemaV3()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -65,10 +70,72 @@ class RegistryArtifactsTest {
             "oneOf" to JsonArray(EffectRegistry.all.map(::effectSchema)),
         )
         val props = LinkedHashMap(v1.getValue("properties").jsonObject)
-        props["formatVersion"] = obj("const" to JsonPrimitive(FORMAT_VERSION))
+        props["formatVersion"] = obj("const" to JsonPrimitive(2))
         val m = LinkedHashMap(v1)
-        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v$FORMAT_VERSION.schema.json")
-        m["title"] = str("Kinesis project (.knsproj) — project.json, format version $FORMAT_VERSION")
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v2.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 2")
+        m["properties"] = JsonObject(props)
+        m["\$defs"] = JsonObject(defs)
+        return JsonObject(m)
+    }
+
+    /**
+     * Version 3 = version 2 plus expressions on animatable properties (`{"value": …, "expression": "…"}` or keyframes
+     * with an `expression`) and text property animators (`text.propertyAnimators`).
+     */
+    private fun buildSchemaV3(): JsonObject {
+        val v2 = buildSchemaV2()
+        val defs = LinkedHashMap(v2.getValue("\$defs").jsonObject)
+        for (name in listOf("animFloat", "animVec2", "animVec3", "animColor")) {
+            val def = defs.getValue(name).jsonObject
+            val variants = def.getValue("anyOf").jsonArray
+            val plain = variants[0]
+            val animated = variants[1].jsonObject
+            val props = LinkedHashMap(animated.getValue("properties").jsonObject)
+            props["value"] = plain
+            props["expression"] = obj(
+                "type" to str("string"), "maxLength" to JsonPrimitive(20000),
+                "description" to str("JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."),
+            )
+            props["expressionEnabled"] = obj("type" to str("boolean"), "description" to str("false switches the expression off without deleting it (default true)."))
+            val object3 = LinkedHashMap(animated)
+            object3["properties"] = JsonObject(props)
+            object3.remove("required")
+            object3["anyOf"] = JsonArray(listOf(
+                obj("required" to JsonArray(listOf(str("keyframes")))),
+                obj("required" to JsonArray(listOf(str("value"), str("expression")))),
+            ))
+            val d = LinkedHashMap(def)
+            d["description"] = str((def.getValue("description") as JsonPrimitive).content.replace(" to animate it.", " to animate it, with an optional \"expression\"."))
+            d["anyOf"] = JsonArray(listOf(plain, JsonObject(object3)))
+            defs[name] = JsonObject(d)
+        }
+        defs["textPropertyAnimator"] = obj(
+            "description" to str("After Effects style text animator: properties weighted per character by the Expression Selector `amount`."),
+            "type" to str("object"),
+            "properties" to obj(
+                "name" to obj("type" to str("string")),
+                "enabled" to obj("type" to str("boolean")),
+                "unit" to obj("type" to str("string"), "enum" to JsonArray(listOf(str("character"), str("word"), str("line"))), "description" to str("What textIndex counts (default character).")),
+                "position" to ref("animVec2"),
+                "scale" to ref("animVec2"),
+                "rotation" to ref("animFloat"),
+                "opacity" to ref("animFloat"),
+                "amount" to ref("animFloat"),
+            ),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        val text = defs.getValue("textContent").jsonObject
+        val textProps = LinkedHashMap(text.getValue("properties").jsonObject)
+        textProps["propertyAnimators"] = obj("type" to str("array"), "items" to ref("textPropertyAnimator"))
+        val newText = LinkedHashMap(text)
+        newText["properties"] = JsonObject(textProps)
+        defs["textContent"] = JsonObject(newText)
+        val props = LinkedHashMap(v2.getValue("properties").jsonObject)
+        props["formatVersion"] = obj("const" to JsonPrimitive(3))
+        val m = LinkedHashMap(v2)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v3.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 3")
         m["properties"] = JsonObject(props)
         m["\$defs"] = JsonObject(defs)
         return JsonObject(m)

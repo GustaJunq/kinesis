@@ -40,8 +40,18 @@ data class Animatable<T>(
     val value: T,
     val keyframes: List<Keyframe<T>> = emptyList(),
     val loop: LoopMode = LoopMode.NONE,
+    /**
+     * JavaScript expression (After Effects style) that computes the value at each time. The result is the value of
+     * the last evaluated statement; `value` is this property's keyframed/static value. See `dev.kinesis.core.expr`.
+     */
+    val expression: String? = null,
+    /** An expression can be switched off without losing its code. */
+    val expressionEnabled: Boolean = true,
 ) {
     val isAnimated: Boolean get() = keyframes.isNotEmpty()
+
+    /** True when an expression is present, enabled and not blank. */
+    val hasActiveExpression: Boolean get() = expressionEnabled && !expression.isNullOrBlank()
 
     /** Maps a time to the time actually sampled, applying [loop]. */
     fun loopedTime(time: Double): Double {
@@ -88,7 +98,7 @@ data class Animatable<T>(
     fun keyframeIndexAt(time: Double, epsilon: Double = KEYFRAME_EPSILON): Int =
         keyframes.indexOfFirst { abs(it.time - time) <= epsilon }
 
-    fun withStatic(newValue: T) = Animatable(newValue)
+    fun withStatic(newValue: T) = copy(value = newValue, keyframes = emptyList())
 
     fun mapTimes(transform: (Double) -> Double): Animatable<T> =
         copy(keyframes = keyframes.map { it.copy(time = transform(it.time)) }.sortedBy { it.time })

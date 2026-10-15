@@ -18,6 +18,8 @@ kotlin {
 
 dependencies {
     api(libs.kotlinx.serialization.json)
+    // Embedded, offline JavaScript interpreter for expressions (interpreted mode, no Java access, instruction budget).
+    implementation(libs.rhino)
 
     testImplementation(libs.junit)
     testImplementation(libs.json.schema.validator)

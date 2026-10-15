@@ -147,6 +147,8 @@ sealed class Content2D {
         val animators: List<TextAnimator>,
         /** Layer-local time used to evaluate [animators]. */
         val localTime: Double,
+        /** Per-character states from After Effects style text animators (expressions), or null. UTF-16 offsets. */
+        val glyphStates: Array<GlyphState>? = null,
     ) : Content2D()
 
     class Shape(

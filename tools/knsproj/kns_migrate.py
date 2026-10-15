@@ -45,7 +45,13 @@ def v1_to_v2(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2}
+def v2_to_v3(doc):
+    """Version 3 only adds optional fields (expressions, text property animators); v2 documents are valid as they are."""
+    doc["formatVersion"] = 3
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3}
 
 
 def migrate(doc, to_version):

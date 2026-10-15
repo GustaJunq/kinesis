@@ -20,6 +20,7 @@ import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -139,21 +140,29 @@ class AnimatableSerializer<T>(private val valueSerializer: KSerializer<T>) : KSe
 
     override fun serialize(encoder: Encoder, value: Animatable<T>) {
         val json = encoder as JsonEncoder
-        if (!value.isAnimated) {
+        if (!value.isAnimated && value.expression == null) {
             json.encodeJsonElement(tidy(json.json.encodeToJsonElement(valueSerializer, value.value)))
             return
         }
         val element = buildJsonObject {
-            put("keyframes", buildJsonArray {
-                value.keyframes.forEach { k ->
-                    add(buildJsonObject {
-                        put("time", k.time.toJson())
-                        put("value", tidy(json.json.encodeToJsonElement(valueSerializer, k.value)))
-                        if (k.easing != Easing.LINEAR) put("easing", EasingSerializer.toJson(k.easing))
-                    })
-                }
-            })
-            if (value.loop != LoopMode.NONE) put("loop", value.loop.id)
+            if (value.isAnimated) {
+                put("keyframes", buildJsonArray {
+                    value.keyframes.forEach { k ->
+                        add(buildJsonObject {
+                            put("time", k.time.toJson())
+                            put("value", tidy(json.json.encodeToJsonElement(valueSerializer, k.value)))
+                            if (k.easing != Easing.LINEAR) put("easing", EasingSerializer.toJson(k.easing))
+                        })
+                    }
+                })
+                if (value.loop != LoopMode.NONE) put("loop", value.loop.id)
+            } else {
+                put("value", tidy(json.json.encodeToJsonElement(valueSerializer, value.value)))
+            }
+            value.expression?.let {
+                put("expression", it)
+                if (!value.expressionEnabled) put("expressionEnabled", false)
+            }
         }
         json.encodeJsonElement(element)
     }
@@ -161,7 +170,16 @@ class AnimatableSerializer<T>(private val valueSerializer: KSerializer<T>) : KSe
     override fun deserialize(decoder: Decoder): Animatable<T> {
         val json = decoder as JsonDecoder
         val element = json.decodeJsonElement()
-        if (element is JsonObject && "keyframes" in element) {
+        if (element is JsonObject && ("keyframes" in element || "expression" in element)) {
+            val expression = element["expression"]?.takeIf { it != JsonNull }?.let {
+                (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content
+                    ?: throw SerializationException("expression must be a string with JavaScript code")
+            }
+            val enabled = (element["expressionEnabled"] as? JsonPrimitive)?.booleanOrNull ?: true
+            if ("keyframes" !in element) {
+                val v = element["value"] ?: throw SerializationException("a property with an expression and no keyframes needs \"value\"")
+                return Animatable(json.json.decodeFromJsonElement(valueSerializer, v), expression = expression, expressionEnabled = enabled)
+            }
             val loop = (element["loop"] as? JsonPrimitive)?.content?.let {
                 LoopMode.fromId(it) ?: throw SerializationException("unknown loop mode '$it' (none, cycle, pingpong)")
             } ?: LoopMode.NONE
@@ -178,7 +196,7 @@ class AnimatableSerializer<T>(private val valueSerializer: KSerializer<T>) : KSe
             for (i in 1 until keys.size) {
                 if (keys[i].time < keys[i - 1].time) throw SerializationException("keyframes must be sorted by time (keyframes[$i])")
             }
-            return Animatable(keys.first().value, keys, loop)
+            return Animatable(keys.first().value, keys, loop, expression, enabled)
         }
         return Animatable(json.json.decodeFromJsonElement(valueSerializer, element))
     }

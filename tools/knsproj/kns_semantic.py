@@ -54,12 +54,65 @@ def _is_animated(v):
     return isinstance(v, dict) and "keyframes" in v
 
 
+MAX_EXPRESSION = 20000
+
+
+def check_expression_text(src):
+    """Cheap structural check of an expression (balanced brackets and quotes, closed comments).
+
+    The Python CLI has no JavaScript engine; the app and the Kotlin core parse the code for real and report the exact
+    line. This catches the typical mistakes of hand-written or generated code.
+    """
+    stack = []
+    pairs = {")": "(", "]": "[", "}": "{"}
+    i, n, line = 0, len(src), 1
+    while i < n:
+        c = src[i]
+        if c == "\n":
+            line += 1
+        elif c in "\"'`":
+            q, start = c, line
+            i += 1
+            while i < n and src[i] != q:
+                if src[i] == "\\":
+                    i += 1
+                if i < n and src[i] == "\n":
+                    if q != "`":
+                        return f"line {start}: unterminated string"
+                    line += 1
+                i += 1
+            if i >= n:
+                return f"line {start}: unterminated string"
+        elif c == "/" and src[i:i + 2] == "//":
+            while i < n and src[i] != "\n":
+                i += 1
+            continue
+        elif c == "/" and src[i:i + 2] == "/*":
+            end = src.find("*/", i + 2)
+            if end < 0:
+                return f"line {line}: unterminated comment"
+            line += src.count("\n", i, end)
+            i = end + 1
+        elif c in "([{":
+            stack.append((c, line))
+        elif c in ")]}":
+            if not stack or stack[-1][0] != pairs[c]:
+                return f"line {line}: unexpected '{c}'"
+            stack.pop()
+        i += 1
+    if stack:
+        return f"line {stack[-1][1]}: '{stack[-1][0]}' is never closed"
+    return None
+
+
 def _static_value(v, default=None):
     if v is None:
         return default
     if _is_animated(v):
         kfs = v.get("keyframes") or []
         return kfs[0].get("value", default) if kfs else default
+    if isinstance(v, dict) and "expression" in v:
+        return v.get("value", default)
     return v
 
 
@@ -112,6 +165,16 @@ def validate(project, available_files=None):
     counts = {"camera": 0, "light": 0}
 
     def check_anim(value, path, layer_duration):
+        if isinstance(value, dict) and "expression" in value:
+            src = value["expression"]
+            if not isinstance(src, str):
+                err("expression.syntax", f"{path}.expression", "expression must be a string")
+            elif len(src) > MAX_EXPRESSION:
+                err("expression.length", f"{path}.expression", f"expression is longer than {MAX_EXPRESSION} characters")
+            elif src.strip():
+                problem = check_expression_text(src)
+                if problem:
+                    err("expression.syntax", f"{path}.expression", problem)
         if not _is_animated(value):
             return
         times = [k.get("time", 0) for k in value.get("keyframes", [])]
@@ -226,6 +289,13 @@ def validate(project, available_files=None):
                 check_asset_ref(font.get("asset"), "font", f"{p}.text.font.asset")
                 if not 100 <= font.get("weight", 700) <= 900:
                     err("text.weight", f"{p}.text.font.weight", "font weight must be between 100 and 900")
+                for ai, a in enumerate(text.get("propertyAnimators", []) or []):
+                    ap = f"{p}.text.propertyAnimators[{ai}]"
+                    for key in ("amount", "position", "scale", "rotation", "opacity"):
+                        check_anim(a.get(key), f"{ap}.{key}", d)
+                    if not any(k in a for k in ("position", "scale", "rotation", "opacity")):
+                        warn("text.propertyAnimator", ap,
+                             "the animator has no property (position, scale, rotation or opacity), so it changes nothing")
                 for ai, a in enumerate(text.get("animators", []) or []):
                     if a.get("unitDuration", 0.4) <= 0:
                         err("text.animator", f"{p}.text.animators[{ai}].unitDuration", "unitDuration must be > 0")

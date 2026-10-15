@@ -127,7 +127,7 @@ object JsonPretty {
  * version N and returns one of version N + 1.
  */
 object Migrations {
-    private val steps: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to ::v1ToV2)
+    private val steps: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to ::v1ToV2, 2 to ::v2ToV3)
 
     fun migrate(root: JsonObject, fromVersion: Int): JsonObject {
         var doc = root
@@ -139,6 +139,9 @@ object Migrations {
         }
         return JsonObject(doc + ("formatVersion" to JsonPrimitive(FORMAT_VERSION)))
     }
+
+    /** Version 3 only adds optional fields (expressions, text property animators), so version 2 documents are valid as they are. */
+    fun v2ToV3(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(3)))
 
     /**
      * Version 2 replaces the v1 `colorAdjust` effect by `hueShift`, `brightnessContrast` and `saturation` (in the
