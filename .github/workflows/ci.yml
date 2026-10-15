@@ -26,6 +26,10 @@ jobs:
       - name: Build debug APK
         run: ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest
 
+      # The release build type must keep working without the production key (it falls back to the debug key here).
+      - name: Build release APK (without the production key; debug-signed, never published)
+        run: ./gradlew --no-daemon :app:assembleRelease
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

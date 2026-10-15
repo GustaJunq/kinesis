@@ -1,0 +1,165 @@
+name: Release
+
+# Builds the production APK (assembleRelease), signs it with the keystore stored in the repository secrets, verifies the
+# signature and publishes it to GitHub Releases. Runs when a tag like v0.1.1 is pushed, or manually.
+#
+# Required repository secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v0.1.1 (created on the selected commit if it does not exist)"
+        required: true
+      publish:
+        description: "Publish the release (false = build and verify only, the APK is kept as a workflow artifact)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, sign, verify and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Check that the signing secrets exist
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          missing=0
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository secret $name is not set (or is not available to this workflow run)"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+
+      - name: Restore the keystore from KEYSTORE_BASE64
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEYSTORE_FILE="$RUNNER_TEMP/kinesis-release.jks"
+          echo "KEYSTORE_FILE=$KEYSTORE_FILE" >> "$GITHUB_ENV"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
+          test -s "$KEYSTORE_FILE" || { echo "::error::KEYSTORE_BASE64 did not decode to a keystore file"; exit 1; }
+
+      - name: Check the keystore and the key alias
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -eo pipefail
+          # Prints only the public certificate fingerprint of the alias.
+          if ! keytool -list -keystore "$KEYSTORE_FILE" -alias "$KEY_ALIAS" -storepass:env KEYSTORE_PASSWORD > keystore-list.txt 2>&1; then
+            echo "::error::The keystore could not be opened with KEYSTORE_PASSWORD, or KEY_ALIAS does not exist in it"
+            exit 1
+          fi
+          KEYSTORE_SHA256=$(grep -i 'SHA-\?256' keystore-list.txt | head -n 1 | sed 's/.*[: ]\([0-9A-Fa-f:]\{95\}\).*/\1/' | tr -d ':' | tr 'A-F' 'a-f')
+          [ "${#KEYSTORE_SHA256}" -eq 64 ] || { echo "::error::Could not read the certificate fingerprint of the alias"; exit 1; }
+          echo "KEYSTORE_SHA256=$KEYSTORE_SHA256" >> "$GITHUB_ENV"
+          rm -f keystore-list.txt
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon :core:test
+
+      - name: Build the production APK (assembleRelease)
+        env:
+          KINESIS_KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          REQUIRE_RELEASE_SIGNING: "true"
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Name the APK
+        run: |
+          VERSION="${TAG#v}"
+          set -- app/build/outputs/apk/release/*.apk
+          [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "::error::Expected exactly one release APK, found: $*"; exit 1; }
+          case "$1" in *unsigned*) echo "::error::Gradle produced an unsigned APK"; exit 1;; esac
+          cp "$1" "kinesis-${VERSION}.apk"
+          echo "APK=kinesis-${VERSION}.apk" >> "$GITHUB_ENV"
+
+      - name: Verify the signature (apksigner) and refuse unsigned or debug-signed APKs
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          APKSIGNER=$(ls -d "$SDK"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -n 1)
+          AAPT2=$(ls -d "$SDK"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -n 1)
+          [ -x "$APKSIGNER" ] || { echo "::error::apksigner was not found in the Android SDK build-tools"; exit 1; }
+
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee apksigner.txt
+          grep -q '^Verifies' apksigner.txt || { echo "::error::apksigner did not verify the APK"; exit 1; }
+          grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' apksigner.txt || { echo "::error::The APK has no valid v2 signature"; exit 1; }
+          if grep -qi 'CN=Android Debug' apksigner.txt; then
+            echo "::error::The APK is signed with the Android debug key; refusing to publish"
+            exit 1
+          fi
+
+          APK_SHA256=$(grep -i 'Signer #1 certificate SHA-256 digest' apksigner.txt | head -n 1 | sed 's/.*: *//' | tr 'A-F' 'a-f')
+          [ "${#APK_SHA256}" -eq 64 ] || { echo "::error::Could not read the signer certificate from apksigner"; exit 1; }
+          if [ "$APK_SHA256" != "$KEYSTORE_SHA256" ]; then
+            echo "::error::The APK certificate does not match the certificate of the configured keystore alias"
+            exit 1
+          fi
+          echo "APK_CERT_SHA256=$APK_SHA256" >> "$GITHUB_ENV"
+
+          if [ -x "$AAPT2" ] && "$AAPT2" dump badging "$APK" 2>/dev/null | grep -q 'application-debuggable'; then
+            echo "::error::The APK is marked debuggable"
+            exit 1
+          fi
+          echo "Signature verified. Signer certificate SHA-256: $APK_SHA256"
+
+      - name: Keep the verified APK as a workflow artifact
+        if: ${{ github.event.inputs.publish == 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: kinesis-release-apk
+          path: ${{ env.APK }}
+          retention-days: 7
+
+      - name: Publish to GitHub Releases
+        if: ${{ github.event.inputs.publish != 'false' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          sha256sum "$APK" > "$APK.sha256"
+          {
+            if [ -f "docs/releases/${TAG}.md" ]; then cat "docs/releases/${TAG}.md"; else echo "## Kinesis Editor ${VERSION}"; fi
+            echo
+            echo "### Assinatura"
+            echo "APK assinado e verificado com \`apksigner\`. SHA-256 do certificado do assinante: \`${APK_CERT_SHA256}\`."
+          } > release-notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" "$APK.sha256" --clobber
+            gh release edit "$TAG" --notes-file release-notes.md
+          else
+            gh release create "$TAG" "$APK" "$APK.sha256" --target "$GITHUB_SHA" --title "Kinesis Editor ${VERSION}" --notes-file release-notes.md
+          fi
+
+      - name: Remove the keystore from the runner
+        if: always()
+        run: rm -f "${KEYSTORE_FILE:-$RUNNER_TEMP/kinesis-release.jks}"

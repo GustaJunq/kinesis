@@ -40,3 +40,10 @@ generated/
 # Python
 __pycache__/
 *.pyc
+
+# Signing material must never be committed
+*.jks
+*.keystore
+*.p12
+*.pfx
+keystore.properties

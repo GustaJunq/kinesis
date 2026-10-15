@@ -67,8 +67,11 @@ cd kinesis
 ./gradlew :app:installDebug         # instala no aparelho conectado (adb)
 ```
 
-Para um APK de release: `./gradlew :app:assembleRelease`. Por padrão ele é assinado com a chave de debug para ser
-instalável; configure sua própria assinatura em `app/build.gradle.kts` antes de publicar.
+Para um APK de release: `./gradlew :app:assembleRelease`. Sem a chave de produção ele sai assinado com a chave de debug
+(só para testes; nunca é publicado). A assinatura de produção vem de variáveis de ambiente, nunca do repositório:
+`KINESIS_KEYSTORE_FILE` (caminho do keystore), `KEYSTORE_PASSWORD`, `KEY_ALIAS` e `KEY_PASSWORD`.
+
+**Releases:** o workflow [`release.yml`](.github/workflows/release.yml) roda ao empurrar uma tag `vX.Y.Z` (ou manualmente em *Actions → Release*). Ele reconstrói o keystore a partir do secret `KEYSTORE_BASE64`, compila `assembleRelease`, verifica com `apksigner verify --verbose --print-certs` (recusa APK sem assinatura, assinado com a chave de debug, depurável ou com certificado diferente do keystore) e publica o APK e o `.sha256` em GitHub Releases. Secrets necessários: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. Para só testar o pipeline, rode o workflow manualmente com `publish = false`.
 
 **Build reproduzível:** versões de Gradle (wrapper), Android Gradle Plugin, Kotlin e bibliotecas estão fixadas em
 [`gradle/libs.versions.toml`](gradle/libs.versions.toml); o APK não inclui carimbos de data nem informações de
