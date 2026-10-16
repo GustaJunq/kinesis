@@ -61,7 +61,13 @@ class VideoProxies(private val dir: File, private val assets: AssetManager, priv
             dir.listFiles { f -> f.name.startsWith("${asset.id}_") }?.forEach { it.delete() }
             val tmp = File(dir, "${asset.id}.tmp")
             try {
-                VideoExporter(assets, files, pcm).export(proxyProject(project, asset, w, h), PROXY_SETTINGS, tmp, {}) { cancelled }
+                VideoExporter(assets, files, pcm).export(
+                    proxyProject(project, asset, w, h),
+                    PROXY_SETTINGS,
+                    tmp,
+                    progress = {},
+                    cancelled = { cancelled }
+                )
                 if (!tmp.renameTo(file)) continue
                 ready[asset.id] = VideoProxy(file, w, h)
                 onReady(asset.id)
