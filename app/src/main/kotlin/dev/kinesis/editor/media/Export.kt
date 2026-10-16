@@ -6,6 +6,7 @@ import android.content.res.AssetManager
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaCodecList
+import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
@@ -21,6 +22,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Surface
+import dev.kinesis.core.format.KnsprojJson
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.scene.SceneEvaluator
 import dev.kinesis.editor.render.AssetFiles
@@ -30,9 +32,12 @@ import dev.kinesis.editor.render.RenderSettings
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.security.MessageDigest
+import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 private const val TAG = "KinesisExport"
 
@@ -99,14 +104,29 @@ data class ExportSettings(
 
 class ExportCancelled : Exception("Export cancelled")
 
+/** An export that stopped while drawing frame [time] (seconds) of the composition, in layer [layerId]. */
+class ExportFailure(cause: Throwable, val time: Double, val layerId: String?) :
+    Exception(cause.message ?: cause.javaClass.simpleName, cause) {
+    /** The device ran out of (GPU or Java) memory. */
+    val outOfMemory: Boolean = cause is OutOfMemoryError ||
+        (cause.message ?: "").contains("memory", ignoreCase = true) ||
+        (cause is MediaCodec.CodecException && (cause.message ?: "").contains("NO_MEMORY", ignoreCase = true))
+}
+
+/** Seconds of video per block of a resumable export. */
+const val SEGMENT_SECONDS = 5.0
+
+/** Bumped when the block layout changes, so old blocks are never reused. */
+private const val FORMAT = 1
+
 /** Renders a project to an H.264/AAC MP4 file. Blocking: run on a dedicated thread. */
 class VideoExporter(
     private val assets: AssetManager,
     private val files: AssetFiles,
     private val pcm: PcmCache,
 ) {
-    /** Output size for [settings]: even dimensions the AVC encoder accepts. */
-    fun outputSize(project: KnsProject, settings: ExportSettings): Pair<Int, Int> {
+    /** Output size for [settings]: even dimensions the AVC encoder accepts. [packAlpha] doubles the width. */
+    fun outputSize(project: KnsProject, settings: ExportSettings, packAlpha: Boolean = false): Pair<Int, Int> {
         val comp = project.composition
         var w = comp.width.toFloat()
         var h = comp.height.toFloat()
@@ -115,7 +135,10 @@ class VideoExporter(
             w *= s
             h *= s
         }
-        var width = (w.roundToInt() / 2) * 2
+        if (packAlpha) w *= 2
+        // Packed frames are split in two equal halves: keep the width a multiple of 4.
+        val step = if (packAlpha) 4 else 2
+        var width = (w.roundToInt() / step) * step
         var height = (h.roundToInt() / 2) * 2
         val caps = encoderCapabilities()
         if (caps != null) {
@@ -136,93 +159,257 @@ class VideoExporter(
         null
     }
 
-    fun export(project: KnsProject, settings: ExportSettings, out: File, progress: (Float) -> Unit, cancelled: () -> Boolean) {
+    /**
+     * Renders [project] to [out]. The video is encoded in blocks of [SEGMENT_SECONDS] kept in [workDir]: an export
+     * that failed, was cancelled or was interrupted resumes from the blocks already made, as long as the project
+     * and the settings did not change. The blocks are joined (no re-encoding) at the end.
+     *
+     * [range] limits the export to part of the composition; [packAlpha] writes a transparent-background render as
+     * colour + alpha side by side (no audio). A failure while rendering a frame is reported as [ExportFailure]
+     * with the composition time and the layer being drawn.
+     */
+    fun export(
+        project: KnsProject,
+        settings: ExportSettings,
+        out: File,
+        progress: (Float) -> Unit,
+        cancelled: () -> Boolean,
+        workDir: File? = null,
+        range: ClosedFloatingPointRange<Double>? = null,
+        packAlpha: Boolean = false,
+    ) {
         val comp = project.composition
-        val (width, height) = outputSize(project, settings)
-        val fps = comp.fps
-        val frames = comp.frameCount
+        val (width, height) = outputSize(project, settings, packAlpha)
+        val total = comp.frameCount
+        val first = range?.let { ceil(it.start * comp.fps - 1e-6).toInt() }?.coerceIn(0, total) ?: 0
+        val last = range?.let { ceil(it.endInclusive * comp.fps - 1e-6).toInt() }?.coerceIn(first, total) ?: total
+        if (last <= first) throw IllegalArgumentException("Nothing to export")
 
         val mixer = AudioMixer(pcm)
         mixer.setProject(project)
-        val withAudio = settings.includeAudio && mixer.clips.isNotEmpty()
-        if (withAudio) {
-            progress(0f)
-            pcm.prepare(project)
-            if (cancelled()) throw ExportCancelled()
+        val withAudio = settings.includeAudio && !packAlpha && range == null && mixer.clips.isNotEmpty()
+
+        val key = sha256("${KnsprojJson.encode(project)}|$settings|${width}x$height|$first-$last|$packAlpha|$FORMAT")
+        val root = workDir ?: File(out.parentFile, ".kinesis-blocks")
+        root.listFiles()?.filter { it.isDirectory && it.name != key }?.forEach { it.deleteRecursively() }
+        val dir = File(root, key).apply { mkdirs() }
+
+        val segmentFrames = max(1, (SEGMENT_SECONDS * comp.fps).roundToInt())
+        val segments = (first until last step segmentFrames).map { a -> a until min(last, a + segmentFrames) }
+        val frames = last - first
+        val weightAudio = if (withAudio) 0.04f else 0f
+        fun report(done: Int) = progress(done.toFloat() / frames * (0.97f - weightAudio))
+
+        val renderer = SegmentRenderer(project, width, height, packAlpha)
+        try {
+            var done = 0
+            for ((i, seg) in segments.withIndex()) {
+                val file = File(dir, "video-$i.mp4")
+                if (!file.isFile) {
+                    if (cancelled()) throw ExportCancelled()
+                    val tmp = File(dir, "video-$i.tmp")
+                    renderer.encode(seg, tmp, settings, cancelled) { n -> report(done + n) }
+                    if (!tmp.renameTo(file)) throw IllegalStateException("Cannot keep block $i")
+                }
+                done += seg.count()
+                report(done)
+            }
+        } finally {
+            renderer.release()
         }
 
-        var bitrate = (width * height * fps * settings.quality.bitsPerPixel).roundToInt()
-        encoderCapabilities()?.bitrateRange?.let { bitrate = bitrate.coerceIn(it.lower, it.upper) }
-        val videoFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
-            setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-            setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
-            setInteger(MediaFormat.KEY_FRAME_RATE, fps.roundToInt().coerceAtLeast(1))
-            setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
+        val audioFile = File(dir, "audio.m4a")
+        if (withAudio && !audioFile.isFile) {
+            if (cancelled()) throw ExportCancelled()
+            pcm.prepare(project)
+            val tmp = File(dir, "audio.tmp")
+            encodeAudio(mixer, comp.duration, tmp)
+            if (!tmp.renameTo(audioFile)) throw IllegalStateException("Cannot keep audio")
         }
-        val video = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-        var audio: MediaCodec? = null
-        var egl: EglCore? = null
-        var eglSurface: EGLSurface? = null
-        var resources: RenderResources? = null
-        var compositor: Compositor? = null
-        var inputSurface: Surface? = null
-        val muxer = Muxer(out, if (withAudio) 2 else 1)
+        progress(0.97f)
+        if (cancelled()) throw ExportCancelled()
+        val starts = segments.map { ((comp.frameTime(it.first) - comp.frameTime(first)) * 1_000_000.0).roundToLong() }
+        try {
+            join(segments.indices.map { File(dir, "video-$it.mp4") }, starts, audioFile.takeIf { withAudio }, out)
+        } catch (e: Exception) {
+            out.delete()
+            // Blocks that cannot be joined (e.g. the encoder changed its parameters) are made again next time.
+            dir.deleteRecursively()
+            throw e
+        }
+        dir.deleteRecursively()
+        progress(1f)
+    }
+
+    /** Encodes blocks of frames, keeping one GL context and renderer for the whole export. */
+    private inner class SegmentRenderer(private val project: KnsProject, private val width: Int, private val height: Int, private val packAlpha: Boolean) {
+        private var egl: EglCore? = null
+        private var resources: RenderResources? = null
+        private var compositor: Compositor? = null
+        private val comp = project.composition
+        private val renderSettings = RenderSettings(motionBlurSamples = comp.motionBlur.samples, transparentBackground = packAlpha)
+
+        fun encode(frames: IntRange, file: File, settings: ExportSettings, cancelled: () -> Boolean, progress: (Int) -> Unit) {
+            val fps = comp.fps
+            var bitrate = (width * height * fps * settings.quality.bitsPerPixel).roundToInt()
+            encoderCapabilities()?.bitrateRange?.let { bitrate = bitrate.coerceIn(it.lower, it.upper) }
+            val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
+                setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+                setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
+                setInteger(MediaFormat.KEY_FRAME_RATE, fps.roundToInt().coerceAtLeast(1))
+                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
+            }
+            val video = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            var inputSurface: Surface? = null
+            var eglSurface: EGLSurface? = null
+            val muxer = Muxer(file, 1)
+            var success = false
+            var time = comp.frameTime(frames.first)
+            try {
+                video.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+                inputSurface = video.createInputSurface()
+                video.start()
+                val core = egl ?: EglCore().also { egl = it }
+                eglSurface = core.createWindowSurface(inputSurface)
+                core.makeCurrent(eglSurface)
+                val res = resources ?: RenderResources(assets, files).also { resources = it }
+                val drawer = compositor ?: Compositor(res).also { compositor = it }
+                val origin = comp.frameTime(frames.first)
+                for ((n, frame) in frames.withIndex()) {
+                    if (cancelled()) throw ExportCancelled()
+                    time = comp.frameTime(frame)
+                    val target = try {
+                        val t = drawer.render(project, SceneEvaluator.evaluate(project, time), if (packAlpha) width / 2 else width, height, renderSettings)
+                        val err = GLES30.glGetError()
+                        if (err == GLES30.GL_OUT_OF_MEMORY) throw OutOfMemoryError("GPU out of memory")
+                        t
+                    } catch (e: ExportCancelled) {
+                        throw e
+                    } catch (e: Throwable) {
+                        throw ExportFailure(e, time, drawer.currentLayerId)
+                    }
+                    GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+                    if (packAlpha) drawer.presentPacked(target, width, height) else drawer.present(target, 0, 0, width, height)
+                    core.setPresentationTime(eglSurface, ((time - origin) * 1_000_000_000L).toLong())
+                    core.swap(eglSurface)
+                    drain(video, muxer, isVideo = true, endOfStream = false)
+                    progress(n + 1)
+                }
+                video.signalEndOfInputStream()
+                drain(video, muxer, isVideo = true, endOfStream = true)
+                muxer.stop()
+                success = true
+            } catch (e: ExportCancelled) {
+                throw e
+            } catch (e: ExportFailure) {
+                throw e
+            } catch (e: Throwable) {
+                // Encoder or surface trouble: still say where it happened.
+                throw ExportFailure(e, time, compositor?.currentLayerId)
+            } finally {
+                runCatching { eglSurface?.let { egl?.releaseSurface(it) } }
+                runCatching { video.stop() }
+                runCatching { video.release() }
+                runCatching { inputSurface?.release() }
+                muxer.release()
+                if (!success) file.delete()
+            }
+        }
+
+        fun release() {
+            runCatching { compositor?.release() }
+            runCatching { resources?.release() }
+            runCatching { egl?.release() }
+        }
+    }
+
+    private fun encodeAudio(mixer: AudioMixer, duration: Double, file: File) {
+        val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
+        val muxer = Muxer(file, 1)
         var success = false
         try {
-            video.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            inputSurface = video.createInputSurface()
-            video.start()
-            if (withAudio) {
-                audio = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).apply {
-                    val f = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, MIX_RATE, 2).apply {
-                        setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-                        setInteger(MediaFormat.KEY_BIT_RATE, 192_000)
-                        setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16_384)
-                    }
-                    configure(f, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-                    start()
-                }
+            val f = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, MIX_RATE, 2).apply {
+                setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+                setInteger(MediaFormat.KEY_BIT_RATE, 192_000)
+                setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16_384)
             }
-            egl = EglCore()
-            eglSurface = egl.createWindowSurface(inputSurface)
-            egl.makeCurrent(eglSurface)
-            resources = RenderResources(assets, files)
-            compositor = Compositor(resources)
-            val settingsMb = RenderSettings(motionBlurSamples = comp.motionBlur.samples)
-            val audioPump = audio?.let { AudioPump(it, mixer, muxer, comp.duration) }
-
-            for (frame in 0 until frames) {
-                if (cancelled()) throw ExportCancelled()
-                val t = comp.frameTime(frame)
-                val scene = SceneEvaluator.evaluate(project, t)
-                val target = compositor.render(project, scene, width, height, settingsMb)
-                GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
-                compositor.present(target, 0, 0, width, height)
-                egl.setPresentationTime(eglSurface, (t * 1_000_000_000L).toLong())
-                egl.swap(eglSurface)
-                drain(video, muxer, isVideo = true, endOfStream = false)
-                audioPump?.feedUntil(t + comp.frameDuration)
-                progress((frame + 1).toFloat() / frames)
+            codec.configure(f, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            codec.start()
+            val pump = AudioPump(codec, mixer, muxer, duration)
+            var t = 0.0
+            while (t < duration) {
+                t += 0.25
+                pump.feedUntil(t)
             }
-            video.signalEndOfInputStream()
-            drain(video, muxer, isVideo = true, endOfStream = true)
-            audioPump?.finish()
+            pump.finish()
             muxer.stop()
             success = true
         } finally {
-            runCatching { compositor?.release() }
-            runCatching { resources?.release() }
-            runCatching { eglSurface?.let { egl?.releaseSurface(it) } }
-            runCatching { egl?.release() }
-            runCatching { video.stop() }
-            runCatching { video.release() }
-            runCatching { inputSurface?.release() }
-            runCatching { audio?.stop() }
-            runCatching { audio?.release() }
+            runCatching { codec.stop() }
+            runCatching { codec.release() }
             muxer.release()
-            if (!success) out.delete()
+            if (!success) file.delete()
         }
     }
+
+    /** Joins the video blocks (shifted to [starts], µs) and the audio track into [out] without re-encoding. */
+    private fun join(blocks: List<File>, starts: List<Long>, audio: File?, out: File) {
+        val muxer = MediaMuxer(out.path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+        var started = false
+        try {
+            var videoFormat: MediaFormat? = null
+            val extractors = blocks.map { f -> MediaExtractor().apply { setDataSource(f.path) } }
+            try {
+                for (ex in extractors) {
+                    val fmt = ex.getTrackFormat(0)
+                    val reference = videoFormat
+                    if (reference == null) videoFormat = fmt
+                    else if (!sameConfig(reference, fmt)) throw IllegalStateException("Video blocks have different encoder settings")
+                }
+                val videoTrack = muxer.addTrack(videoFormat!!)
+                val audioEx = audio?.let { f -> MediaExtractor().apply { setDataSource(f.path) } }
+                try {
+                    val audioTrack = audioEx?.let { muxer.addTrack(it.getTrackFormat(0)) } ?: -1
+                    muxer.start()
+                    started = true
+                    val buffer = ByteBuffer.allocateDirect(8 * 1024 * 1024)
+                    val info = MediaCodec.BufferInfo()
+                    fun copy(ex: MediaExtractor, track: Int, offsetUs: Long) {
+                        ex.selectTrack(0)
+                        while (true) {
+                            buffer.clear()
+                            val size = ex.readSampleData(buffer, 0)
+                            if (size < 0) break
+                            val flags = if (ex.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) MediaCodec.BUFFER_FLAG_KEY_FRAME else 0
+                            info.set(0, size, ex.sampleTime + offsetUs, flags)
+                            muxer.writeSampleData(track, buffer, info)
+                            ex.advance()
+                        }
+                    }
+                    extractors.forEachIndexed { i, ex -> copy(ex, videoTrack, starts[i]) }
+                    audioEx?.let { copy(it, audioTrack, 0L) }
+                } finally {
+                    audioEx?.release()
+                }
+            } finally {
+                extractors.forEach { it.release() }
+            }
+            muxer.stop()
+        } finally {
+            if (!started) runCatching { muxer.stop() }
+            runCatching { muxer.release() }
+        }
+    }
+
+    private fun sameConfig(a: MediaFormat, b: MediaFormat): Boolean {
+        fun csd(f: MediaFormat, k: String) = if (f.containsKey(k)) f.getByteBuffer(k)?.duplicate() else null
+        if (a.getInteger(MediaFormat.KEY_WIDTH) != b.getInteger(MediaFormat.KEY_WIDTH)) return false
+        if (a.getInteger(MediaFormat.KEY_HEIGHT) != b.getInteger(MediaFormat.KEY_HEIGHT)) return false
+        return csd(a, "csd-0") == csd(b, "csd-0") && csd(a, "csd-1") == csd(b, "csd-1")
+    }
+
+    private fun sha256(text: String): String =
+        MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }.take(24)
 
     /** Copies encoded output into the muxer. With [endOfStream], waits for the end-of-stream buffer. */
     private fun drain(codec: MediaCodec, muxer: Muxer, isVideo: Boolean, endOfStream: Boolean) {

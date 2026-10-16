@@ -21,6 +21,8 @@ data class PreviewState(
     val mediaRevision: Int,
     /** 3D quality of the preview: 0 low, 1 medium, 2 high (shadow map size, depth-of-field taps). */
     val quality3D: Int = 1,
+    /** Preview resolution relative to the on-screen size: 1, 0.5 or 0.25 (export is never affected). */
+    val scale: Float = 1f,
 )
 
 /** Letterboxed area of the composition inside the view, in view pixels (origin top-left). */
@@ -45,6 +47,7 @@ class PreviewRenderer(
     private val assets: AssetManager,
     private val files: AssetFiles,
     private val padding: Float,
+    private val proxies: (String) -> VideoProxy? = { null },
     private val onError: (String) -> Unit,
 ) : GLSurfaceView.Renderer {
 
@@ -62,6 +65,13 @@ class PreviewRenderer(
     private var mediaRevision = -1
     private var failed = false
 
+    // Rendered frames of the current project version (cleared by any edit): replaying or scrubbing back over
+    // frames already seen costs a copy instead of a render.
+    private data class FrameKey(val frame: Long, val width: Int, val height: Int, val playing: Boolean, val quality3D: Int)
+    private val frameCache = LinkedHashMap<FrameKey, RenderTarget>(64, 0.75f, true)
+    private var cacheProject: KnsProject? = null
+    private var cacheBytes = 0L
+
     fun requestThumbnail(maxSize: Int, callback: (Bitmap) -> Unit) {
         thumbnailRequest = maxSize to callback
     }
@@ -70,6 +80,8 @@ class PreviewRenderer(
         // A new EGL context: everything GPU-side must be recreated.
         resources = null
         compositor = null
+        frameCache.clear()
+        cacheBytes = 0
         failed = false
     }
 
@@ -86,7 +98,7 @@ class PreviewRenderer(
         val s = state ?: return
         if (failed) return
         try {
-            val res = resources ?: RenderResources(assets, files).also { resources = it }
+            val res = resources ?: RenderResources(assets, files, proxies).also { resources = it }
             val comp = compositor ?: Compositor(res).also { compositor = it }
             if (s.mediaRevision != mediaRevision) {
                 if (mediaRevision >= 0) {
@@ -95,19 +107,29 @@ class PreviewRenderer(
                     res.meshes.release()
                 }
                 mediaRevision = s.mediaRevision
+                clearCache()
+            }
+            if (cacheProject !== s.project) {
+                clearCache()
+                cacheProject = s.project
             }
             val p = s.project
             val vp = ViewportRect.fit(viewW, viewH, p.composition.width, p.composition.height, padding)
             // Render at the on-screen size (never above the composition size); lighter while playing.
-            val quality = if (s.playing) 0.75f else 1f
+            val quality = (if (s.playing) 0.75f else 1f) * s.scale.coerceIn(0.1f, 1f)
             val outW = min(p.composition.width.toFloat(), vp.width * quality).roundToInt().coerceAtLeast(16)
             val outH = (outW * p.composition.height.toFloat() / p.composition.width).roundToInt().coerceAtLeast(16)
-            val scene = SceneEvaluator.evaluate(p, s.time)
-            val samples = if (s.playing) min(3, p.composition.motionBlur.samples) else p.composition.motionBlur.samples
-            val (shadowSize, dofSamples) = RenderSettings.quality3D(s.quality3D)
-            val target = comp.render(p, scene, outW, outH, RenderSettings(motionBlurSamples = samples, preview = s.playing, shadowMapSize = shadowSize, dofSamples = dofSamples))
+            val key = FrameKey(Math.round(s.time * p.composition.fps), outW, outH, s.playing, s.quality3D)
+            val cached = frameCache[key]
+            val shown = if (cached != null) cached else {
+                val scene = SceneEvaluator.evaluate(p, s.time)
+                val samples = if (s.playing) min(3, p.composition.motionBlur.samples) else p.composition.motionBlur.samples
+                val (shadowSize, dofSamples) = RenderSettings.quality3D(s.quality3D)
+                val target = comp.render(p, scene, outW, outH, RenderSettings(motionBlurSamples = samples, preview = s.playing, shadowMapSize = shadowSize, dofSamples = dofSamples))
+                remember(key, target)
+            }
             GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
-            comp.present(target, vp.left.roundToInt(), (viewH - vp.top - vp.height).roundToInt(), vp.width.roundToInt(), vp.height.roundToInt())
+            comp.present(shown, vp.left.roundToInt(), (viewH - vp.top - vp.height).roundToInt(), vp.width.roundToInt(), vp.height.roundToInt())
 
             thumbnailRequest?.let { (maxSize, callback) ->
                 thumbnailRequest = null
@@ -126,8 +148,40 @@ class PreviewRenderer(
         }
     }
 
+    /** Keeps a copy of [target] for [key]; returns what to show (the copy, or [target] if it cannot be kept). */
+    private fun remember(key: FrameKey, target: RenderTarget): RenderTarget {
+        val bytes = target.width.toLong() * target.height * 4
+        if (bytes > MAX_CACHE_BYTES / 8) return target
+        while (cacheBytes + bytes > MAX_CACHE_BYTES && frameCache.isNotEmpty()) {
+            val eldest = frameCache.entries.iterator().next()
+            frameCache.remove(eldest.key)
+            cacheBytes -= eldest.value.width.toLong() * eldest.value.height * 4
+            eldest.value.release()
+        }
+        val copy = try {
+            RenderTarget(target.width, target.height, withDepth = false)
+        } catch (e: Throwable) {
+            return target
+        }
+        GLES30.glBindFramebuffer(GLES30.GL_READ_FRAMEBUFFER, target.framebuffer)
+        GLES30.glBindFramebuffer(GLES30.GL_DRAW_FRAMEBUFFER, copy.framebuffer)
+        GLES30.glBlitFramebuffer(0, 0, target.width, target.height, 0, 0, copy.width, copy.height, GLES30.GL_COLOR_BUFFER_BIT, GLES30.GL_NEAREST)
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+        frameCache[key] = copy
+        cacheBytes += bytes
+        return copy
+    }
+
+    private fun clearCache() {
+        frameCache.values.forEach { it.release() }
+        frameCache.clear()
+        cacheBytes = 0
+    }
+
     /** Releases GPU resources; call on the GL thread (queueEvent) before the view goes away. */
     fun release() {
+        clearCache()
+        cacheProject = null
         compositor?.release()
         resources?.release()
         compositor = null
@@ -140,6 +194,8 @@ class PreviewRenderer(
     }
 
     companion object {
+        /** GPU memory for cached preview frames. */
+        private const val MAX_CACHE_BYTES = 96L * 1024 * 1024
         const val BG_R = 0.055f
         const val BG_G = 0.059f
         const val BG_B = 0.075f

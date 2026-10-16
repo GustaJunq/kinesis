@@ -29,11 +29,16 @@ import dev.kinesis.core.model.LayerTree
 import dev.kinesis.editor.data.ProjectStore
 import dev.kinesis.editor.media.AudioMixer
 import dev.kinesis.editor.media.ExportCancelled
+import dev.kinesis.core.edit.PreRender
+import dev.kinesis.editor.media.ExportResolution
+import dev.kinesis.editor.media.ExportQuality
+import dev.kinesis.editor.media.ExportFailure
 import dev.kinesis.editor.media.ExportSettings
 import dev.kinesis.editor.media.PcmCache
 import dev.kinesis.editor.media.PreviewAudio
 import dev.kinesis.editor.media.VideoExporter
 import dev.kinesis.editor.media.VideoGallery
+import dev.kinesis.editor.media.VideoProxies
 import dev.kinesis.editor.render.AssetFiles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -58,9 +63,17 @@ import kotlin.math.abs
 
 sealed class ExportUiState {
     data object Idle : ExportUiState()
-    data class Running(val progress: Float) : ExportUiState()
+    /** [etaSeconds]: estimated time left, once known. [preRender]: rendering one layer instead of the video. */
+    data class Running(val progress: Float, val etaSeconds: Double? = null, val preRender: Boolean = false) : ExportUiState()
     data class Done(val file: File, val galleryUri: Uri?) : ExportUiState()
-    data class Failed(val message: String) : ExportUiState()
+    /** Where it stopped ([time], [layerId]) when known; the finished blocks are kept for the next try. */
+    data class Failed(
+        val message: String,
+        val time: Double? = null,
+        val layerId: String? = null,
+        val layerName: String? = null,
+        val outOfMemory: Boolean = false,
+    ) : ExportUiState()
 }
 
 /** Short user-facing notices (shown in a snackbar). */
@@ -111,6 +124,8 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
 
     val files: AssetFiles
     private val pcm: PcmCache
+    /** Light copies of heavy videos for the preview. */
+    val proxies: VideoProxies
     private val mixer: AudioMixer
     private val previewAudio: PreviewAudio
     private var saveJob: Job? = null
@@ -139,6 +154,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         history = History(loaded)
         files = store.assetFiles(projectId) { _project.value }
         pcm = PcmCache(File(app.cacheDir, "pcm/$projectId"), files)
+        proxies = VideoProxies(File(app.cacheDir, "proxies/$projectId"), app.assets, files, pcm)
         mixer = AudioMixer(pcm).also { it.setProject(loaded) }
         previewAudio = PreviewAudio(mixer)
         viewModelScope.launch(Dispatchers.IO) {
@@ -149,7 +165,23 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
             store.beginSession(projectId)
             // A version of the project as it was opened, to go back to.
             viewModelScope.launch(Dispatchers.IO) { runCatching { store.snapshot(projectId, loaded) } }
+            buildProxies()
         }
+    }
+
+    // ------------------------------------------------------------------ preview proxies
+
+    /** Makes missing proxies of heavy videos in the background (one at a time); the preview switches when ready. */
+    fun buildProxies() {
+        if (!AppSettings.useProxies || loadError != null) return
+        val snapshot = _project.value
+        viewModelScope.launch(proxyDispatcher) {
+            proxies.build(snapshot) { withMain { _mediaRevision.value++ } }
+        }
+    }
+
+    private fun withMain(block: () -> Unit) {
+        viewModelScope.launch(Dispatchers.Main) { block() }
     }
 
     // ------------------------------------------------------------------ versions and safety copies
@@ -597,6 +629,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
                 layerId?.let { select(it) }
                 _mediaRevision.value++
                 onImported(asset)
+                if (type == AssetType.VIDEO) buildProxies()
                 if (type == AssetType.VIDEO || type == AssetType.AUDIO) {
                     withContext(Dispatchers.IO) { runCatching { pcm.ensure(asset.id) } }
                     _audioRevision.value++
@@ -630,8 +663,12 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
                 val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
                 val safeTitle = snapshot.meta.title.replace(Regex("[^A-Za-z0-9_-]+"), "_").trim('_').ifEmpty { "kinesis" }.take(40)
                 val out = File(dir, "$safeTitle-$stamp.mp4")
+                val eta = Eta()
                 withContext(exportDispatcher) {
-                    VideoExporter(app.assets, files, pcm).export(snapshot, settings, out, { p -> _export.value = ExportUiState.Running(p) }) { exportCancelled }
+                    VideoExporter(app.assets, files, pcm).export(
+                        snapshot, settings, out, { p -> _export.value = ExportUiState.Running(p, eta.update(p)) }, { exportCancelled },
+                        workDir = File(app.cacheDir, "export/$projectId"),
+                    )
                 }
                 val uri = withContext(Dispatchers.IO) { VideoGallery.save(app, out, out.name) }
                 _export.value = ExportUiState.Done(out, uri)
@@ -639,7 +676,59 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
                 _export.value = ExportUiState.Idle
             } catch (e: Throwable) {
                 Log.e("Kinesis", "export failed", e)
-                _export.value = ExportUiState.Failed(e.message ?: e.javaClass.simpleName)
+                _export.value = failure(e)
+            }
+        }
+    }
+
+    private fun failure(e: Throwable): ExportUiState.Failed {
+        if (e !is ExportFailure) return ExportUiState.Failed(e.message ?: e.javaClass.simpleName)
+        val layer = e.layerId?.let { LayerTree.find(current, it) }
+        return ExportUiState.Failed(e.message ?: "", e.time, layer?.id, layer?.name, e.outOfMemory)
+    }
+
+    /** Whether [layerId] can be replaced by a pre-rendered video. */
+    fun canPreRender(layerId: String): Boolean = PreRender.canPreRender(current, layerId)
+
+    /**
+     * Renders [layerId] alone into a video with transparency and shows that video instead (the layer stays,
+     * hidden). Lightens heavy layers (many effects, 3D) for export. Undoable.
+     */
+    fun preRenderLayer(layerId: String) {
+        if (_export.value is ExportUiState.Running) return
+        val snapshot = current
+        val range = PreRender.range(snapshot, layerId) ?: return
+        val layer = LayerTree.find(snapshot, layerId) ?: return
+        pause()
+        exportCancelled = false
+        val app = getApplication<Application>()
+        _export.value = ExportUiState.Running(0f, preRender = true)
+        exportJob = viewModelScope.launch {
+            val tmp = File(app.cacheDir, "prerender/${layer.id}.mp4").apply { parentFile?.mkdirs() }
+            try {
+                val eta = Eta()
+                withContext(exportDispatcher) {
+                    VideoExporter(app.assets, files, pcm).export(
+                        PreRender.isolate(snapshot, layerId), ExportSettings(ExportResolution.ORIGINAL, ExportQuality.HIGH, includeAudio = false), tmp,
+                        { p -> _export.value = ExportUiState.Running(p, eta.update(p), preRender = true) }, { exportCancelled },
+                        workDir = File(app.cacheDir, "export/$projectId-layer"), range = range, packAlpha = true,
+                    )
+                }
+                val asset = withContext(Dispatchers.IO) { store.importMedia(projectId, current, Uri.fromFile(tmp), AssetType.VIDEO) }
+                val name = text(R.string.prerender_layer_name, layer.name.ifBlank { layer.type.name.lowercase() })
+                var newId: String? = null
+                edit { p -> PreRender.replace(p, layerId, asset, range, name).also { newId = it.second }.first }
+                newId?.let { select(it) }
+                _mediaRevision.value++
+                _export.value = ExportUiState.Idle
+                notify(text(R.string.prerender_done))
+            } catch (e: ExportCancelled) {
+                _export.value = ExportUiState.Idle
+            } catch (e: Throwable) {
+                Log.e("Kinesis", "pre-render failed", e)
+                _export.value = failure(e)
+            } finally {
+                tmp.delete()
             }
         }
     }
@@ -656,6 +745,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         previewAudio.stop()
         playJob?.cancel()
         exportCancelled = true
+        proxies.cancelled = true
         if (saveJob?.isActive == true) {
             saveJob?.cancel()
             runBlocking(Dispatchers.IO) { saveNow() }
@@ -673,6 +763,28 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
 private const val MIN_DURATION = 0.5
 private const val SNAPSHOT_INTERVAL_MS = 3 * 60_000L
 private const val MIRROR_INTERVAL_MS = 2 * 60_000L
+
+/** Time left from the progress so far (ignores progress that was already there, e.g. resumed blocks). */
+private class Eta {
+    private var startNs = 0L
+    private var startProgress = -1f
+
+    fun update(progress: Float): Double? {
+        val now = System.nanoTime()
+        if (startProgress < 0f) {
+            startNs = now
+            startProgress = progress
+            return null
+        }
+        val done = progress - startProgress
+        val elapsed = (now - startNs) / 1e9
+        if (done < 0.02f || elapsed < 2.0) return null
+        return elapsed / done * (1f - progress)
+    }
+}
+
+/** Proxies are made one at a time, across editors. */
+private val proxyDispatcher = Executors.newSingleThreadExecutor { r -> Thread(r, "kinesis-proxies").apply { isDaemon = true } }.asCoroutineDispatcher()
 
 /** Work that must finish after the editor closes (the copy in Documents). */
 private val backgroundScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob())

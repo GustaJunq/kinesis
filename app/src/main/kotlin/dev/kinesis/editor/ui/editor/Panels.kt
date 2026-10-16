@@ -70,6 +70,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import dev.kinesis.editor.ui.common.formatTime
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -512,6 +514,12 @@ private fun savedLabel(e: Easing): String = when (e) {
 
 // ---------------------------------------------------------------------------------------- export
 
+/** "1 min 20 s" / "45 s". */
+private fun formatDuration(seconds: Double): String {
+    val s = seconds.roundToInt().coerceAtLeast(1)
+    return if (s >= 60) "${s / 60} min ${s % 60} s" else "$s s"
+}
+
 @Composable
 fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState, onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -572,9 +580,10 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
                         Text(stringResource(R.string.export_info, "%.1f".format(comp.duration), comp.fps.roundToInt()), fontSize = 12.sp, color = KColors.TextSecondary)
                     }
                     is ExportUiState.Running -> {
-                        Text(stringResource(R.string.exporting))
+                        Text(stringResource(if (state.preRender) R.string.prerendering else R.string.exporting))
                         LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
-                        Text("${(state.progress * 100).roundToInt()}%", color = KColors.TextSecondary)
+                        val eta = state.etaSeconds?.let { stringResource(R.string.export_eta, formatDuration(it)) }
+                        Text("${(state.progress * 100).roundToInt()}%" + (eta?.let { "  ·  $it" } ?: ""), color = KColors.TextSecondary)
                     }
                     is ExportUiState.Done -> {
                         Text(stringResource(R.string.export_done))
@@ -585,7 +594,23 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
                     }
                     is ExportUiState.Failed -> {
                         Text(stringResource(R.string.export_failed), color = KColors.Danger)
+                        if (state.time != null) {
+                            val where = state.layerName?.ifBlank { null } ?: state.layerId
+                            Text(
+                                if (where != null) stringResource(R.string.export_failed_at_layer, formatTime(state.time, project.composition.fps), where)
+                                else stringResource(R.string.export_failed_at, formatTime(state.time, project.composition.fps)),
+                                fontSize = 13.sp,
+                            )
+                        }
+                        if (state.outOfMemory) Text(stringResource(R.string.export_failed_memory), fontSize = 12.sp, color = KColors.TextSecondary)
                         Text(state.message, fontSize = 12.sp, color = KColors.TextSecondary)
+                        if (state.time != null) Text(stringResource(R.string.export_resume_hint), fontSize = 12.sp, color = KColors.TextSecondary)
+                        val layerId = state.layerId
+                        if (layerId != null && vm.canPreRender(layerId)) {
+                            OutlinedButton(onClick = { vm.preRenderLayer(layerId) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.prerender_layer))
+                            }
+                        }
                     }
                 }
             }

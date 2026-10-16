@@ -44,14 +44,14 @@ import kotlin.math.min
 import kotlin.math.pow
 
 /** GPU resources shared by every frame rendered in one EGL context. */
-class RenderResources(assets: AssetManager, val files: AssetFiles) {
+class RenderResources(assets: AssetManager, val files: AssetFiles, proxies: (String) -> VideoProxy? = { null }) {
     val shaders = ShaderLibrary(assets)
     val quad = UnitQuad()
     val pool = TargetPool()
     val typefaces = TypefaceProvider { files.file(it) }
     val content = ContentTextures(typefaces)
     val images = ImageTextures(files, min(4096, Gl.maxTextureSize()))
-    val videos = VideoFrames(files)
+    val videos = VideoFrames(files, proxies)
     val meshes = MeshCache(files, typefaces)
     val environments = EnvironmentMaps(files, min(4096, Gl.maxTextureSize()))
     private var shadowMap: ShadowMap? = null
@@ -91,6 +91,8 @@ data class RenderSettings(
     val shadowMapSize: Int = 2048,
     /** Taps per pixel of the depth-of-field blur (3D quality). */
     val dofSamples: Int = 32,
+    /** Leave the background transparent (pre-rendering a layer) instead of filling it. */
+    val transparentBackground: Boolean = false,
 ) {
     companion object {
         /** 3D quality presets: low, medium, high. */
@@ -108,6 +110,11 @@ data class RenderSettings(
  */
 class Compositor(private val res: RenderResources) {
     private var output: RenderTarget? = null
+
+    /** Layer being drawn (for error reports: which layer failed, e.g. out of memory). */
+    @Volatile
+    var currentLayerId: String? = null
+        private set
 
     private class Ctx(
         val project: KnsProject,
@@ -148,11 +155,13 @@ class Compositor(private val res: RenderResources) {
         ctx.shadow = buildShadow(ctx)
         if (ctx.shadow == null) res.noShadow()
         val bg = scene.background
-        out.clear(bg.r * bg.a, bg.g * bg.a, bg.b * bg.a, 1f)
+        currentLayerId = null
+        if (settings.transparentBackground) out.clear() else out.clear(bg.r * bg.a, bg.g * bg.a, bg.b * bg.a, 1f)
         drawNodes(scene.nodes, out, ctx)
         GLES30.glDisable(GLES30.GL_BLEND)
         res.videos.endFrame()
         res.content.trim()
+        res.images.trim()
         return out
     }
 
@@ -162,6 +171,21 @@ class Compositor(private val res: RenderResources) {
         GLES30.glDisable(GLES30.GL_BLEND)
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
         val p = res.shaders.get("fullscreen.vert", "copy.frag")
+        p.use()
+        bindTexture2D(0, target.texture)
+        p.set1i("u_texture", 0)
+        res.quad.draw()
+    }
+
+    /**
+     * Draws [target] as a packed-alpha frame filling a [w]×[h] viewport: straight colour on the left half,
+     * alpha as grey on the right half (what video layers with `alphaPacked` read back).
+     */
+    fun presentPacked(target: RenderTarget, w: Int, h: Int) {
+        GLES30.glViewport(0, 0, w, h)
+        GLES30.glDisable(GLES30.GL_BLEND)
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        val p = res.shaders.get("fullscreen.vert", "pack_alpha.frag")
         p.use()
         bindTexture2D(0, target.texture)
         p.set1i("u_texture", 0)
@@ -207,10 +231,12 @@ class Compositor(private val res: RenderResources) {
                     batch += nodes[j] as Node3D
                     j++
                 }
+                currentLayerId = batch.first().layerId
                 draw3DBatch(batch, target, ctx, opacityOverride = null)
                 i = j
                 continue
             }
+            if (n !is GroupNode) currentLayerId = n.layerId
             drawNode(n, target, ctx)
             i++
         }

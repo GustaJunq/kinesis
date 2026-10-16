@@ -128,8 +128,23 @@ class ImageTextures(private val files: AssetFiles, private val maxSize: Int) {
     class Image(val texture: Int, val width: Int, val height: Int)
 
     private val images = HashMap<String, Image?>()
+    private val lastUsed = HashMap<String, Long>()
+    private var frame = 0L
 
-    fun get(assetId: String): Image? = images.getOrPut(assetId) { load(assetId) }
+    fun get(assetId: String): Image? {
+        lastUsed[assetId] = frame
+        return images.getOrPut(assetId) { load(assetId) }
+    }
+
+    /** Frees images not drawn for [maxIdleFrames] frames (they are reloaded when they come back into view). */
+    fun trim(maxIdleFrames: Long = 300) {
+        frame++
+        val stale = lastUsed.filterValues { frame - it > maxIdleFrames }.keys
+        for (id in stale) {
+            lastUsed.remove(id)
+            images.remove(id)?.let { Gl.deleteTexture(it.texture) }
+        }
+    }
 
     private fun load(assetId: String): Image? {
         val file = files.file(assetId)?.takeIf { it.isFile } ?: return null
@@ -181,5 +196,6 @@ class ImageTextures(private val files: AssetFiles, private val maxSize: Int) {
     fun release() {
         images.values.forEach { it?.let { img -> Gl.deleteTexture(img.texture) } }
         images.clear()
+        lastUsed.clear()
     }
 }

@@ -57,6 +57,7 @@ import dev.kinesis.core.scene.FrameScene
 import dev.kinesis.core.scene.NullNode
 import dev.kinesis.core.scene.SceneEvaluator
 import dev.kinesis.editor.render.PreviewRenderer
+import dev.kinesis.editor.ui.settings.AppSettings
 import dev.kinesis.editor.render.PreviewState
 import dev.kinesis.editor.render.TypefaceProvider
 import dev.kinesis.editor.render.ViewportRect
@@ -91,7 +92,7 @@ fun Viewport(
     val paddingPx = with(density) { 12f * this.density }
     val errorCallback by rememberUpdatedState(onRenderError)
     val renderer = remember {
-        PreviewRenderer(context.assets, vm.files, paddingPx) { msg -> errorCallback(msg) }
+        PreviewRenderer(context.assets, vm.files, paddingPx, proxies = { id -> if (AppSettings.useProxies) vm.proxies.get(id) else null }) { msg -> errorCallback(msg) }
     }
     val glView = remember {
         GLSurfaceView(context).apply {
@@ -120,7 +121,7 @@ fun Viewport(
 
     // Push state to the GL thread after every successful composition.
     SideEffect {
-        renderer.state = PreviewState(project, time, playing, mediaRevision)
+        renderer.state = PreviewState(project, time, playing, mediaRevision, AppSettings.previewQuality3D, AppSettings.previewScale)
         glView.requestRender()
     }
 

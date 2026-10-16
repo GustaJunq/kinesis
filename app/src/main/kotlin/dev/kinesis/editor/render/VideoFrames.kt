@@ -25,7 +25,7 @@ class VideoFrameSource private constructor(
     private val surfaceTexture: SurfaceTexture,
     private val surface: Surface,
     val texture: Int,
-    /** Display size (rotation applied). */
+    /** Display size (rotation applied); for a proxy, the size of the original file (layout never changes). */
     val width: Int,
     val height: Int,
     private val rotation: Int,
@@ -43,6 +43,17 @@ class VideoFrameSource private constructor(
     /** Texture matrix for the quad shader: SurfaceTexture transform combined with the clip's rotation. */
     val texMatrix = FloatArray(16).also { Matrix.setIdentityM(it, 0) }
     val hasFrame: Boolean get() = currentPts >= 0
+
+    /** Microseconds of the frame on the texture, or -1. */
+    val positionUs: Long get() = currentPts
+
+    /** Cost of showing [seconds] next: 0 when decoding forward a little, more when a seek is needed. */
+    fun distanceTo(seconds: Double): Long {
+        val target = (seconds * 1_000_000.0).toLong()
+        if (currentPts < 0) return SEEK_COST
+        val ahead = target - currentPts
+        return if (ahead in -frameUs / 2..1_500_000L) abs(ahead) else SEEK_COST + abs(ahead)
+    }
 
     init {
         surfaceTexture.setOnFrameAvailableListener({
@@ -158,10 +169,12 @@ class VideoFrameSource private constructor(
 
     companion object {
         private const val TAG = "KinesisVideo"
+        private const val SEEK_COST = 10_000_000L
         private val callbackThread by lazy { HandlerThread("kinesis-video").apply { start() } }
         private val callbackHandler by lazy { Handler(callbackThread.looper) }
 
-        fun open(file: File): VideoFrameSource? {
+        /** [logicalSize] replaces the display size (proxies report the size of their original). */
+        fun open(file: File, logicalSize: Pair<Int, Int>? = null): VideoFrameSource? {
             val extractor = MediaExtractor()
             try {
                 extractor.setDataSource(file.path)
@@ -189,7 +202,7 @@ class VideoFrameSource private constructor(
                 val rotated = rotation == 90 || rotation == 270
                 return VideoFrameSource(
                     extractor, codec, st, surface, texture,
-                    if (rotated) h else w, if (rotated) w else h, rotation,
+                    logicalSize?.first ?: if (rotated) h else w, logicalSize?.second ?: if (rotated) w else h, rotation,
                     duration, 1_000_000L / fps.coerceIn(1, 240),
                 )
             } catch (e: Exception) {
@@ -216,28 +229,90 @@ class VideoFrameSource private constructor(
     }
 }
 
-/** One decoder per video layer (so split clips of the same file do not fight over seeks). */
-class VideoFrames(private val files: AssetFiles) {
-    private val sources = HashMap<String, VideoFrameSource?>()
-    private val used = HashSet<String>()
+/** A lighter copy of a video for the preview, already rotated, with the display size of the original. */
+class VideoProxy(val file: File, val width: Int, val height: Int)
 
-    fun beginFrame() = used.clear()
+/**
+ * Video decoders, shared by every clip of the same file: clips cut from one video reuse one decoder (only
+ * the frame under the playhead is decoded). A second decoder of a file is opened only when two of its clips
+ * are visible at the same time.
+ */
+class VideoFrames(private val files: AssetFiles, private val proxies: (String) -> VideoProxy? = { null }) {
+    private class Slot(val assetId: String, val source: VideoFrameSource, var owner: String, var usedInFrame: Long)
 
-    fun frame(layerId: String, assetId: String, seconds: Double): VideoFrameSource? {
-        used += layerId
-        val src = sources.getOrPut(layerId) { files.file(assetId)?.takeIf { it.isFile }?.let { VideoFrameSource.open(it) } }
-        return src?.takeIf { it.show(seconds) }
+    private val slots = ArrayList<Slot>()
+    private val unreadable = HashSet<String>()
+    private var frameNo = 0L
+
+    fun beginFrame() {
+        frameNo++
     }
 
-    /** Closes decoders of layers that were not drawn in the last frame (keeps a few to make scrubbing fast). */
-    fun endFrame(keepIdle: Int = 4) {
-        val idle = sources.keys.filter { it !in used }
-        if (idle.size <= keepIdle) return
-        idle.take(idle.size - keepIdle).forEach { sources.remove(it)?.release() }
+    fun frame(layerId: String, assetId: String, seconds: Double): VideoFrameSource? {
+        if (assetId in unreadable) return null
+        val ofFile = slots.filter { it.assetId == assetId }
+        val free = ofFile.filter { it.usedInFrame != frameNo }
+        // Cheapest decoder to move to [seconds]; on ties the one this layer used last.
+        val best = free.minWithOrNull(compareBy<Slot>({ it.source.distanceTo(seconds) }, { if (it.owner == layerId) 0 else 1 }))
+        val slot = when {
+            best != null && best.source.distanceTo(seconds) < SEEK_THRESHOLD -> best
+            // Cuts of one clip follow each other: one decoder seeks instead of opening another.
+            best != null && !overlapLikely(ofFile) -> best
+            else -> open(assetId, layerId) ?: best ?: ofFile.minByOrNull { it.source.distanceTo(seconds) } ?: return null
+        }
+        slot.owner = layerId
+        slot.usedInFrame = frameNo
+        return slot.source.takeIf { it.show(seconds) }
+    }
+
+    /** True when several decoders of a file were busy in the previous frame (clips playing at the same time). */
+    private fun overlapLikely(ofFile: List<Slot>) = ofFile.count { it.usedInFrame == frameNo - 1 } > 1
+
+    private fun open(assetId: String, layerId: String): Slot? {
+        if (slots.count { it.assetId == assetId } >= MAX_PER_FILE) return null
+        val proxy = proxies(assetId)?.takeIf { it.file.isFile }
+        val source = if (proxy != null) {
+            VideoFrameSource.open(proxy.file, proxy.width to proxy.height) ?: openOriginal(assetId)
+        } else {
+            openOriginal(assetId)
+        }
+        if (source == null) {
+            if (slots.none { it.assetId == assetId }) unreadable += assetId
+            return null
+        }
+        return Slot(assetId, source, layerId, frameNo).also { slots += it }
+    }
+
+    private fun openOriginal(assetId: String): VideoFrameSource? =
+        files.file(assetId)?.takeIf { it.isFile }?.let { VideoFrameSource.open(it) }
+
+    /** Closes decoders unused for a while (a couple stay open so scrubbing back is fast). */
+    fun endFrame(keepIdle: Int = 2, maxIdleFrames: Long = 90) {
+        val idle = slots.filter { it.usedInFrame != frameNo }.sortedBy { it.usedInFrame }
+        val excess = (idle.size - keepIdle).coerceAtLeast(0)
+        idle.forEachIndexed { i, s ->
+            if (i < excess || frameNo - s.usedInFrame > maxIdleFrames) {
+                s.source.release()
+                slots.remove(s)
+            }
+        }
+    }
+
+    /** Closes the decoders of [assetId] (e.g. when its proxy becomes available). */
+    fun evict(assetId: String) {
+        slots.filter { it.assetId == assetId }.forEach { it.source.release(); slots.remove(it) }
+        unreadable.remove(assetId)
     }
 
     fun release() {
-        sources.values.forEach { it?.release() }
-        sources.clear()
+        slots.forEach { it.source.release() }
+        slots.clear()
+        unreadable.clear()
+    }
+
+    private companion object {
+        const val MAX_PER_FILE = 3
+        /** Forward decoding below this (µs of distance) beats opening another decoder. */
+        const val SEEK_THRESHOLD = 1_500_001L
     }
 }
