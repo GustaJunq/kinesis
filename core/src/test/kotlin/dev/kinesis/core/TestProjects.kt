@@ -13,6 +13,11 @@ import dev.kinesis.core.model.Asset
 import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.BlendMode
 import dev.kinesis.core.model.CameraAim
+import dev.kinesis.core.model.TextAlign
+import dev.kinesis.core.model.Text3D
+import dev.kinesis.core.model.Shading
+import dev.kinesis.core.model.DepthOfField
+import dev.kinesis.core.model.Environment
 import dev.kinesis.core.model.CameraContent
 import dev.kinesis.core.model.NullContent
 import dev.kinesis.core.model.Composition
@@ -65,7 +70,7 @@ object TestProjects {
     fun full(): KnsProject = KnsProject(
         generator = "tests",
         meta = ProjectMeta(title = "Everything", createdAt = "2026-01-01T00:00:00Z"),
-        composition = Composition(width = 1080, height = 1920, fps = 30.0, duration = 10.0, background = Color.parse("#0B1E4D")),
+        composition = Composition(width = 1080, height = 1920, fps = 30.0, duration = 10.0, background = Color.parse("#0B1E4D"), environment = Environment(asset = "img", intensity = 1.5f, rotation = 90f)),
         assets = listOf(
             Asset("img", AssetType.IMAGE, "assets/img.png", name = "photo.png", width = 4, height = 2),
             Asset("vid", AssetType.VIDEO, "assets/vid.mp4", duration = 3.0, width = 1920, height = 1080, hasAudio = true),
@@ -132,7 +137,7 @@ object TestProjects {
             Layer(id = "photo", type = LayerType.IMAGE, name = "Photo", duration = 10.0, visible = false, image = ImageContent("img")),
             Layer(
                 id = "masked", type = LayerType.VIDEO, name = "Clip", duration = 3.0, matte = Matte("photo", MatteMode.LUMA),
-                video = MediaContent("vid", sourceStart = 0.5, speed = 1.5, volume = keys(0.0 to 1f, 2.0 to 0f)),
+                video = MediaContent("vid", sourceStart = 0.5, speed = 1.5, volume = keys(0.0 to 1f, 2.0 to 0f), alphaPacked = true),
             ),
             Layer(id = "music", type = LayerType.AUDIO, name = "Music", duration = 10.0, audio = MediaContent("snd", fadeIn = 1.0, fadeOut = 2.0)),
             Layer(
@@ -155,9 +160,17 @@ object TestProjects {
             ),
             Layer(id = "moon", type = LayerType.MODEL3D, name = "Model", duration = 10.0, parent = "orbit", transform3d = Transform3D(position = anim(Vec3(500f, 0f, 0f))), model3d = Model3DContent("mdl", size = anim(150f))),
             Layer(id = "rig", type = LayerType.NULL, name = "Rig", duration = 10.0, nullObject = NullContent(threeD = true), transform3d = Transform3D(position = anim(Vec3(0f, 0f, 100f)))),
-            Layer(id = "cam", type = LayerType.CAMERA, name = "Camera", duration = 10.0, parent = "rig", camera = CameraContent(position = anim(Vec3(0f, -300f, -2500f)), rotation = anim(Vec3(5f, 0f, 0f)), aim = CameraAim.ROTATION, fov = anim(45f))),
+            Layer(id = "cam", type = LayerType.CAMERA, name = "Camera", duration = 10.0, parent = "rig", camera = CameraContent(position = anim(Vec3(0f, -300f, -2500f)), rotation = anim(Vec3(5f, 0f, 0f)), aim = CameraAim.ROTATION, fov = anim(45f), dof = DepthOfField(focusDistance = keys(0.0 to 2000f, 5.0 to 2600f), blur = anim(18f)))),
+            Layer(
+                id = "title3d", type = LayerType.OBJECT3D, name = "3D title", duration = 10.0,
+                object3d = Object3DContent(
+                    Primitive.TEXT,
+                    material = Material(color = anim(Color.parse("#FFC857")), shading = Shading.TOON),
+                    text = Text3D("Kinesis\n3D", FontSpec(asset = "fnt"), fontSize = 160f, depth = 50f, bevel = 6f, align = TextAlign.LEFT),
+                ),
+            ),
             Layer(id = "pin", type = LayerType.NULL, name = "Pin", duration = 10.0, transform = Transform2D(position = anim(Vec2(40f, -20f)))),
-            Layer(id = "key", type = LayerType.LIGHT, name = "Key", duration = 10.0, light = LightContent(LightKind.DIRECTIONAL, intensity = anim(1.2f))),
+            Layer(id = "key", type = LayerType.LIGHT, name = "Key", duration = 10.0, light = LightContent(LightKind.DIRECTIONAL, intensity = anim(1.2f), castShadows = true, shadowDarkness = anim(0.6f), shadowSoftness = 2f)),
             Layer(id = "amb", type = LayerType.LIGHT, name = "Ambient", duration = 10.0, light = LightContent(LightKind.AMBIENT, intensity = anim(0.3f))),
         ),
     )

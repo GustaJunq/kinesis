@@ -6,6 +6,9 @@ import dev.kinesis.core.math.Mat4
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.model.BlendMode
+import dev.kinesis.core.model.Environment
+import dev.kinesis.core.model.Shading
+import dev.kinesis.core.model.Text3D
 import dev.kinesis.core.model.FontSpec
 import dev.kinesis.core.model.Gradient
 import dev.kinesis.core.model.GradientStop
@@ -36,6 +39,8 @@ class FrameScene(
     val ambient: Color,
     val lights: List<LightState>,
     val nodes: List<RenderNode>,
+    /** Panorama and strength of reflections/ambient light of 3D layers. */
+    val environment: Environment = Environment(),
 )
 
 class CameraState(
@@ -46,6 +51,8 @@ class CameraState(
     val projection: Mat4,
     val width: Int,
     val height: Int,
+    /** Depth of field, when the active camera has it enabled. */
+    val dof: ResolvedDof? = null,
 ) {
     val viewProjection: Mat4 = projection * view
 
@@ -60,6 +67,9 @@ class CameraState(
     fun depthOf(world: Vec3): Float = -view.transformPoint(world).z
 }
 
+/** Depth of field at the frame time. Distances in pixels from the camera; [blur] in composition pixels. */
+class ResolvedDof(val focusDistance: Float, val range: Float, val blur: Float)
+
 class LightState(
     val kind: LightKind,
     /** sRGB colour of the light. */
@@ -69,6 +79,9 @@ class LightState(
     /** Unit vector the light travels along (directional lights). */
     val direction: Vec3,
     val radius: Float,
+    val castShadows: Boolean = false,
+    val shadowDarkness: Float = 0.75f,
+    val shadowSoftness: Float = 1.5f,
 )
 
 /**
@@ -200,6 +213,7 @@ class ResolvedMaterial(
     val roughness: Float,
     val emissive: Color,
     val textureAssetId: String?,
+    val shading: Shading = Shading.PBR,
 )
 
 class Node3D(
@@ -218,6 +232,8 @@ class Node3D(
     override val transitionBlur: Float,
     /** 2D transform applied to the rendered image (group transforms and transitions). */
     val post: Affine2D,
+    /** Extruded text (primitive TEXT): the mesh is built from it in pixels, [model] does not scale it. */
+    val text3d: Text3D? = null,
 ) : RenderNode()
 
 /**

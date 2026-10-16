@@ -95,7 +95,8 @@ object Primitives {
         Primitive.CONE -> cone()
         Primitive.TORUS -> torus()
         Primitive.PLANE -> plane()
-        Primitive.EMPTY -> Mesh(FloatArray(0), FloatArray(0), FloatArray(0), IntArray(0))
+        // Text needs glyph outlines: the app builds it with TextExtrusion.
+        Primitive.EMPTY, Primitive.TEXT -> Mesh(FloatArray(0), FloatArray(0), FloatArray(0), IntArray(0))
     }
 
     private class Builder {

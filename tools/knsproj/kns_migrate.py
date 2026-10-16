@@ -63,7 +63,13 @@ def v4_to_v5(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5}
+def v5_to_v6(doc):
+    """Version 6 only adds optional fields (shading, shadows, depth of field, environment, 3D text, packed alpha)."""
+    doc["formatVersion"] = 6
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6}
 
 
 def migrate(doc, to_version):

@@ -12,7 +12,7 @@ import kotlin.math.roundToInt
 const val FORMAT_ID = "knsproj"
 
 /** Format version written by this build. Older versions are migrated on load; newer ones are rejected. */
-const val FORMAT_VERSION = 5
+const val FORMAT_VERSION = 6
 
 /** Root of a `.knsproj` document (`project.json`). */
 @Serializable
@@ -48,6 +48,8 @@ data class Composition(
     @EncodeDefault val duration: Double = 10.0,
     @EncodeDefault val background: Color = Color(0.05f, 0.05f, 0.07f),
     val motionBlur: MotionBlurSettings = MotionBlurSettings(),
+    /** Lighting environment of 3D layers: reflections and ambient light. */
+    val environment: Environment = Environment(),
 ) {
     val frameCount: Int get() = (duration * fps).roundToInt().coerceAtLeast(1)
     val frameDuration: Double get() = 1.0 / fps
@@ -59,6 +61,19 @@ data class Composition(
     /** Snaps [time] to the closest frame boundary. */
     fun snap(time: Double): Double = (time * fps).roundToInt() / fps
 }
+
+/**
+ * What 3D materials reflect and the soft ambient light they receive. Without [asset] a procedural studio is used.
+ */
+@Serializable
+data class Environment(
+    /** Id of an `image` asset with an equirectangular (360°, 2:1) panorama. */
+    val asset: String? = null,
+    /** Multiplier of reflections and ambient light from the environment (0..10). */
+    val intensity: Float = 1f,
+    /** Turns the panorama around the vertical axis, in degrees. */
+    val rotation: Float = 0f,
+)
 
 /** Motion blur applies to layers with `motionBlur: true` when [enabled]. */
 @Serializable

@@ -10,6 +10,8 @@ import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerType
 import dev.kinesis.core.model.LightContent
+import dev.kinesis.core.model.LightKind
+import dev.kinesis.core.model.Primitive
 import dev.kinesis.core.model.Mask
 import dev.kinesis.core.model.ShapeKind
 
@@ -97,6 +99,12 @@ object ProjectValidator {
                 type == null -> err("layer.missingAsset", path, "asset '$id' does not exist")
                 type != expected -> err("layer.assetType", path, "asset '$id' is a ${type.name.lowercase()}, expected ${expected.name.lowercase()}")
             }
+        }
+
+        // Environment of 3D layers
+        with(comp.environment) {
+            checkAssetRef(asset, AssetType.IMAGE, "composition.environment.asset")
+            if (intensity !in 0f..10f) err("composition.environment", "composition.environment.intensity", "intensity must be between 0 and 10")
         }
 
         fun visit(layers: List<Layer>, base: String, depth: Int) {
@@ -216,17 +224,38 @@ object ProjectValidator {
                 layer.object3d?.let { o ->
                     checkAnimatable(o.size, "$p.object3d.size", d)
                     checkAssetRef(o.material.texture, AssetType.IMAGE, "$p.object3d.material.texture")
+                    o.text?.let { t ->
+                        val tp = "$p.object3d.text"
+                        if (o.primitive != Primitive.TEXT) warn("object3d.text", tp, "\"text\" is only used when primitive is \"text\"")
+                        checkAssetRef(t.font.asset, AssetType.FONT, "$tp.font.asset")
+                        if (t.font.weight !in 100..900) err("text.weight", "$tp.font.weight", "font weight must be between 100 and 900")
+                        if (t.fontSize !in 4f..2000f) err("text3d.range", "$tp.fontSize", "fontSize must be between 4 and 2000")
+                        if (t.depth !in 1f..2000f) err("text3d.range", "$tp.depth", "depth must be between 1 and 2000")
+                        if (t.bevel < 0f || t.bevel > t.depth / 2f) err("text3d.range", "$tp.bevel", "bevel must be between 0 and half the depth")
+                        if (!(t.lineHeight > 0f)) err("text3d.range", "$tp.lineHeight", "lineHeight must be > 0")
+                    }
                 }
                 layer.model3d?.let { m ->
                     checkAssetRef(m.asset, AssetType.MODEL, "$p.model3d.asset")
                     checkAssetRef(m.material?.texture, AssetType.IMAGE, "$p.model3d.material.texture")
                 }
                 layer.camera?.let { c ->
+                    c.dof?.let { f ->
+                        checkAnimatable(f.focusDistance, "$p.camera.dof.focusDistance", d)
+                        checkAnimatable(f.range, "$p.camera.dof.range", d)
+                        checkAnimatable(f.blur, "$p.camera.dof.blur", d)
+                    }
                     c.position?.let { checkAnimatable(it, "$p.camera.position", d) }
                     checkAnimatable(c.target, "$p.camera.target", d); checkAnimatable(c.rotation, "$p.camera.rotation", d)
                     checkAnimatable(c.fov, "$p.camera.fov", d)
                 }
                 if (layer.nullObject != null && layer.type != LayerType.NULL) warn("layer.nullContent", "$p.null", "the \"null\" object is only used by null layers")
+                layer.light?.let { l ->
+                    checkAnimatable(l.shadowDarkness, "$p.light.shadowDarkness", d)
+                    if (l.shadowSoftness !in 0f..8f) err("light.shadow", "$p.light.shadowSoftness", "shadowSoftness must be between 0 and 8")
+                    if (l.castShadows && l.kind == LightKind.AMBIENT) warn("light.shadow", "$p.light.castShadows", "ambient lights do not cast shadows")
+                }
+                if (layer.video?.alphaPacked == true && layer.type != LayerType.VIDEO) warn("media.alphaPacked", "$p", "alphaPacked only applies to video layers")
                 if (layer.type == LayerType.CAMERA) cameraCount++
                 if (layer.type == LayerType.LIGHT) lightCount++
 

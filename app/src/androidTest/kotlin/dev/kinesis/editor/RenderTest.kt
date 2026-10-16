@@ -83,7 +83,7 @@ class RenderTest {
                 transform = s.transform.copy(position = anim(dev.kinesis.core.math.Vec2(x, y)), scale = anim(dev.kinesis.core.math.Vec2(0.6f, 0.6f))),
             ))
         }
-        Primitive.entries.filter { it != Primitive.EMPTY }.forEachIndexed { i, prim ->
+        Primitive.entries.filter { it != Primitive.EMPTY && it != Primitive.TEXT }.forEachIndexed { i, prim ->
             val o = Factory.object3d(p, 0.0, prim, prim.name)
             p = p.copy(layers = p.layers + o.copy(transform3d = o.transform3d.copy(position = anim(dev.kinesis.core.math.Vec3((i - 2.5f) * 170f, 380f, 0f)), scale = anim(dev.kinesis.core.math.Vec3(0.4f, 0.4f, 0.4f)))))
         }
