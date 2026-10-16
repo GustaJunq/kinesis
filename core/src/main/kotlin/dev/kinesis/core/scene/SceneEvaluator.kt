@@ -269,7 +269,7 @@ object SceneEvaluator {
         LayerType.TEXT -> textContent(layer.text ?: TextContent(), t, TextExpression.evaluate(layer, siblings, containerTime, comp))
         LayerType.SHAPE -> shapeContent(layer.shape ?: ShapeContent(), t)
         LayerType.IMAGE -> layer.image?.let { Content2D.Image(it.asset) }
-        LayerType.VIDEO -> layer.video?.let { Content2D.Video(it.asset, it.sourceTime(t).coerceAtLeast(0.0)) }
+        LayerType.VIDEO -> layer.video?.let { Content2D.Video(it.asset, it.sourceTime(t).coerceAtLeast(0.0), it.alphaPacked) }
         else -> null
     }
 

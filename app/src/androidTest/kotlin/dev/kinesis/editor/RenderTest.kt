@@ -59,6 +59,12 @@ class RenderTest {
     fun nullParent2d() = render(loadExample("basicos/nulo-2d"), listOf(0.5, 2.0), "nulo-2d")
 
     @Test
+    fun text3dShadowsAndDepthOfField() = render(loadExample("basicos/texto-3d-sombras"), listOf(0.3, 3.0), "texto-3d-sombras")
+
+    @Test
+    fun environmentAndShadingModes() = render(loadExample("basicos/ambiente-hdri"), listOf(0.3, 3.0), "ambiente-hdri")
+
+    @Test
     fun kineticTitle() = render(loadExample("receitas/titulo-cinetico"), listOf(0.5, 2.5), "titulo-cinetico")
 
     @Test

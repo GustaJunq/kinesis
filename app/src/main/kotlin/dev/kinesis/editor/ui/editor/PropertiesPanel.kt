@@ -24,6 +24,10 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Brush
+import dev.kinesis.core.model.DepthOfField
+import dev.kinesis.core.model.Shading
+import dev.kinesis.core.model.Text3D
+import dev.kinesis.core.scene.SceneEvaluator
 import dev.kinesis.core.model.Effect
 import dev.kinesis.core.model.EffectRegistry
 import dev.kinesis.core.model.EffectValue
@@ -175,7 +179,7 @@ fun PropertiesPanel(
     val layer = selection?.let { LayerTree.find(project, it) }
     if (layer == null) {
         LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(KDims.Gutter, 8.dp, KDims.Gutter, 64.dp)) {
-            item { CompositionSettings(vm, project) }
+            item { CompositionSettings(vm, project, onPickTexture) }
         }
         return
     }
@@ -561,7 +565,10 @@ private fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: Lay
                 val o = layer.object3d ?: return@Column
                 SectionTitle(stringResource(R.string.section_object))
                 ChoiceChips(Primitive.entries.map { it to stringResource(primitiveRes(it)) }, o.primitive, { p -> vm.updateLayer(id) { it.updateObject3D { c -> c.copy(primitive = p) } } })
+                if (o.primitive == Primitive.TEXT) Text3DControls(vm, project, id, o.text ?: Text3D(), onPickFont)
                 if (o.primitive != Primitive.EMPTY) {
+                    SmallLabel(stringResource(R.string.shading))
+                    ChoiceChips(Shading.entries.map { it to stringResource(shadingRes(it)) }, o.material.shading, { s -> vm.updateLayer(id) { it.updateObject3D { c -> c.copy(material = c.material.copy(shading = s)) } } })
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         SmallLabel(stringResource(R.string.texture) + ": " + (o.material.texture?.let { t -> project.asset(t)?.name ?: t } ?: "—"), Modifier.weight(1f))
                         TextButton(onClick = { onPickTexture(id) }) { Text(stringResource(R.string.choose)) }
@@ -579,6 +586,10 @@ private fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: Lay
                 SmallLabel(project.asset(m.asset)?.name ?: m.asset)
                 SwitchRow(stringResource(R.string.override_material), m.material != null) { on ->
                     vm.updateLayer(id) { it.updateModel3D { c -> c.copy(material = if (on) Material() else null) } }
+                }
+                m.material?.let { mat ->
+                    SmallLabel(stringResource(R.string.shading))
+                    ChoiceChips(Shading.entries.map { it to stringResource(shadingRes(it)) }, mat.shading, { s -> vm.updateLayer(id) { it.updateModel3D { c -> c.copy(material = c.material?.copy(shading = s)) } } })
                 }
             }
             LayerType.NULL -> {
@@ -602,11 +613,33 @@ private fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: Lay
                     SmallLabel(stringResource(if (c.aim == CameraAim.ROTATION) R.string.camera_rotation_hint else R.string.camera_orbit_hint))
                     TextButton(onClick = { vm.updateLayer(id) { it.updateCamera { c -> c.copy(position = null) } } }) { Text(stringResource(R.string.camera_reset)) }
                 }
+                SwitchRow(stringResource(R.string.depth_of_field), c.dof?.enabled == true) { on ->
+                    vm.updateLayer(id) { it.updateCamera { cam -> cam.copy(dof = (cam.dof ?: DepthOfField()).copy(enabled = on)) } }
+                }
+                if (c.dof?.enabled == true) {
+                    SmallLabel(stringResource(R.string.dof_hint))
+                    TextButton(onClick = {
+                        vm.updateLayer(id) { l ->
+                            // Focus on what the camera looks at (the target, or the centre of the composition).
+                            val scene = SceneEvaluator.evaluate(vm.current, vm.time.value).camera
+                            val d = (scene.target - scene.position).length()
+                            val prop = LayerProps.find(l, "camera.dof.focusDistance")?.let { LayerProps.typed<Float>(it) }
+                            prop?.setValue(l, vm.localTime(l), d) ?: l
+                        }
+                    }) { Text(stringResource(R.string.focus_on_target)) }
+                }
             }
             LayerType.LIGHT -> {
                 val l = layer.light ?: return@Column
                 SectionTitle(stringResource(R.string.layer_light))
                 ChoiceChips(LightKind.entries.map { it to stringResource(lightKindRes(it)) }, l.kind, { k -> vm.updateLayer(id) { it.updateLight { c -> c.copy(kind = k) } } })
+                if (l.kind != LightKind.AMBIENT) {
+                    SwitchRow(stringResource(R.string.cast_shadows), l.castShadows) { on -> vm.updateLayer(id) { it.updateLight { c -> c.copy(castShadows = on) } } }
+                    if (l.castShadows) {
+                        LabeledSlider(stringResource(R.string.shadow_softness), l.shadowSoftness, 0f..8f, { v -> vm.updateLayer(id, "soft:$id") { it.updateLight { c -> c.copy(shadowSoftness = v) } } }, { vm.endGesture() }, min = 0f, max = 8f)
+                        SmallLabel(stringResource(R.string.shadow_hint))
+                    }
+                }
             }
             LayerType.GROUP -> {
                 SectionTitle(stringResource(R.string.layer_group))
@@ -615,6 +648,52 @@ private fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: Lay
             }
         }
     }
+}
+
+/** Target id for the texture picker that sets the composition's environment panorama. */
+const val ENVIRONMENT_TARGET = "__environment__"
+
+@Composable
+private fun Text3DControls(vm: EditorViewModel, project: KnsProject, id: String, t: Text3D, onPickFont: () -> Unit) {
+    fun upd(key: String? = null, f: (Text3D) -> Text3D) = vm.updateLayer(id, key) { l -> l.updateObject3D { o -> o.copy(text = f(o.text ?: Text3D())) } }
+    var editing by remember { mutableStateOf(false) }
+    SmallLabel(stringResource(R.string.prim_text3d))
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(KColors.SurfaceHigh)
+            .clickable { editing = true }
+            .padding(10.dp),
+    ) { Text(t.content, maxLines = 4, overflow = TextOverflow.Ellipsis) }
+    if (editing) {
+        TextInputDialog(stringResource(R.string.edit_text), t.content, onDismiss = { editing = false }, multiline = true) { s ->
+            upd { it.copy(content = s) }
+            editing = false
+        }
+    }
+    SmallLabel(stringResource(R.string.font))
+    val fontAssets = project.assets.filter { it.type == AssetType.FONT }
+    val fontOptions = SYSTEM_FONTS.map { ("family:$it") to it } + fontAssets.map { ("asset:${it.id}") to (it.name ?: it.id) }
+    val selectedFont = t.font.asset?.let { "asset:$it" } ?: "family:${t.font.family}"
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        ChoiceChips(fontOptions, selectedFont, { opt ->
+            upd { c -> c.copy(font = if (opt.startsWith("asset:")) c.font.copy(asset = opt.removePrefix("asset:")) else c.font.copy(family = opt.removePrefix("family:"), asset = null)) }
+        }, Modifier.weight(1f))
+        IconButton(onClick = onPickFont) { Icon(Icons.Filled.Add, stringResource(R.string.import_font)) }
+    }
+    LabeledSlider(stringResource(R.string.font_weight), t.font.weight.toFloat(), 100f..900f, { w ->
+        val snapped = ((w / 100f).toInt().coerceIn(1, 9)) * 100
+        upd("t3w:$id") { it.copy(font = it.font.copy(weight = snapped)) }
+    }, { vm.endGesture() })
+    LabeledSlider(stringResource(R.string.prop_font_size), t.fontSize, 20f..800f, { v -> upd("t3s:$id") { it.copy(fontSize = v) } }, { vm.endGesture() }, min = 4f, max = 2000f)
+    LabeledSlider(stringResource(R.string.text3d_depth), t.depth, 1f..600f, { v -> upd("t3d:$id") { it.copy(depth = v, bevel = it.bevel.coerceAtMost(v / 2f)) } }, { vm.endGesture() }, min = 1f, max = 2000f)
+    LabeledSlider(stringResource(R.string.text3d_bevel), t.bevel, 0f..(t.depth / 2f).coerceAtLeast(0.1f), { v -> upd("t3b:$id") { it.copy(bevel = v.coerceIn(0f, it.depth / 2f)) } }, { vm.endGesture() }, min = 0f, max = t.depth / 2f)
+    SmallLabel(stringResource(R.string.alignment))
+    ChoiceChips(
+        listOf(TextAlign.LEFT to stringResource(R.string.align_left), TextAlign.CENTER to stringResource(R.string.align_center), TextAlign.RIGHT to stringResource(R.string.align_right)),
+        t.align, { a -> upd { it.copy(align = a) } },
+    )
 }
 
 @Composable
@@ -930,7 +1009,7 @@ private fun LayerSettings(vm: EditorViewModel, project: KnsProject, layer: Layer
 }
 
 @Composable
-private fun CompositionSettings(vm: EditorViewModel, project: KnsProject) {
+private fun CompositionSettings(vm: EditorViewModel, project: KnsProject, onPickTexture: (String) -> Unit) {
     val comp = project.composition
     var renaming by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
@@ -964,6 +1043,20 @@ private fun CompositionSettings(vm: EditorViewModel, project: KnsProject) {
         SwitchRow(stringResource(R.string.enabled), comp.motionBlur.enabled) { v -> upd { it.copy(motionBlur = it.motionBlur.copy(enabled = v)) } }
         LabeledSlider(stringResource(R.string.shutter_angle), comp.motionBlur.shutterAngle, 0f..360f, { v -> upd("sh") { it.copy(motionBlur = it.motionBlur.copy(shutterAngle = v)) } }, { vm.endGesture() }, suffix = "°", min = 0f, max = 720f)
         LabeledSlider(stringResource(R.string.samples), comp.motionBlur.samples.toFloat(), 2f..16f, { v -> upd("smp") { it.copy(motionBlur = it.motionBlur.copy(samples = v.toInt().coerceIn(2, 64))) } }, { vm.endGesture() }, min = 2f, max = 64f)
+        SectionTitle(stringResource(R.string.environment_3d))
+        val env = comp.environment
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SmallLabel(stringResource(R.string.environment_image) + ": " + (env.asset?.let { a -> project.asset(a)?.name ?: a } ?: stringResource(R.string.environment_studio)), Modifier.weight(1f))
+            TextButton(onClick = { onPickTexture(ENVIRONMENT_TARGET) }) { Text(stringResource(R.string.choose)) }
+            if (env.asset != null) {
+                TextButton(onClick = { upd { it.copy(environment = it.environment.copy(asset = null)) } }) { Text(stringResource(R.string.remove)) }
+            }
+        }
+        SmallLabel(stringResource(R.string.environment_hint))
+        LabeledSlider(stringResource(R.string.prop_intensity), env.intensity, 0f..4f, { v -> upd("envI") { it.copy(environment = it.environment.copy(intensity = v)) } }, { vm.endGesture() }, min = 0f, max = 10f)
+        if (env.asset != null) {
+            LabeledSlider(stringResource(R.string.prop_rotation), env.rotation, -180f..180f, { v -> upd("envR") { it.copy(environment = it.environment.copy(rotation = v)) } }, { vm.endGesture() }, suffix = "°")
+        }
     }
     if (renaming) {
         TextInputDialog(stringResource(R.string.rename), project.meta.title, onDismiss = { renaming = false }) { vm.rename(it); renaming = false }

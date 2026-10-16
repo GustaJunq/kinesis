@@ -363,4 +363,26 @@
     <string name="easing_cyclic">Cíclico</string>
     <string name="cyclic_info">cíclico · offset %1$s · %2$s ondas</string>
     <string name="cyclic_hint">Alça superior: offset (deslize para deslocar a onda). Alça inferior: quantidade (deslize para ter mais ou menos ondas).</string>
+    <string name="prim_text3d">Texto 3D</string>
+    <string name="shading">Sombreamento</string>
+    <string name="shading_pbr">Realista</string>
+    <string name="shading_flat">Facetado</string>
+    <string name="shading_toon">Cartoon</string>
+    <string name="shading_wireframe">Aramado</string>
+    <string name="prop_focus_distance">Distância de foco</string>
+    <string name="prop_focus_range">Faixa nítida</string>
+    <string name="prop_dof_blur">Desfoque</string>
+    <string name="prop_shadow_darkness">Força da sombra</string>
+    <string name="environment_3d">Ambiente 3D</string>
+    <string name="environment_image">Panorama</string>
+    <string name="environment_studio">Estúdio (padrão)</string>
+    <string name="environment_hint">Uma imagem 360° equirretangular (2:1) que os objetos 3D refletem e que os ilumina.</string>
+    <string name="depth_of_field">Profundidade de campo</string>
+    <string name="dof_hint">Camadas 3D longe da distância de foco ficam desfocadas.</string>
+    <string name="focus_on_target">Focar no que a câmera olha</string>
+    <string name="cast_shadows">Projetar sombras</string>
+    <string name="shadow_softness">Suavidade da sombra</string>
+    <string name="shadow_hint">Objetos 3D projetam sombra uns nos outros (uma luz com sombra por quadro).</string>
+    <string name="text3d_depth">Profundidade</string>
+    <string name="text3d_bevel">Chanfro</string>
 </resources>

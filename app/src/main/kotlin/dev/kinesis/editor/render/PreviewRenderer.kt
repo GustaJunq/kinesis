@@ -19,6 +19,8 @@ data class PreviewState(
     val playing: Boolean,
     /** Changes when the project's media files change, to flush GPU caches. */
     val mediaRevision: Int,
+    /** 3D quality of the preview: 0 low, 1 medium, 2 high (shadow map size, depth-of-field taps). */
+    val quality3D: Int = 1,
 )
 
 /** Letterboxed area of the composition inside the view, in view pixels (origin top-left). */
@@ -102,7 +104,8 @@ class PreviewRenderer(
             val outH = (outW * p.composition.height.toFloat() / p.composition.width).roundToInt().coerceAtLeast(16)
             val scene = SceneEvaluator.evaluate(p, s.time)
             val samples = if (s.playing) min(3, p.composition.motionBlur.samples) else p.composition.motionBlur.samples
-            val target = comp.render(p, scene, outW, outH, RenderSettings(motionBlurSamples = samples, preview = s.playing))
+            val (shadowSize, dofSamples) = RenderSettings.quality3D(s.quality3D)
+            val target = comp.render(p, scene, outW, outH, RenderSettings(motionBlurSamples = samples, preview = s.playing, shadowMapSize = shadowSize, dofSamples = dofSamples))
             GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
             comp.present(target, vp.left.roundToInt(), (viewH - vp.top - vp.height).roundToInt(), vp.width.roundToInt(), vp.height.roundToInt())
 

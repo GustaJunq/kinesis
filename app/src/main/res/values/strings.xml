@@ -363,4 +363,26 @@
     <string name="easing_cyclic">Cyclic</string>
     <string name="cyclic_info">cyclic · offset %1$s · %2$s waves</string>
     <string name="cyclic_hint">Top handle: offset (slide it to shift the wave). Bottom handle: quantity (slide it to add or remove waves).</string>
+    <string name="prim_text3d">3D text</string>
+    <string name="shading">Shading</string>
+    <string name="shading_pbr">Realistic</string>
+    <string name="shading_flat">Flat</string>
+    <string name="shading_toon">Toon</string>
+    <string name="shading_wireframe">Wireframe</string>
+    <string name="prop_focus_distance">Focus distance</string>
+    <string name="prop_focus_range">Sharp range</string>
+    <string name="prop_dof_blur">Blur</string>
+    <string name="prop_shadow_darkness">Shadow darkness</string>
+    <string name="environment_3d">3D environment</string>
+    <string name="environment_image">Panorama</string>
+    <string name="environment_studio">Studio (default)</string>
+    <string name="environment_hint">An equirectangular 360° image (2:1) that 3D objects reflect and are lit by.</string>
+    <string name="depth_of_field">Depth of field</string>
+    <string name="dof_hint">3D layers away from the focus distance are blurred.</string>
+    <string name="focus_on_target">Focus on what the camera looks at</string>
+    <string name="cast_shadows">Cast shadows</string>
+    <string name="shadow_softness">Shadow softness</string>
+    <string name="shadow_hint">3D objects cast shadows on each other (one shadow-casting light per frame).</string>
+    <string name="text3d_depth">Depth</string>
+    <string name="text3d_bevel">Bevel</string>
 </resources>

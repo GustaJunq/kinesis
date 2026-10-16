@@ -1,11 +1,13 @@
 #version 300 es
 precision highp float;
-// Metallic-roughness shading (GGX + Lambert) with up to 4 lights and a procedural studio
-// environment for reflections. World axes: +y down, +z away from the viewer.
+// Metallic-roughness shading (GGX + Lambert) with up to 4 lights, one shadow-casting light, and an
+// environment for reflections: a panorama (equirectangular image) or a procedural studio.
+// Shading modes: 0 PBR, 1 flat (face normals), 2 toon, 3 wireframe. World axes: +y down, +z away from the viewer.
 
 in vec3 v_worldPos;
 in vec3 v_normal;
 in vec2 v_uv;
+in vec3 v_bary;
 
 uniform vec4 u_baseColor;      // sRGB, straight alpha
 uniform float u_metallic;
@@ -24,6 +26,22 @@ uniform vec3 u_lightColor[4];  // linear radiance
 uniform vec3 u_lightPos[4];
 uniform vec3 u_lightDir[4];    // direction the light travels
 uniform float u_lightRadius[4];
+
+uniform int u_shading;
+uniform float u_wireWidth;     // output pixels
+
+uniform float u_envScale;      // composition environment intensity
+uniform float u_envMapOn;
+uniform sampler2D u_envMap;    // equirectangular, mipmapped
+uniform float u_envMaxLod;
+uniform float u_envRotation;   // turns (0..1)
+
+uniform int u_shadowLight;     // index of the shadow-casting light, -1 for none
+uniform highp sampler2DShadow u_shadowMap;
+uniform mat4 u_shadowMatrix;   // world -> shadow map clip space
+uniform vec2 u_shadowTexel;
+uniform float u_shadowDarkness;
+uniform float u_shadowSoftness;
 
 out vec4 fragColor;
 
@@ -66,6 +84,35 @@ vec3 fresnel(float cosTheta, vec3 f0) {
     return f0 + (1.0 - f0) * pow(1.0 - cosTheta, 5.0);
 }
 
+vec3 envSample(vec3 dir, float lod) {
+    // +y is down: "up" is -y.
+    float u = atan(dir.z, dir.x) / (2.0 * PI) + 0.5 + u_envRotation;
+    float v = acos(clamp(-dir.y, -1.0, 1.0)) / PI;
+    return toLinear(textureLod(u_envMap, vec2(u, v), lod).rgb);
+}
+
+vec3 reflection(vec3 dir, float roughness) {
+    if (u_envMapOn > 0.5) return envSample(dir, roughness * u_envMaxLod) * u_envScale;
+    return environment(dir, roughness) * u_envIntensity * u_envScale;
+}
+
+// 1 = lit, 0 = in shadow (percentage-closer filtering, 3x3 taps spread by the softness).
+float shadowVisibility(vec3 N, vec3 L) {
+    vec4 c = u_shadowMatrix * vec4(v_worldPos, 1.0);
+    vec3 p = c.xyz / c.w * 0.5 + 0.5;
+    if (p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0 || p.z >= 1.0) return 1.0;
+    float bias = mix(0.0025, 0.0006, clamp(dot(N, L), 0.0, 1.0));
+    if (u_shadowSoftness < 0.01) return texture(u_shadowMap, vec3(p.xy, p.z - bias));
+    float sum = 0.0;
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            vec2 o = vec2(float(x), float(y)) * u_shadowTexel * u_shadowSoftness;
+            sum += texture(u_shadowMap, vec3(p.xy + o, p.z - bias));
+        }
+    }
+    return sum / 9.0;
+}
+
 // Analytic approximation of the split-sum environment BRDF (Karis).
 vec3 envBrdf(vec3 f0, float roughness, float NdotV) {
     vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
@@ -77,13 +124,29 @@ vec3 envBrdf(vec3 f0, float roughness, float NdotV) {
 }
 
 void main() {
-    vec3 N = normalize(v_normal);
-    if (!gl_FrontFacing) N = -N;
-    vec3 V = normalize(u_cameraPos - v_worldPos);
-    float NdotV = max(dot(N, V), 0.001);
-
     vec4 base = u_baseColor;
     if (u_hasTexture > 0.5) base *= texture(u_baseTexture, v_uv);
+
+    if (u_shading == 3) {
+        // Wireframe: anti-aliased edges, unlit.
+        vec3 w = fwidth(v_bary) * u_wireWidth;
+        vec3 s = smoothstep(w * 0.5, w, v_bary);
+        float edge = 1.0 - min(min(s.x, s.y), s.z);
+        if (edge < 0.01) discard;
+        vec3 wire = clamp(base.rgb + u_emissive, 0.0, 1.0);
+        float wa = edge * base.a * u_opacity;
+        fragColor = vec4(wire * wa, wa);
+        return;
+    }
+
+    vec3 V = normalize(u_cameraPos - v_worldPos);
+    vec3 N = normalize(v_normal);
+    if (!gl_FrontFacing) N = -N;
+    if (u_shading == 1) {
+        N = normalize(cross(dFdx(v_worldPos), dFdy(v_worldPos)));
+        if (dot(N, V) < 0.0) N = -N;
+    }
+    float NdotV = max(dot(N, V), 0.001);
     vec3 albedo = toLinear(base.rgb);
     float metallic = clamp(u_metallic, 0.0, 1.0);
     float roughness = clamp(u_roughness, 0.03, 1.0);
@@ -91,6 +154,7 @@ void main() {
     float alpha = roughness * roughness;
 
     vec3 color = vec3(0.0);
+    bool toon = u_shading == 2;
     for (int i = 0; i < 4; i++) {
         if (i >= u_lightCount) break;
         vec3 L;
@@ -106,7 +170,14 @@ void main() {
         }
         float NdotL = max(dot(N, L), 0.0);
         if (NdotL <= 0.0) continue;
+        if (i == u_shadowLight) attenuation *= mix(1.0, shadowVisibility(N, L), u_shadowDarkness);
         vec3 H = normalize(V + L);
+        if (toon) {
+            float band = NdotL > 0.55 ? 1.0 : (NdotL > 0.2 ? 0.55 : 0.25);
+            float spec = step(0.94, max(dot(N, H), 0.0)) * (1.0 - roughness);
+            color += (albedo * band + vec3(spec) * 0.6) * u_lightColor[i] * attenuation;
+            continue;
+        }
         float NdotH = max(dot(N, H), 0.0);
         vec3 F = fresnel(max(dot(H, V), 0.0), f0);
         float D = distributionGGX(NdotH, alpha);
@@ -118,10 +189,16 @@ void main() {
         color += (kd * albedo / PI + specular) * radiance * NdotL;
     }
 
-    vec3 R = reflect(-V, N);
-    vec3 envSpec = environment(R, roughness) * u_envIntensity;
     vec3 ambientDiffuse = u_ambient * albedo * (1.0 - metallic);
-    color += ambientDiffuse + envSpec * envBrdf(f0, roughness, NdotV);
+    if (u_envMapOn > 0.5) ambientDiffuse += envSample(N, max(u_envMaxLod - 1.0, 0.0)) * albedo * (1.0 - metallic) * u_envScale * 0.6;
+    if (toon) {
+        color += ambientDiffuse + albedo * 0.08;
+        // Darken the silhouette like an ink line.
+        color *= mix(1.0, 0.25, smoothstep(0.62, 0.72, 1.0 - NdotV));
+    } else {
+        vec3 R = reflect(-V, N);
+        color += ambientDiffuse + reflection(R, roughness) * envBrdf(f0, roughness, NdotV);
+    }
     color += toLinear(u_emissive) * 2.0;
 
     vec3 mapped = toSrgb(aces(color));

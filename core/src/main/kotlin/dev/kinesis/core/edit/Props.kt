@@ -12,6 +12,7 @@ import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.model.CameraAim
 import dev.kinesis.core.model.CameraContent
+import dev.kinesis.core.model.DepthOfField
 import dev.kinesis.core.model.Effect
 import dev.kinesis.core.model.EffectParam
 import dev.kinesis.core.model.EffectRegistry
@@ -243,6 +244,12 @@ object LayerProps {
                             add(v3prop("camera.target", Vec3Kind(), { it.camera!!.target }, { l, a -> l.copy(camera = l.camera!!.copy(target = a)) }))
                         }
                         add(fprop("camera.fov", FloatKind(10f, 120f, PropUnit.DEG, 1f, 170f), { it.camera!!.fov }, { l, a -> l.copy(camera = l.camera!!.copy(fov = a)) }))
+                        if (cam?.dof != null) {
+                            fun dof(l: Layer, f: (DepthOfField) -> DepthOfField) = l.copy(camera = l.camera!!.copy(dof = f(l.camera.dof!!)))
+                            add(fprop("camera.dof.focusDistance", FloatKind(100f, 8000f, PropUnit.PX, 1f), { it.camera!!.dof!!.focusDistance }, { l, a -> dof(l) { it.copy(focusDistance = a) } }))
+                            add(fprop("camera.dof.range", FloatKind(0f, 3000f, PropUnit.PX, 0f), { it.camera!!.dof!!.range }, { l, a -> dof(l) { it.copy(range = a) } }))
+                            add(fprop("camera.dof.blur", FloatKind(0f, 80f, PropUnit.PX, 0f, 200f), { it.camera!!.dof!!.blur }, { l, a -> dof(l) { it.copy(blur = a) } }))
+                        }
                     },
                 ),
             )
@@ -255,6 +262,10 @@ object LayerProps {
                         v3prop("light.position", Vec3Kind(PropUnit.PX, 1f, -5000f, 5000f), { it.light!!.position }, { l, a -> l.copy(light = l.light!!.copy(position = a)) }),
                         v3prop("light.target", Vec3Kind(), { it.light!!.target }, { l, a -> l.copy(light = l.light!!.copy(target = a)) }),
                         fprop("light.radius", FloatKind(100f, 10000f, PropUnit.PX, 1f), { it.light!!.radius }, { l, a -> l.copy(light = l.light!!.copy(radius = a)) }),
+                    ) + (
+                        if (layer.light?.castShadows == true) listOf(
+                            fprop("light.shadowDarkness", FloatKind(0f, 1f, PropUnit.PERCENT, 0f, 1f, 100f), { it.light!!.shadowDarkness }, { l, a -> l.copy(light = l.light!!.copy(shadowDarkness = a)) }),
+                        ) else emptyList()
                     ),
                 ),
             )

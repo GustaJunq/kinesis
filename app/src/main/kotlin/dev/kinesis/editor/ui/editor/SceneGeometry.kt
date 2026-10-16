@@ -60,7 +60,7 @@ class SceneGeometry(private val typefaces: TypefaceProvider, private val project
                 if (r.width() < 2f && r.height() < 2f) null else r
             }
             is Content2D.Image -> p.asset(c.assetId)?.let { a -> sized(a.width, a.height) }
-            is Content2D.Video -> p.asset(c.assetId)?.let { a -> sized(a.width, a.height) }
+            is Content2D.Video -> p.asset(c.assetId)?.let { a -> sized(if (c.alphaPacked) a.width?.div(2) else a.width, a.height) }
         }
     }
 
@@ -81,7 +81,9 @@ class SceneGeometry(private val typefaces: TypefaceProvider, private val project
         }
         is Node3D -> {
             val pts = ArrayList<Vec2>()
-            for (x in listOf(-0.5f, 0.5f)) for (y in listOf(-0.5f, 0.5f)) for (z in listOf(-0.5f, 0.5f)) {
+            // Primitives and models fill a unit cube scaled by the model matrix; text is built in pixels.
+            val half = n.text3d?.let { textHalfExtents(it) } ?: Vec3(0.5f, 0.5f, 0.5f)
+            for (x in listOf(-half.x, half.x)) for (y in listOf(-half.y, half.y)) for (z in listOf(-half.z, half.z)) {
                 camera.project(n.model.transformPoint(Vec3(x, y, z)))?.let { pts += n.post.apply(it) }
             }
             val center = camera.project(n.model.transformPoint(Vec3.ZERO))?.let { n.post.apply(it) }
@@ -110,6 +112,18 @@ class SceneGeometry(private val typefaces: TypefaceProvider, private val project
         val center = camera.project(n.model.transformPoint(Vec3.ZERO))?.let { n.post.apply(it) }
         if (pts.isEmpty() || center == null) return null
         return Outline.Box3D(n.layerId, Vec2(pts.minOf { it.x }, pts.minOf { it.y }), Vec2(pts.maxOf { it.x }, pts.maxOf { it.y }), center)
+    }
+
+    private val textPaint = android.graphics.Paint()
+
+    /** Half size of extruded text, measured like the mesh is laid out (without building it). */
+    private fun textHalfExtents(t: dev.kinesis.core.model.Text3D): Vec3 {
+        textPaint.typeface = typefaces.get(t.font)
+        textPaint.textSize = t.fontSize
+        val lines = t.content.ifEmpty { " " }.split('\n')
+        val w = lines.maxOf { textPaint.measureText(it) }
+        val h = t.fontSize * (1f + (lines.size - 1) * t.lineHeight)
+        return Vec3(w / 2f, h / 2f, t.depth / 2f)
     }
 
     /** Flattened visual nodes, top-most first (for hit testing). */

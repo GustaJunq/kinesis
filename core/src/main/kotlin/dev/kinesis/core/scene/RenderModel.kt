@@ -188,7 +188,8 @@ sealed class Content2D {
 
     class Image(val assetId: String) : Content2D()
 
-    class Video(val assetId: String, val sourceTime: Double) : Content2D()
+    /** [alphaPacked]: colour in the left half of each frame, alpha in the right half (see MediaContent). */
+    class Video(val assetId: String, val sourceTime: Double, val alphaPacked: Boolean = false) : Content2D()
 }
 
 class Node2D(

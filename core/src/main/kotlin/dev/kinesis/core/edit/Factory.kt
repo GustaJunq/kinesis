@@ -27,6 +27,7 @@ import dev.kinesis.core.model.ProjectMeta
 import dev.kinesis.core.model.ShapeContent
 import dev.kinesis.core.model.ShapeKind
 import dev.kinesis.core.model.TextContent
+import dev.kinesis.core.model.Text3D
 import dev.kinesis.core.model.Transform2D
 import dev.kinesis.core.model.Transform3D
 import kotlin.math.min
@@ -107,6 +108,20 @@ object Factory {
         return base(project, LayerType.OBJECT3D, name, start).copy(
             transform3d = Transform3D(rotation = anim(if (primitive == Primitive.PLANE) Vec3.ZERO else Vec3(-20f, 30f, 0f))),
             object3d = Object3DContent(primitive = primitive, size = anim(size), material = Material(color = anim(color), metallic = anim(0.1f), roughness = anim(0.4f))),
+        )
+    }
+
+    /** Extruded 3D text sized to the composition. */
+    fun text3d(project: KnsProject, start: Double, content: String, name: String): Layer {
+        val fontSize = (min(project.composition.width, project.composition.height) * 0.16f).coerceIn(24f, 600f)
+        val color = PALETTE[LayerTree.all(project).size % PALETTE.size]
+        return base(project, LayerType.OBJECT3D, name, start).copy(
+            transform3d = Transform3D(rotation = anim(Vec3(-10f, 15f, 0f))),
+            object3d = Object3DContent(
+                primitive = Primitive.TEXT,
+                material = Material(color = anim(color), metallic = anim(0.2f), roughness = anim(0.35f)),
+                text = Text3D(content = content, fontSize = fontSize, depth = fontSize * 0.3f, bevel = fontSize * 0.03f),
+            ),
         )
     }
 

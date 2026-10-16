@@ -206,7 +206,7 @@ fun layerIcon(layer: Layer): ImageVector = when (layer.type) {
 
 enum class AddAction {
     TEXT, RECTANGLE, ELLIPSE, POLYGON, STAR, LINE, IMAGE, VIDEO, AUDIO,
-    CUBE, SPHERE, CYLINDER, CONE, TORUS, PLANE, NULL_2D, NULL_3D, MODEL, CAMERA, LIGHT_DIRECTIONAL, LIGHT_POINT, LIGHT_AMBIENT,
+    CUBE, SPHERE, CYLINDER, CONE, TORUS, PLANE, TEXT3D, NULL_2D, NULL_3D, MODEL, CAMERA, LIGHT_DIRECTIONAL, LIGHT_POINT, LIGHT_AMBIENT,
 }
 
 private class AddItem(val action: AddAction, val label: Int, val icon: ImageVector)
@@ -238,6 +238,7 @@ fun AddSheet(section: AddSection, onDismiss: () -> Unit, onAdd: (AddAction) -> U
             AddItem(AddAction.CONE, R.string.prim_cone, Icons.Filled.Category),
             AddItem(AddAction.TORUS, R.string.prim_torus, Icons.Filled.DonutLarge),
             AddItem(AddAction.PLANE, R.string.prim_plane, Icons.Filled.Square),
+            AddItem(AddAction.TEXT3D, R.string.prim_text3d, Icons.Filled.TextFields),
             AddItem(AddAction.NULL_3D, R.string.null_3d, Icons.Filled.CenterFocusStrong),
             AddItem(AddAction.MODEL, R.string.layer_model3d, Icons.Filled.Token),
         ),

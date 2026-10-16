@@ -41,6 +41,10 @@ fun propLabelRes(key: String): Int = when (key) {
     "material.emissive" -> R.string.prop_emissive
     "camera.target", "light.target" -> R.string.prop_target
     "camera.fov" -> R.string.prop_fov
+    "camera.dof.focusDistance" -> R.string.prop_focus_distance
+    "camera.dof.range" -> R.string.prop_focus_range
+    "camera.dof.blur" -> R.string.prop_dof_blur
+    "light.shadowDarkness" -> R.string.prop_shadow_darkness
     "light.intensity", "effect.intensity" -> R.string.prop_intensity
     "light.radius", "effect.radius" -> R.string.prop_radius
     "mask.feather" -> R.string.prop_feather
@@ -100,6 +104,14 @@ fun primitiveRes(p: Primitive): Int = when (p) {
     Primitive.TORUS -> R.string.prim_torus
     Primitive.PLANE -> R.string.prim_plane
     Primitive.EMPTY -> R.string.prim_empty
+    Primitive.TEXT -> R.string.prim_text3d
+}
+
+fun shadingRes(s: dev.kinesis.core.model.Shading): Int = when (s) {
+    dev.kinesis.core.model.Shading.PBR -> R.string.shading_pbr
+    dev.kinesis.core.model.Shading.FLAT -> R.string.shading_flat
+    dev.kinesis.core.model.Shading.TOON -> R.string.shading_toon
+    dev.kinesis.core.model.Shading.WIREFRAME -> R.string.shading_wireframe
 }
 
 fun lightKindRes(k: LightKind): Int = when (k) {

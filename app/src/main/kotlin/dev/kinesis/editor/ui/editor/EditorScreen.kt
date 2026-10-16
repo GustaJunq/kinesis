@@ -177,14 +177,21 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         val target = vm.selection.value
         if (uri != null) {
             vm.importMedia(uri, AssetType.FONT, onImported = { asset ->
-                if (target != null) vm.updateLayer(target) { l -> l.updateText { t -> t.copy(font = t.font.copy(asset = asset.id)) } }
+                if (target != null) vm.updateLayer(target) { l ->
+                    l.updateText { t -> t.copy(font = t.font.copy(asset = asset.id)) }
+                        .updateObject3D { o -> o.copy(text = (o.text ?: dev.kinesis.core.model.Text3D()).let { t3 -> t3.copy(font = t3.font.copy(asset = asset.id)) }) }
+                }
             }) { _, _ -> null }
         }
     }
     val pickTexture = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         val target = textureTarget
         textureTarget = null
-        if (uri != null && target != null) {
+        if (uri != null && target == ENVIRONMENT_TARGET) {
+            vm.importMedia(uri, AssetType.IMAGE, onImported = { asset ->
+                vm.edit { p -> p.copy(composition = p.composition.copy(environment = p.composition.environment.copy(asset = asset.id))) }
+            }) { _, _ -> null }
+        } else if (uri != null && target != null) {
             vm.importMedia(uri, AssetType.IMAGE, onImported = { asset ->
                 vm.updateLayer(target) { l ->
                     l.updateObject3D { o -> o.copy(material = o.material.copy(texture = asset.id)) }
@@ -222,6 +229,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
             AddAction.AUDIO -> pickAudio.launch(arrayOf("audio/*"))
             AddAction.MODEL -> pickModel.launch(arrayOf("model/gltf-binary", "model/gltf+json", "application/octet-stream", "*/*"))
             AddAction.CAMERA -> vm.addLayer(Factory.camera(p, t, context.getString(R.string.layer_camera)))
+            AddAction.TEXT3D -> vm.addLayer(Factory.text3d(p, t, context.getString(R.string.default_text), context.getString(R.string.prim_text3d)))
             AddAction.NULL_2D -> vm.addLayer(Factory.nullObject(p, t, false, context.getString(R.string.layer_null)))
             AddAction.NULL_3D -> vm.addLayer(Factory.nullObject(p, t, true, context.getString(R.string.null_3d)))
             else -> {
