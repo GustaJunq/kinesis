@@ -12,8 +12,10 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
-- Schema oficial: `schema/knsproj-v5.schema.json` (formato versão 5; arquivos v1 a v4 ainda abrem e são migrados). Escreva sempre `"formatVersion": 5`.
-  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`.
+- Schema oficial: `schema/knsproj-v6.schema.json` (formato versão 6; arquivos v1 a v5 ainda abrem e são migrados). Escreva sempre `"formatVersion": 6`.
+  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`;
+  v6 texto 3D (`primitive: "text"`), `material.shading`, sombras (`light.castShadows`), profundidade de campo (`camera.dof`),
+  ambiente HDRI (`composition.environment`) e vídeo com transparência (`video.alphaPacked`).
 - Expressões (APIs, unidades, matriz de compatibilidade): `docs/expressoes.md`
 - Lista completa de efeitos (parâmetros, padrões, faixas): tabela da seção 7 de `docs/knsproj.md` ou `tools/knsproj/effects.json`
 - Exemplos: `.claude/skills/knsproj/examples/` (veja "Exemplos" abaixo)
@@ -46,6 +48,8 @@ Tudo em `.claude/skills/knsproj/examples/`; cada pasta tem `project.json` e `REA
 | `basicos/nulo-3d-rig` | câmera presa a um nulo 3D (`null.threeD`) que gira: órbita/rig |
 | `basicos/camera-rotacao` | câmera com `aim: "rotation"`: dolly (posição) e pan (rotação) independentes |
 | `basicos/model3d` | modelo GLB com câmera girando |
+| `basicos/texto-3d-sombras` | título 3D extrudado (profundidade, bevel) sobre um chão, com sombra projetada e profundidade de campo |
+| `basicos/ambiente-hdri` | panorama equiretangular iluminando e refletindo nos objetos; sombreamento `flat`, `toon` e `wireframe` |
 | `receitas/lower-third` | tarja de nome/cargo em 16:9 |
 | `receitas/intro-logo-glow` | abertura de logo com brilho |
 | `receitas/titulo-cinetico` | título animado com matte e motion blur |
@@ -160,11 +164,27 @@ e o objeto de conteúdo com o **mesmo nome do tipo**.
 { "id": "camera2", "type": "camera", "duration": 10, "camera": { "aim": "rotation", "position": [0, 0, -2600], "rotation": [0, -15, 0], "fov": 40 } }
 { "id": "luz", "type": "light", "duration": 10, "light": { "kind": "directional", "intensity": 1.3, "position": [-900, -1300, -1400] } }
 { "id": "ambiente", "type": "light", "duration": 10, "light": { "kind": "ambient", "color": "#A8C0FF", "intensity": 0.3 } }
+
+// Formato 6 — texto 3D extrudado com chanfro, luz com sombra e câmera com profundidade de campo
+{ "id": "titulo3d", "type": "object3d", "duration": 10,
+  "object3d": { "primitive": "text",
+                "text": { "content": "KINESIS", "font": { "family": "sans-serif", "weight": 900 }, "fontSize": 200, "depth": 70, "bevel": 6 },
+                "material": { "color": "#E8C547", "metallic": 0.9, "roughness": 0.3, "shading": "pbr" } } }
+{ "id": "sol", "type": "light", "duration": 10,
+  "light": { "kind": "directional", "intensity": 1.3, "position": [-600, -1400, -900], "castShadows": true, "shadowDarkness": 0.8, "shadowSoftness": 2 } }
+{ "id": "cam", "type": "camera", "duration": 10,
+  "camera": { "aim": "rotation", "position": [0, -250, -2200], "rotation": [-6, 0, 0], "fov": 40,
+              "dof": { "focusDistance": 2200, "range": 300, "blur": 22 } } }
+// Ambiente: em "composition": "environment": { "asset": "<id de imagem 2:1>", "intensity": 1.2, "rotation": 0 }
+// Vídeo com transparência (metade esquerda = cor, direita = alfa): "video": { "asset": "clip", "alphaPacked": true }
 ```
 
 Valores possíveis (o schema é a fonte da verdade):
 - `type` de camada: `text`, `shape`, `image`, `video`, `audio`, `group`, `object3d`, `model3d`, `camera`, `light`, `null`.
-- `shape.kind`: `rectangle`, `ellipse`, `polygon`, `star`, `path`. `primitive`: `cube`, `sphere`, `cylinder`, `cone`, `torus`, `plane`, `empty`.
+- `shape.kind`: `rectangle`, `ellipse`, `polygon`, `star`, `path`. `primitive`: `cube`, `sphere`, `cylinder`, `cone`, `torus`, `plane`, `text`, `empty`.
+- `material.shading`: `pbr` (padrão), `flat`, `toon`, `wireframe`. Texto 3D: `fontSize` 4–2000, `depth` 1–2000, `bevel` 0..`depth`/2
+  (o validador acusa `text3d.range`). Sombras: só `directional`/`point` com `castShadows`; `shadowSoftness` 0–8.
+  `camera.dof`: `focusDistance` ≈ distância da câmera ao objeto em foco (com a câmera em `[0, y, -2200]` e o objeto em z=0, ~2200).
 - Efeitos (`effects[].type`): 60 efeitos em 11 categorias (Cor e luz, Desfoque e nitidez, Distorção, Movimentar e
   transformar, Estilizar, Glitch, Desenho e borda, Procedimental, Fosco/máscara/chave, Tempo e transição, Utilitário).
   Consulte a tabela (seção 7 de `docs/knsproj.md`) antes de usar um efeito: os nomes dos parâmetros são exatos e o
@@ -234,6 +254,8 @@ Regras que evitam erro:
 - **3D:** uma câmera levemente acima (`y` negativo) e afastada dá profundidade; combine luz principal, contraluz
   colorida e ambiente fraca. Metais ficam bons com `metallic: 1` e `roughness` 0.15–0.35. Camadas `null` com `"threeD": true`
   servem de pivô para órbitas, rigs de câmera e grupos 3D (uma câmera/luz pode ser **filha** de um nulo 3D).
+  Para sombras visíveis, ponha um `plane` grande como chão (girado `[90, 0, 0]`, abaixo dos objetos) e uma luz com
+  `castShadows`. Profundidade de campo: foque no objeto principal e use `blur` 10–30 para não borrar demais.
 - **Profundidade 2D:** halos com `blur` grande, sombras suaves (`dropShadow`) e `motionBlur: true` em elementos rápidos.
 - **Oscilações regulares** (pêndulo, pulso, balanço): use 2 keyframes com `easing: {"cyclic": {…}}` em vez de dezenas de keyframes.
 - Termine animações antes do fim da composição ou use `transitionOut` para sair de forma limpa.
