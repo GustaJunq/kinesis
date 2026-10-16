@@ -102,6 +102,7 @@ import dev.kinesis.core.model.updateObject3D
 import dev.kinesis.core.model.updateShape
 import dev.kinesis.core.model.updateText
 import dev.kinesis.editor.R
+import dev.kinesis.editor.ui.settings.AppSettings
 import dev.kinesis.editor.ui.common.formatTime
 import dev.kinesis.editor.ui.theme.KColors
 import dev.kinesis.editor.ui.theme.KShapes
@@ -140,6 +141,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var propsFocus by remember { mutableStateOf<String?>(null) }
     var showExport by remember { mutableStateOf(false) }
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
+    var showGraph by remember { mutableStateOf(false) }
     var renderError by remember { mutableStateOf<String?>(null) }
     var tool3D by remember { mutableStateOf(Tool3D.MOVE) }
     var textureTarget by remember { mutableStateOf<String?>(null) }
@@ -147,6 +149,14 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
 
     LaunchedEffect(vm) { vm.notices.collect { snackbar.showSnackbar(it.text) } }
     DisposableEffect(vm) { onDispose { vm.pause(); vm.flushSave() } }
+    val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, vm) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_STOP) vm.onBackground()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     val loadError = vm.loadError
     if (loadError != null) {
@@ -372,6 +382,9 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                         val keyframe = animatable?.keyframes?.getOrNull(target.keyIndex)
                         if (layer == null || prop == null || animatable == null || keyframe == null) {
                             curveTarget = null
+                            showGraph = false
+                        } else if (showGraph) {
+                            GraphEditorPanel(vm, layer, prop, stringResource(propLabelRes(prop.labelKey)), onClose = { showGraph = false })
                         } else {
                             CurveEditorPanel(
                                 easing = keyframe.easing,
@@ -379,6 +392,13 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                                 onEasing = { vm.setEasing(layer.id, prop, target.keyIndex, it) },
                                 onLoop = { vm.setLoop(layer.id, prop, it) },
                                 onClose = { curveTarget = null },
+                                saved = AppSettings.savedEasings,
+                                onSave = { AppSettings.saveEasing(context, it) },
+                                onDeleteSaved = { AppSettings.deleteEasing(context, it) },
+                                clipboard = vm.easingClipboard,
+                                onCopy = { vm.copyEasing(it) },
+                                onApplyAll = { vm.setEasingAll(layer.id, prop, it) },
+                                onGraph = { showGraph = true },
                             )
                         }
                     }

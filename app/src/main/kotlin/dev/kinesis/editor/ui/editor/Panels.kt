@@ -322,6 +322,13 @@ fun CurveEditorPanel(
     onLoop: (dev.kinesis.core.anim.LoopMode) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    saved: List<Easing> = emptyList(),
+    onSave: ((Easing) -> Unit)? = null,
+    onDeleteSaved: ((Easing) -> Unit)? = null,
+    clipboard: Easing? = null,
+    onCopy: ((Easing) -> Unit)? = null,
+    onApplyAll: ((Easing) -> Unit)? = null,
+    onGraph: (() -> Unit)? = null,
 ) {
     var current by remember(easing) { mutableStateOf(easing) }
     var handles by remember(easing) { mutableStateOf(easing.bezierOrNull() ?: Easing.CubicBezier(0.42f, 0f, 0.58f, 1f)) }
@@ -469,10 +476,39 @@ fun CurveEditorPanel(
             PillChip(stringResource(R.string.loop_cycle), loop == dev.kinesis.core.anim.LoopMode.CYCLE, { onLoop(dev.kinesis.core.anim.LoopMode.CYCLE) })
             PillChip(stringResource(R.string.loop_pingpong), loop == dev.kinesis.core.anim.LoopMode.PINGPONG, { onLoop(dev.kinesis.core.anim.LoopMode.PINGPONG) })
         }
+        fun pick(e: Easing) {
+            current = e
+            e.bezierOrNull()?.let { handles = it }
+            (e as? Easing.Cyclic)?.let { wave = it }
+            onEasing(e)
+        }
+        if (onSave != null) {
+            OverlineLabel(stringResource(R.string.my_curves))
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                item { PillChip("+ " + stringResource(R.string.save_curve), selected = false, onClick = { onSave(current) }) }
+                items(saved) { e -> PillChip(savedLabel(e), selected = current == e, onClick = { pick(e) }) }
+            }
+            if (onDeleteSaved != null && current in saved) {
+                TextButton(onClick = { onDeleteSaved(current) }) { Text(stringResource(R.string.delete_saved_curve)) }
+            }
+        }
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            if (onCopy != null) item { TextButton(onClick = { onCopy(current) }) { Text(stringResource(R.string.copy_curve)) } }
+            if (clipboard != null) item { TextButton(onClick = { pick(clipboard) }) { Text(stringResource(R.string.paste_curve)) } }
+            if (onApplyAll != null) item { TextButton(onClick = { onApplyAll(current) }) { Text(stringResource(R.string.apply_to_all_keyframes)) } }
+            if (onGraph != null) item { TextButton(onClick = onGraph) { Text(stringResource(R.string.graph_editor)) } }
+        }
     }
 }
 
 private fun fmt(v: Float) = ((v * 100).roundToInt() / 100f).toString()
+
+/** Short label of a saved curve. */
+private fun savedLabel(e: Easing): String = when (e) {
+    is Easing.Preset -> easingLabel(e.preset)
+    is Easing.CubicBezier -> "(${fmt(e.x1)}, ${fmt(e.y1)}, ${fmt(e.x2)}, ${fmt(e.y2)})"
+    is Easing.Cyclic -> "∿ ${fmt(e.cycles)}×"
+}
 
 // ---------------------------------------------------------------------------------------- export
 

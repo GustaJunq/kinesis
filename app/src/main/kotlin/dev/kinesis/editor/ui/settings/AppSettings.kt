@@ -7,6 +7,11 @@ import android.content.res.Configuration
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.kinesis.core.anim.Easing
+import dev.kinesis.core.format.EasingSerializer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.jsonArray
 import java.util.Locale
 
 enum class ThemeMode(val id: String) {
@@ -35,12 +40,37 @@ object AppSettings {
     private const val THEME = "theme"
     private const val LANGUAGE = "language"
     private const val ONBOARDING = "onboarding_done"
+    private const val SAVED_EASINGS = "saved_easings"
+    private const val PREVIEW_SCALE = "preview_scale"
+    private const val PREVIEW_QUALITY_3D = "preview_quality_3d"
+    private const val MIRROR_DOCUMENTS = "mirror_documents"
+    private const val USE_PROXIES = "use_proxies"
 
     var themeMode by mutableStateOf(ThemeMode.DARK)
         private set
     var language by mutableStateOf(AppLanguage.SYSTEM)
         private set
     var onboardingDone by mutableStateOf(true)
+        private set
+
+    /** Curves the user saved in the curve editor, reusable on any keyframe. */
+    var savedEasings by mutableStateOf<List<Easing>>(emptyList())
+        private set
+
+    /** Preview resolution: 1 (full), 0.5 or 0.25 of the on-screen size. */
+    var previewScale by mutableStateOf(1f)
+        private set
+
+    /** 3D quality of the preview: 0 low, 1 medium, 2 high. Export always uses high. */
+    var previewQuality3D by mutableStateOf(1)
+        private set
+
+    /** Keep a copy of every project as a .knsproj in Documents/Kinesis (survives reinstalling the app). */
+    var mirrorToDocuments by mutableStateOf(true)
+        private set
+
+    /** Play heavy videos from light proxies in the editor (export always uses the originals). */
+    var useProxies by mutableStateOf(true)
         private set
 
     private var loaded = false
@@ -52,6 +82,52 @@ object AppSettings {
         themeMode = ThemeMode.of(p.getString(THEME, null))
         language = AppLanguage.of(p.getString(LANGUAGE, null))
         onboardingDone = p.getBoolean(ONBOARDING, false)
+        savedEasings = p.getString(SAVED_EASINGS, null)?.let(::decodeEasings).orEmpty()
+        previewScale = p.getFloat(PREVIEW_SCALE, 1f).takeIf { it in listOf(1f, 0.5f, 0.25f) } ?: 1f
+        previewQuality3D = p.getInt(PREVIEW_QUALITY_3D, 1).coerceIn(0, 2)
+        mirrorToDocuments = p.getBoolean(MIRROR_DOCUMENTS, true)
+        useProxies = p.getBoolean(USE_PROXIES, true)
+    }
+
+    fun saveEasing(context: Context, easing: Easing) {
+        if (easing in savedEasings) return
+        savedEasings = (savedEasings + easing).takeLast(MAX_SAVED_EASINGS)
+        prefs(context).edit().putString(SAVED_EASINGS, encodeEasings(savedEasings)).apply()
+    }
+
+    fun deleteEasing(context: Context, easing: Easing) {
+        savedEasings = savedEasings - easing
+        prefs(context).edit().putString(SAVED_EASINGS, encodeEasings(savedEasings)).apply()
+    }
+
+    fun setPreviewScale(context: Context, scale: Float) {
+        previewScale = scale
+        prefs(context).edit().putFloat(PREVIEW_SCALE, scale).apply()
+    }
+
+    fun setPreviewQuality3D(context: Context, level: Int) {
+        previewQuality3D = level.coerceIn(0, 2)
+        prefs(context).edit().putInt(PREVIEW_QUALITY_3D, previewQuality3D).apply()
+    }
+
+    fun setMirrorToDocuments(context: Context, on: Boolean) {
+        mirrorToDocuments = on
+        prefs(context).edit().putBoolean(MIRROR_DOCUMENTS, on).apply()
+    }
+
+    fun setUseProxies(context: Context, on: Boolean) {
+        useProxies = on
+        prefs(context).edit().putBoolean(USE_PROXIES, on).apply()
+    }
+
+    private const val MAX_SAVED_EASINGS = 24
+
+    private fun encodeEasings(list: List<Easing>): String = JsonArray(list.map { EasingSerializer.toJson(it) }).toString()
+
+    private fun decodeEasings(text: String): List<Easing> = try {
+        Json.parseToJsonElement(text).jsonArray.mapNotNull { runCatching { EasingSerializer.fromJson(it) }.getOrNull() }
+    } catch (e: Exception) {
+        emptyList()
     }
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)

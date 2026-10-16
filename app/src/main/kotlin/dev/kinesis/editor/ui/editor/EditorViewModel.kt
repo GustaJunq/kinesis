@@ -1,5 +1,10 @@
 package dev.kinesis.editor.ui.editor
 
+import dev.kinesis.editor.ui.settings.AppSettings
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import dev.kinesis.editor.R
 import android.app.Application
 import android.graphics.Bitmap
 import android.net.Uri
@@ -10,6 +15,8 @@ import dev.kinesis.core.anim.Easing
 import dev.kinesis.core.anim.KeyframeOps
 import dev.kinesis.core.edit.AnimMapper
 import dev.kinesis.core.edit.AnimProp
+import dev.kinesis.core.edit.KeyframeClip
+import dev.kinesis.core.edit.KeyframeClipboard
 import dev.kinesis.core.edit.History
 import dev.kinesis.core.edit.TimelineOps
 import dev.kinesis.core.edit.mapAnimatables
@@ -138,6 +145,64 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
             runCatching { pcm.prepare(loaded) }
             _audioRevision.value++
         }
+        if (error == null) {
+            store.beginSession(projectId)
+            // A version of the project as it was opened, to go back to.
+            viewModelScope.launch(Dispatchers.IO) { runCatching { store.snapshot(projectId, loaded) } }
+        }
+    }
+
+    // ------------------------------------------------------------------ versions and safety copies
+
+    private var lastSnapshot = System.currentTimeMillis()
+    private var lastMirror = 0L
+    @Volatile
+    private var mirrorPending = false
+
+    /** Saved versions of this project (newest first). */
+    fun snapshots(): List<ProjectStore.Snapshot> = store.snapshots(projectId)
+
+    /** Replaces the document by a saved version (the current state is saved as a version first, and can be undone). */
+    fun restoreSnapshot(snapshot: ProjectStore.Snapshot) {
+        val current = _project.value
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                store.snapshot(projectId, current)
+                val restored = store.loadSnapshot(snapshot)
+                withContext(Dispatchers.Main) {
+                    edit { restored }
+                    notify(text(R.string.version_restored))
+                }
+            } catch (e: Exception) {
+                notify(e.message ?: "Cannot restore", true)
+            }
+        }
+    }
+
+    /** After a save: a version every few minutes and the copy in Documents (throttled, in the background). */
+    private fun afterSave(project: KnsProject) {
+        val now = System.currentTimeMillis()
+        if (now - lastSnapshot > SNAPSHOT_INTERVAL_MS) {
+            lastSnapshot = now
+            runCatching { store.snapshot(projectId, project) }
+        }
+        mirrorPending = true
+        if (now - lastMirror > MIRROR_INTERVAL_MS) mirrorNow()
+    }
+
+    private fun mirrorNow() {
+        if (!AppSettings.mirrorToDocuments || !mirrorPending || loadError != null) return
+        mirrorPending = false
+        lastMirror = System.currentTimeMillis()
+        val id = projectId
+        val st = store
+        backgroundScope.launch {
+            try {
+                st.mirrorToDocuments(id)
+            } catch (e: Exception) {
+                Log.w("Kinesis", "copy to Documents failed", e)
+            }
+        }
     }
 
     val current: KnsProject get() = _project.value
@@ -207,7 +272,9 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
             if (loadError != null || !dirty) return
             dirty = false
             try {
-                store.save(projectId, _project.value)
+                val saved = _project.value
+                store.save(projectId, saved)
+                afterSave(saved)
             } catch (e: Exception) {
                 dirty = true
                 Log.e("Kinesis", "save failed", e)
@@ -220,6 +287,17 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         saveJob?.cancel()
         saveJob = null
         viewModelScope.launch(Dispatchers.IO) { saveNow() }
+    }
+
+    /** The app went to the background (it may be killed there): save now and refresh the copy in Documents. */
+    fun onBackground() {
+        saveJob?.cancel()
+        saveJob = null
+        viewModelScope.launch(Dispatchers.IO) {
+            saveNow()
+            lastMirror = 0L
+            mirrorNow()
+        }
     }
 
     fun saveThumbnail(bitmap: Bitmap) {
@@ -445,6 +523,51 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     fun setEasing(layerId: String, prop: AnimProp<*>, index: Int, easing: Easing) =
         updateLayer(layerId) { l -> prop.setEasing(l, index, easing) }
 
+    /** Applies [easing] to every keyframe segment of [prop]. */
+    fun setEasingAll(layerId: String, prop: AnimProp<*>, easing: Easing) =
+        updateLayer(layerId) { l -> prop.get(l).keyframes.indices.fold(l) { acc, i -> prop.setEasing(acc, i, easing) } }
+
+    // ------------------------------------------------------------------ clipboards (kept while the editor is open)
+
+    /** A copied curve, pasted onto other keyframes, properties or layers. */
+    var easingClipboard by mutableStateOf<Easing?>(null)
+        private set
+
+    fun copyEasing(easing: Easing) {
+        easingClipboard = easing
+        notify(text(R.string.curve_copied))
+    }
+
+    /** Copied keyframes (see [KeyframeClipboard]). */
+    var keyframeClip by mutableStateOf<KeyframeClip?>(null)
+        private set
+
+    /** Copies the keyframes of every animated property of [layerId], or only of [propIds]. */
+    fun copyKeyframes(layerId: String, propIds: Set<String>? = null) {
+        val layer = LayerTree.find(current, layerId) ?: return
+        val clip = KeyframeClipboard.copy(layer, propIds)
+        if (clip == null) {
+            notify(text(R.string.keyframes_nothing_to_copy))
+        } else {
+            keyframeClip = clip
+            notify(text(R.string.keyframes_copied, clip.entries.size))
+        }
+    }
+
+    /** Pastes the copied keyframes into [layerId] starting at the playhead. */
+    fun pasteKeyframes(layerId: String) {
+        val clip = keyframeClip ?: return
+        var count = 0
+        updateLayer(layerId) { l ->
+            val (pasted, n) = KeyframeClipboard.paste(l, clip, localTime(l))
+            count = n
+            pasted
+        }
+        notify(if (count == 0) text(R.string.keyframes_paste_none) else text(R.string.keyframes_pasted, count))
+    }
+
+    private fun text(id: Int, vararg args: Any): String = getApplication<Application>().getString(id, *args)
+
     /** Moves every keyframe of a layer that sits at local time [from] to [to] (timeline diamonds). */
     fun moveKeyframesAt(layerId: String, from: Double, to: Double, coalesceKey: String) =
         updateLayer(layerId, coalesceKey) { l ->
@@ -537,9 +660,19 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
             saveJob?.cancel()
             runBlocking(Dispatchers.IO) { saveNow() }
         }
+        if (loadError == null) {
+            store.endSession(projectId)
+            lastMirror = 0L
+            mirrorNow()
+        }
         exportDispatcher.close()
         super.onCleared()
     }
 }
 
 private const val MIN_DURATION = 0.5
+private const val SNAPSHOT_INTERVAL_MS = 3 * 60_000L
+private const val MIRROR_INTERVAL_MS = 2 * 60_000L
+
+/** Work that must finish after the editor closes (the copy in Documents). */
+private val backgroundScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob())

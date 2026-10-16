@@ -985,6 +985,10 @@ private fun TextAnimatorsBlock(vm: EditorViewModel, layer: Layer) {
 private fun LayerSettings(vm: EditorViewModel, project: KnsProject, layer: Layer) {
     val id = layer.id
     SectionTitle(stringResource(R.string.section_layer))
+    Row(Modifier.horizontalScroll(rememberScrollState())) {
+        TextButton(onClick = { vm.copyKeyframes(id) }) { Text(stringResource(R.string.copy_layer_keyframes)) }
+        TextButton(onClick = { vm.pasteKeyframes(id) }, enabled = vm.keyframeClip != null) { Text(stringResource(R.string.paste_keyframes)) }
+    }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SmallLabel(stringResource(R.string.start), Modifier.width(56.dp))
         ScrubNumber(layer.start.toFloat(), { v -> vm.moveLayerTime(id, project.composition.snap(v.toDouble()), "start:$id") }, { vm.endGesture() }, Modifier.weight(1f), step = 0.1f, suffix = " s")
@@ -1057,6 +1061,7 @@ private fun CompositionSettings(vm: EditorViewModel, project: KnsProject, onPick
         if (env.asset != null) {
             LabeledSlider(stringResource(R.string.prop_rotation), env.rotation, -180f..180f, { v -> upd("envR") { it.copy(environment = it.environment.copy(rotation = v)) } }, { vm.endGesture() }, suffix = "°")
         }
+        SavedVersions(vm)
     }
     if (renaming) {
         TextInputDialog(stringResource(R.string.rename), project.meta.title, onDismiss = { renaming = false }) { vm.rename(it); renaming = false }
@@ -1067,6 +1072,26 @@ private fun CompositionSettings(vm: EditorViewModel, project: KnsProject, onPick
             vm.endGesture()
             picking = false
         })
+    }
+}
+
+/** The last versions kept by [dev.kinesis.editor.data.ProjectStore.snapshot], each restorable (undoable). */
+@Composable
+private fun SavedVersions(vm: EditorViewModel) {
+    var versions by remember { mutableStateOf<List<dev.kinesis.editor.data.ProjectStore.Snapshot>>(emptyList()) }
+    var refresh by remember { mutableStateOf(0) }
+    LaunchedEffect(refresh) {
+        if (refresh > 0) kotlinx.coroutines.delay(600)
+        versions = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { vm.snapshots() }
+    }
+    val format = remember { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT) }
+    SectionTitle(stringResource(R.string.saved_versions))
+    if (versions.isEmpty()) SmallLabel(stringResource(R.string.saved_versions_empty))
+    versions.forEach { v ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SmallLabel(format.format(java.util.Date(v.time)), Modifier.weight(1f))
+            TextButton(onClick = { vm.restoreSnapshot(v); refresh++ }) { Text(stringResource(R.string.restore)) }
+        }
     }
 }
 
