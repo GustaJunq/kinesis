@@ -259,4 +259,4 @@ permissões são as concedidas pelo seletor de arquivos do sistema para os arqui
 
 ## Licença
 
-[Apache License 2.0](LICENSE).
+[GPL v3.0](LICENSE).
