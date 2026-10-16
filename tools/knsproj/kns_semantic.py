@@ -341,6 +341,24 @@ def validate(project, available_files=None):
             if obj3d is not None:
                 check_anim(obj3d.get("size"), f"{p}.object3d.size", d)
                 check_asset_ref((obj3d.get("material") or {}).get("texture"), "image", f"{p}.object3d.material.texture")
+                t3 = obj3d.get("text")
+                if t3 is not None:
+                    tp = f"{p}.object3d.text"
+                    if obj3d.get("primitive", "cube") != "text":
+                        warn("object3d.text", tp, '"text" is only used when primitive is "text"')
+                    font3 = t3.get("font") or {}
+                    check_asset_ref(font3.get("asset"), "font", f"{tp}.font.asset")
+                    if not 100 <= font3.get("weight", 700) <= 900:
+                        err("text.weight", f"{tp}.font.weight", "font weight must be between 100 and 900")
+                    if not 4 <= t3.get("fontSize", 200) <= 2000:
+                        err("text3d.range", f"{tp}.fontSize", "fontSize must be between 4 and 2000")
+                    depth3 = t3.get("depth", 60)
+                    if not 1 <= depth3 <= 2000:
+                        err("text3d.range", f"{tp}.depth", "depth must be between 1 and 2000")
+                    if not 0 <= t3.get("bevel", 4) <= depth3 / 2:
+                        err("text3d.range", f"{tp}.bevel", "bevel must be between 0 and half the depth")
+                    if not t3.get("lineHeight", 1.2) > 0:
+                        err("text3d.range", f"{tp}.lineHeight", "lineHeight must be > 0")
             model = layer.get("model3d")
             if model is not None:
                 check_asset_ref(model.get("asset"), "model", f"{p}.model3d.asset")
@@ -349,6 +367,17 @@ def validate(project, available_files=None):
             if camera is not None:
                 for key in ("position", "target", "rotation", "fov"):
                     check_anim(camera.get(key), f"{p}.camera.{key}", d)
+                for key in ("focusDistance", "range", "blur"):
+                    check_anim((camera.get("dof") or {}).get(key), f"{p}.camera.dof.{key}", d)
+            light = layer.get("light")
+            if light is not None:
+                check_anim(light.get("shadowDarkness"), f"{p}.light.shadowDarkness", d)
+                if not 0 <= light.get("shadowSoftness", 1.5) <= 8:
+                    err("light.shadow", f"{p}.light.shadowSoftness", "shadowSoftness must be between 0 and 8")
+                if light.get("castShadows") and light.get("kind", "directional") == "ambient":
+                    warn("light.shadow", f"{p}.light.castShadows", "ambient lights do not cast shadows")
+            if (layer.get("video") or {}).get("alphaPacked") and ltype != "video":
+                warn("media.alphaPacked", p, "alphaPacked only applies to video layers")
             if layer.get("null") is not None and ltype != "null":
                 warn("layer.nullContent", f"{p}.null", 'the "null" object is only used by null layers')
             if ltype in counts:
@@ -381,6 +410,11 @@ def validate(project, available_files=None):
                     break
                 seen.add(cur.get("id"))
                 cur = siblings.get(cur.get("parent"))
+
+    env = (project.get("composition") or {}).get("environment") or {}
+    check_asset_ref(env.get("asset"), "image", "composition.environment.asset")
+    if not 0 <= env.get("intensity", 1) <= 10:
+        err("composition.environment", "composition.environment.intensity", "intensity must be between 0 and 10")
 
     visit(project.get("layers", []) or [], "layers", 0)
 

@@ -55,6 +55,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -96,6 +98,7 @@ import dev.kinesis.editor.data.ProjectImportException
 import dev.kinesis.editor.data.ProjectStore
 import dev.kinesis.editor.data.ProjectSummary
 import dev.kinesis.editor.ui.common.OverlineLabel
+import dev.kinesis.editor.ui.common.PillChip
 import dev.kinesis.editor.ui.onboarding.LanguageChoices
 import dev.kinesis.editor.ui.onboarding.ThemeChoices
 import dev.kinesis.editor.ui.settings.AppSettings
@@ -135,9 +138,30 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
     val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
 
+    private val _interrupted = MutableStateFlow<ProjectSummary?>(null)
+    /** The project that was open when the app was closed unexpectedly (offered for reopening once per process). */
+    val interrupted = _interrupted.asStateFlow()
+
     init {
         store.cleanup()
         refresh()
+        if (!recoveryChecked) {
+            recoveryChecked = true
+            viewModelScope.launch {
+                _interrupted.value = withContext(Dispatchers.IO) {
+                    store.interruptedSession()?.let { id -> store.list().firstOrNull { it.id == id } }
+                }
+            }
+        }
+    }
+
+    fun dismissInterrupted() {
+        _interrupted.value = null
+        viewModelScope.launch(Dispatchers.IO) { store.clearSession() }
+    }
+
+    private companion object {
+        var recoveryChecked = false
     }
 
     fun refresh() {
@@ -219,6 +243,7 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
     val loaded by vm.loaded.collectAsState()
     val busy by vm.busy.collectAsState()
     val importError by vm.importError.collectAsState()
+    val interrupted by vm.interrupted.collectAsState()
     var tab by rememberSaveable { mutableStateOf(HomeTab.PROJECTS) }
     var showNew by remember { mutableStateOf(false) }
     var exportId by remember { mutableStateOf<String?>(null) }
@@ -278,6 +303,19 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
             showNew = false
             vm.create(title, w, h, fps, duration, bg, onOpen)
         }
+    }
+    interrupted?.let { p ->
+        AlertDialog(
+            onDismissRequest = vm::dismissInterrupted,
+            containerColor = KColors.Sheet,
+            shape = KShapes.Card,
+            title = { Text(stringResource(R.string.recovery_title), style = MaterialTheme.typography.titleMedium) },
+            text = { Text(stringResource(R.string.recovery_message, p.title), color = KColors.TextSoft) },
+            confirmButton = {
+                TextButton(onClick = { vm.dismissInterrupted(); onOpen(p.id) }) { Text(stringResource(R.string.recovery_open), color = KColors.Accent) }
+            },
+            dismissButton = { TextButton(onClick = vm::dismissInterrupted) { Text(stringResource(R.string.recovery_later), color = KColors.TextSoft) } },
+        )
     }
     importError?.let { message ->
         AlertDialog(
@@ -507,10 +545,47 @@ private fun SettingsTab() {
             ThemeChoices()
         }
         val context = LocalContext.current
+        Column(Modifier.fillMaxWidth().clip(KShapes.Card).background(KColors.Card).border(1.dp, KColors.Line, KShapes.Card).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OverlineLabel(stringResource(R.string.settings_preview))
+            Text(stringResource(R.string.settings_preview_resolution), style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(1f to "Full", 0.5f to "½", 0.25f to "¼").forEach { (scale, label) ->
+                    PillChip(label, AppSettings.previewScale == scale, { AppSettings.setPreviewScale(context, scale) })
+                }
+            }
+            Text(stringResource(R.string.settings_preview_3d), style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(R.string.quality_low, R.string.quality_medium, R.string.quality_high).forEachIndexed { level, label ->
+                    PillChip(stringResource(label), AppSettings.previewQuality3D == level, { AppSettings.setPreviewQuality3D(context, level) })
+                }
+            }
+            SettingSwitch(stringResource(R.string.settings_proxies), stringResource(R.string.settings_proxies_hint), AppSettings.useProxies) {
+                AppSettings.setUseProxies(context, it)
+            }
+        }
+        Column(Modifier.fillMaxWidth().clip(KShapes.Card).background(KColors.Card).border(1.dp, KColors.Line, KShapes.Card).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OverlineLabel(stringResource(R.string.settings_safety))
+            SettingSwitch(stringResource(R.string.settings_mirror), stringResource(R.string.settings_mirror_hint), AppSettings.mirrorToDocuments) {
+                AppSettings.setMirrorToDocuments(context, it)
+            }
+            Text(stringResource(R.string.settings_snapshots_hint), style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
+        }
         SecondaryButton(stringResource(R.string.settings_welcome), { AppSettings.setOnboardingDone(context, false) }, Modifier.fillMaxWidth(), pill = true)
         SettingRow(stringResource(R.string.settings_version), BuildConfig.VERSION_NAME, mono = true)
         SettingRow(stringResource(R.string.settings_format), stringResource(R.string.settings_format_value))
         SettingRow(stringResource(R.string.settings_fonts), stringResource(R.string.settings_fonts_value))
+    }
+}
+
+@Composable
+private fun SettingSwitch(label: String, hint: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = KColors.TextPrimary)
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
+        }
+        Spacer(Modifier.width(10.dp))
+        Switch(checked = checked, onCheckedChange = onChange, colors = SwitchDefaults.colors(checkedTrackColor = KColors.Accent))
     }
 }
 

@@ -1,11 +1,11 @@
-# Formato `.knsproj` — versão 3
+# Formato `.knsproj` — versão 6
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v3.schema.json`](../schema/knsproj-v3.schema.json) (JSON Schema draft 2020-12);
-  os das versões 1 e 2 continuam em [`schema/`](../schema)
+- **Schema oficial:** [`schema/knsproj-v6.schema.json`](../schema/knsproj-v6.schema.json) (JSON Schema draft 2020-12);
+  os das versões 1 a 5 continuam em [`schema/`](../schema)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
 - **Exemplos:** [`.claude/skills/knsproj/examples/`](../.claude/skills/knsproj/examples)
@@ -60,13 +60,14 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 5,
+  "formatVersion": 6,
   "generator": "Claude Code /knsproj",
   "meta": { "title": "Meu vídeo", "createdAt": "2026-10-14T12:00:00Z" },
   "composition": {
     "width": 1080, "height": 1920, "fps": 30, "duration": 10,
     "background": "#0A2463",
-    "motionBlur": { "enabled": true, "shutterAngle": 180, "samples": 8 }
+    "motionBlur": { "enabled": true, "shutterAngle": 180, "samples": 8 },
+    "environment": { "asset": "ceu", "intensity": 1.2, "rotation": 0 }
   },
   "assets": [],
   "layers": []
@@ -76,10 +77,10 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `5` (documentos das versões `1` a `4` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `6` (documentos das versões `1` a `5` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
-| `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120), `duration` (s), `background`, `motionBlur` |
+| `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120), `duration` (s), `background`, `motionBlur`, `environment` (seção 5.13) |
 | `assets` | array | mídias embutidas (seção 6) |
 | `layers` | array | camadas de topo, em ordem de pintura |
 
@@ -306,6 +307,10 @@ A semântica completa e o exemplo "Bounce Text" estão em [`expressoes.md`](expr
 - Imagens e vídeos são exibidos no tamanho nativo (pixels), centrados; use `transform.scale` para ajustar.
 - `sourceStart`: ponto de entrada na mídia (s). O instante local `t` mostra a mídia em `sourceStart + t·speed`.
 - `volume` é animável (ganho linear). `speed` diferente de 1 altera também o tom do áudio.
+- `video.alphaPacked` (padrão `false`): vídeo com **transparência empacotada** — a metade esquerda de cada quadro
+  traz a cor (não pré-multiplicada) e a metade direita o alfa em tons de cinza. A camada mostra só a metade
+  esquerda (largura exibida = metade da largura do arquivo), com o alfa da direita. É o que o app gera ao
+  **pré-renderizar uma camada**.
 
 ### 5.5 `group`
 
@@ -329,11 +334,31 @@ filhos 2D; efeitos, máscaras, opacidade e modo de mesclagem do grupo são aplic
   } }
 ```
 
-- `primitive`: `cube`, `sphere`, `cylinder`, `cone`, `torus`, `plane`, `empty` (nó invisível, útil como pivô/pai).
+- `primitive`: `cube`, `sphere`, `cylinder`, `cone`, `torus`, `plane`, `text` (texto 3D extrudado, abaixo), `empty`
+  (nó invisível, útil como pivô/pai).
 - `size` (animável): a primitiva cabe em um cubo com esse lado, em pixels. O plano fica no plano XY, de frente para a
   câmera; o toro também. Cilindro e cone têm o eixo vertical.
 - `material` (PBR metálico-rugoso): `color`, `metallic` (0 dielétrico → 1 metal), `roughness` (0 espelho → 1 fosco),
   `emissive` — todos animáveis — e `texture` (id de um asset `image`, mapeado nas UVs).
+- `material.shading`: `pbr` (padrão, físico), `flat` (facetado: uma normal por face), `toon` (faixas de luz chapadas
+  com contorno escuro) ou `wireframe` (só as arestas, sem luz; diagonais de faces planas ficam ocultas).
+
+**Texto 3D** (`"primitive": "text"`):
+
+```json
+"object3d": {
+  "primitive": "text",
+  "text": { "content": "KINESIS", "font": { "family": "sans-serif", "weight": 900 }, "fontSize": 200,
+            "depth": 60, "bevel": 4, "align": "center", "lineHeight": 1.2 },
+  "material": { "color": "#E8C547", "metallic": 0.8, "roughness": 0.3 }
+}
+```
+
+- O texto é extrudado a partir do contorno das letras: `fontSize` (4–2000 px) como no texto 2D, `depth` (1–2000 px,
+  espessura no eixo Z) e `bevel` (0 até metade de `depth`, chanfro arredondado nas bordas da frente e de trás).
+- `content` aceita várias linhas (`\n`), alinhadas por `align` e espaçadas por `lineHeight`; `font` é igual à do
+  texto 2D (família do sistema ou `font.asset`). `size` é ignorado: o tamanho vem de `fontSize`.
+- O bloco de texto fica centrado na origem da camada (a frente em `z = -depth/2`, voltada para a câmera padrão).
 
 ### 5.7 `model3d`
 
@@ -366,6 +391,10 @@ Não suportado na versão 1: skinning, animações internas do glTF, morph targe
     para baixo). **Posição e rotação são independentes**: mover a câmera não a gira e girá-la não a move. É o modo
     das câmeras novas do app (`"position": [0, 0, -d]`, `"rotation": [0, 0, 0]` equivale à câmera padrão).
 - `fov`: campo de visão vertical em graus.
+- `dof` (opcional): **profundidade de campo** — `{"enabled": true, "focusDistance": 2600, "range": 300, "blur": 24}`.
+  `focusDistance` (px, distância da câmera ao plano em foco), `range` (px de nitidez total em torno dele) e `blur`
+  (raio máximo do desfoque, em px da composição) são animáveis. Só as camadas 3D são desfocadas. O app pode
+  focar no alvo da câmera (botão "Focar no alvo").
 - A câmera ativa é a camada `camera` mais acima (última na ordem) que está ativa no instante. Pode ter `parent`
   (camada 3D) — por exemplo, um `empty` girando para fazer uma órbita.
 - Camadas 2D não passam pela câmera.
@@ -380,7 +409,10 @@ Não suportado na versão 1: skinning, animações internas do glTF, morph targe
 - `color`, `intensity`, `position`, `target`, `radius` são animáveis.
 - Até 4 luzes direcionais/pontuais simultâneas; luzes ambientes são somadas.
 - Sem nenhuma luz no projeto, é usada uma iluminação de estúdio padrão (ambiente + luz principal + preenchimento).
-- Sombras projetadas não fazem parte da versão 1.
+- **Sombras**: `castShadows: true` faz uma luz `directional` ou `point` projetar sombras dos objetos 3D (modelos e
+  primitivas, exceto `wireframe`) sobre os outros. `shadowDarkness` (0–1, animável, padrão 0,75) é o quanto a sombra
+  escurece; `shadowSoftness` (0–8, padrão 1,5) a suavidade da borda. Só a primeira luz com sombras na ordem é usada;
+  luzes `ambient` não projetam sombra (aviso `light.shadow`).
 
 ### 5.10 `null`
 
@@ -413,6 +445,18 @@ Camadas 3D (`object3d`, `model3d`) **consecutivas** na pilha compartilham o mesm
 corretamente entre si. Uma camada 2D entre elas "quebra" o grupo: o que está acima é desenhado por cima. Uma camada
 3D com efeitos, modo de mesclagem diferente de `normal`, motion blur ou transição ativa é renderizada isoladamente
 e composta como uma imagem.
+
+### 5.13 Ambiente 3D (`composition.environment`)
+
+```json
+"environment": { "asset": "ceu", "intensity": 1.2, "rotation": 30 }
+```
+
+- `asset`: id de um asset `image` **equiretangular** (panorama 2:1, como um HDRI convertido para JPG/PNG). Ele
+  ilumina os objetos 3D (luz difusa vinda de todas as direções) e aparece nos reflexos dos materiais metálicos e
+  lisos. Sem `asset`, é usado o estúdio procedural padrão.
+- `intensity` (0–10, padrão 1) multiplica a luz do ambiente; `rotation` (graus) gira o panorama em torno do eixo vertical.
+- O panorama não é desenhado como fundo: para vê-lo atrás da cena, use uma camada de imagem.
 
 ## 6. Assets
 
@@ -736,7 +780,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v5.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v6.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -754,7 +798,12 @@ Um projeto é válido quando:
 
 Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes fora da duração da camada),
 `composition.oddSize`, `layer.masks`, `layer.effects`, `camera.multiple`, `light.count`, `layer.start`,
-`text.propertyAnimator` (animador de texto sem nenhuma propriedade), `layer.nullContent` (objeto `null` em camada que não é `null`).
+`text.propertyAnimator` (animador de texto sem nenhuma propriedade), `layer.nullContent` (objeto `null` em camada que não é `null`),
+`object3d.text` (`text` em primitiva que não é `text`), `light.shadow` (luz ambiente com `castShadows`),
+`media.alphaPacked` (`alphaPacked` fora de camada de vídeo).
+
+Erros da versão 6: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeight` fora da faixa), `light.shadow`
+(`shadowSoftness` fora de 0–8), `composition.environment` (`intensity` fora de 0–10; `asset` precisa ser uma imagem).
 
 ## 12. Versionamento e compatibilidade
 
@@ -768,7 +817,9 @@ Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes 
   propriedades e animadores de texto por caractere (seções 4.1 e 5.2; só campos novos, documentos v2 abrem sem mudança);
   **v4** → camada `null` (nulos 2D e 3D, seção 5.10) e câmera com `rotation`/`aim` independentes da posição (seção 5.8;
   só campos novos, documentos v3 abrem sem mudança); **v5** → easing cíclico `{"cyclic": …}` (seção 4, Easing; só um
-  campo novo, documentos v4 abrem sem mudança).
+  campo novo, documentos v4 abrem sem mudança); **v6** → texto 3D extrudado, `material.shading`, sombras das luzes,
+  profundidade de campo da câmera, `composition.environment` e vídeo com `alphaPacked` (seções 5.4, 5.6, 5.8, 5.9 e
+  5.13; só campos novos, documentos v5 abrem sem mudança).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.

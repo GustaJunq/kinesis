@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 5,
+  "formatVersion": 6,
   "generator": "tests",
   "meta": {
     "title": "Everything",
@@ -11,7 +11,12 @@
     "height": 1920,
     "fps": 30,
     "duration": 10,
-    "background": "#0B1E4D"
+    "background": "#0B1E4D",
+    "environment": {
+      "asset": "img",
+      "intensity": 1.5,
+      "rotation": 90
+    }
   },
   "assets": [
     {
@@ -353,7 +358,8 @@
               "value": 0
             }
           ]
-        }
+        },
+        "alphaPacked": true
       }
     },
     {
@@ -496,7 +502,46 @@
         "position": [0, -300, -2500],
         "rotation": [5, 0, 0],
         "aim": "rotation",
-        "fov": 45
+        "fov": 45,
+        "dof": {
+          "focusDistance": {
+            "keyframes": [
+              {
+                "time": 0,
+                "value": 2000
+              },
+              {
+                "time": 5,
+                "value": 2600
+              }
+            ]
+          },
+          "blur": 18
+        }
+      }
+    },
+    {
+      "id": "title3d",
+      "type": "object3d",
+      "name": "3D title",
+      "start": 0,
+      "duration": 10,
+      "object3d": {
+        "primitive": "text",
+        "material": {
+          "color": "#FFC857",
+          "shading": "toon"
+        },
+        "text": {
+          "content": "Kinesis\n3D",
+          "font": {
+            "asset": "fnt"
+          },
+          "fontSize": 160,
+          "depth": 50,
+          "bevel": 6,
+          "align": "left"
+        }
       }
     },
     {
@@ -516,7 +561,10 @@
       "start": 0,
       "duration": 10,
       "light": {
-        "intensity": 1.2
+        "intensity": 1.2,
+        "castShadows": true,
+        "shadowDarkness": 0.6,
+        "shadowSoftness": 2
       }
     },
     {

@@ -257,6 +257,11 @@ data class MediaContent(
     /** Audio fades in seconds. */
     val fadeIn: Double = 0.0,
     val fadeOut: Double = 0.0,
+    /**
+     * Video only: the frames hold the colour in the left half and the alpha (as grey) in the right half, like the
+     * pre-rendered layers the app writes. The layer is drawn at half the frame width with that transparency.
+     */
+    val alphaPacked: Boolean = false,
 ) {
     /** Media time (seconds) shown at layer-local time [local]. */
     fun sourceTime(local: Double): Double = sourceStart + local * speed
@@ -274,7 +279,40 @@ enum class Primitive {
     @SerialName("plane") PLANE,
     /** Invisible transform node, useful as a parent. */
     @SerialName("empty") EMPTY,
+    /** Extruded 3D text, described by [Object3DContent.text]. */
+    @SerialName("text") TEXT,
 }
+
+/** How a material is shaded. */
+@Serializable
+enum class Shading {
+    /** Physically based (metallic-roughness), smooth normals. */
+    @SerialName("pbr") PBR,
+    /** Physically based with one normal per face: faceted, low-poly look. */
+    @SerialName("flat") FLAT,
+    /** Cartoon: diffuse light in a few hard bands plus an outline-like rim. */
+    @SerialName("toon") TOON,
+    /** Only the edges of the mesh, in the material colour. */
+    @SerialName("wireframe") WIREFRAME,
+}
+
+/**
+ * Extruded text for `object3d` layers with `primitive: "text"`. Measures are pixels; the text is centred on the
+ * layer origin, its front face at z = -depth/2 (towards the default camera).
+ */
+@Serializable
+data class Text3D(
+    val content: String = "Kinesis",
+    val font: FontSpec = FontSpec(),
+    val fontSize: Float = 200f,
+    /** Thickness of the extrusion (1..2000). */
+    val depth: Float = 60f,
+    /** Rounded-off edge width on the front and back faces (0 = sharp; at most half the depth). */
+    val bevel: Float = 4f,
+    val align: TextAlign = TextAlign.CENTER,
+    /** Multiple of the font size. */
+    val lineHeight: Float = 1.2f,
+)
 
 /** Physically based material (metallic-roughness). */
 @Serializable
@@ -287,14 +325,17 @@ data class Material(
     val emissive: AnimColor = anim(Color.BLACK),
     /** Id of an `image` asset used as base colour texture. */
     val texture: String? = null,
+    val shading: Shading = Shading.PBR,
 )
 
 @Serializable
 data class Object3DContent(
     val primitive: Primitive = Primitive.CUBE,
-    /** Edge length / diameter in pixels: the primitive fits in a cube of this size. */
+    /** Edge length / diameter in pixels: the primitive fits in a cube of this size. Not used by text (see [Text3D]). */
     val size: AnimFloat = anim(300f),
     val material: Material = Material(),
+    /** The text of `primitive: "text"` (defaults apply when absent). */
+    val text: Text3D? = null,
 )
 
 @Serializable
@@ -335,11 +376,25 @@ data class CameraContent(
     val aim: CameraAim = CameraAim.TARGET,
     /** Vertical field of view in degrees. */
     val fov: AnimFloat = anim(DEFAULT_FOV),
+    /** Depth of field: 3D layers away from the focus distance are blurred. */
+    val dof: DepthOfField? = null,
 ) {
     companion object {
         const val DEFAULT_FOV = 40f
     }
 }
+
+/** Depth of field of a camera (applies to 3D layers). */
+@Serializable
+data class DepthOfField(
+    val enabled: Boolean = true,
+    /** Distance from the camera, in pixels, that is perfectly sharp. */
+    val focusDistance: AnimFloat = anim(2600f),
+    /** Depth around the focus distance that stays sharp, in pixels. */
+    val range: AnimFloat = anim(300f),
+    /** Largest blur radius, in composition pixels (0..200). */
+    val blur: AnimFloat = anim(24f),
+)
 
 @Serializable
 enum class LightKind {
@@ -359,6 +414,12 @@ data class LightContent(
     val target: AnimVec3 = anim(Vec3.ZERO),
     /** Point light reach in pixels. */
     val radius: AnimFloat = anim(4000f),
+    /** Directional and point lights can cast shadows from 3D objects onto 3D objects. */
+    val castShadows: Boolean = false,
+    /** 0 = invisible shadows, 1 = fully dark. */
+    val shadowDarkness: AnimFloat = anim(0.75f),
+    /** Edge softness of the shadows in shadow-map texels (0..8). */
+    val shadowSoftness: Float = 1.5f,
 ) {
     companion object {
         const val MAX_LIGHTS = 4

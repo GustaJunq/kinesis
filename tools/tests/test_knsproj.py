@@ -337,6 +337,42 @@ class CyclicEasingTests(unittest.TestCase):
         self.assertEqual([], [i["code"] for i in cli.validate_project(v4, None).errors])
 
 
+class Format6Tests(unittest.TestCase):
+    """Format v6: shading, shadows, depth of field, environment, 3D text and packed alpha (parity with Kotlin)."""
+
+    def issues(self, layers, composition=None, assets=None):
+        doc = minimal(layers=layers)
+        if composition:
+            doc["composition"].update(composition)
+        if assets:
+            doc["assets"] = assets
+        return [i["code"] for i in cli.validate_project(doc, None).issues]
+
+    def test_new_fields_are_valid(self):
+        layers = [
+            {"id": "t", "type": "object3d", "object3d": {"primitive": "text", "text": {"content": "Oi", "depth": 40, "bevel": 4},
+                                                         "material": {"shading": "toon"}}},
+            {"id": "c", "type": "camera", "camera": {"dof": {"focusDistance": 2000, "blur": 20}}},
+            {"id": "l", "type": "light", "light": {"castShadows": True, "shadowDarkness": 0.5, "shadowSoftness": 2}},
+        ]
+        assets = [{"id": "pano", "type": "image", "path": "assets/pano.jpg"}]
+        self.assertEqual([], self.issues(layers, {"environment": {"asset": "pano", "intensity": 2, "rotation": 45}}, assets))
+
+    def test_ranges_and_references(self):
+        bad_text = {"id": "t", "type": "object3d", "object3d": {"primitive": "text", "text": {"depth": 10, "bevel": 6}}}
+        self.assertIn("text3d.range", self.issues([bad_text]))
+        unused = {"id": "t", "type": "object3d", "object3d": {"primitive": "cube", "text": {}}}
+        self.assertIn("object3d.text", self.issues([unused]))
+        self.assertIn("layer.missingAsset", self.issues([], {"environment": {"asset": "nope"}}))
+        self.assertIn("schema", self.issues([], {"environment": {"intensity": 20}}))
+        soft = {"id": "l", "type": "light", "light": {"shadowSoftness": 20}}
+        self.assertIn("schema", self.issues([soft]))
+        self.assertEqual("schema", self.issues([{"id": "s", "type": "object3d", "object3d": {"material": {"shading": "cel"}}}])[0])
+
+    def test_version_5_documents_migrate_to_6(self):
+        self.assertEqual(6, kns_migrate.migrate(minimal(formatVersion=5), 6)["formatVersion"])
+
+
 class ExampleTests(unittest.TestCase):
     """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
 
@@ -345,7 +381,7 @@ class ExampleTests(unittest.TestCase):
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
     def test_expected_examples_exist(self):
-        self.assertEqual(18, len(example_dirs("basicos")))
+        self.assertEqual(20, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
         self.assertGreaterEqual(len(example_dirs("erros")), 5)
         self.assertEqual(12, len(example_dirs("efeitos")))

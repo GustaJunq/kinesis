@@ -116,8 +116,8 @@ class NullAndCameraTest {
         assertEquals(text, KnsprojJson.encode(back))
         assertTrue(LayerTree.find(back, "m")!!.is3DLayer)
         // A version 3 document (no null layers, cameras aimed by target) opens unchanged.
-        val v3 = text.replace("\"formatVersion\": 5", "\"formatVersion\": 3")
-        assertEquals(5, KnsprojJson.decode(v3).formatVersion)
+        val v3 = text.replace("\"formatVersion\": 6", "\"formatVersion\": 3")
+        assertEquals(6, KnsprojJson.decode(v3).formatVersion)
     }
 
     // ------------------------------------------------------------------ parent keeps the layer in place

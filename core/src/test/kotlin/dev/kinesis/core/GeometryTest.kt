@@ -19,7 +19,7 @@ class GeometryTest {
 
     @Test
     fun primitivesFitTheUnitCubeAndHaveOutwardNormals() {
-        for (p in Primitive.entries.filter { it != Primitive.EMPTY }) {
+        for (p in Primitive.entries.filter { it != Primitive.EMPTY && it != Primitive.TEXT }) {
             val m = Primitives.mesh(p)
             assertTrue("$p has triangles", m.triangleCount > 0)
             val (min, max) = m.bounds()

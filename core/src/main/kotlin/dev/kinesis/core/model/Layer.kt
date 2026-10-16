@@ -125,6 +125,7 @@ data class Layer(
     fun referencedAssets(): List<String> = buildList {
         assetId?.let { add(it) }
         object3d?.material?.texture?.let { add(it) }
+        object3d?.text?.font?.asset?.let { add(it) }
         model3d?.material?.texture?.let { add(it) }
     }
 }

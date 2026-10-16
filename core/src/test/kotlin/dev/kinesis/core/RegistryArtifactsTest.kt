@@ -25,6 +25,7 @@ import java.io.File
  * - `schema/knsproj-v3.schema.json` — the v2 schema plus expressions and text property animators;
  * - `schema/knsproj-v4.schema.json` — the v3 schema plus null layers and independent camera rotation;
  * - `schema/knsproj-v5.schema.json` — the v4 schema plus the cyclic (wave) easing;
+ * - `schema/knsproj-v6.schema.json` — the v5 schema plus shading, shadows, depth of field, environment, 3D text, packed alpha;
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -50,6 +51,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV5() = check(File(root, "schema/knsproj-v5.schema.json"), JsonPretty.print(buildSchemaV5()) + "\n")
+
+    @Test
+    fun schemaV6() = check(File(root, "schema/knsproj-v6.schema.json"), JsonPretty.print(buildSchemaV6()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -221,6 +225,91 @@ class RegistryArtifactsTest {
         val m = LinkedHashMap(v4)
         m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v5.schema.json")
         m["title"] = str("Kinesis project (.knsproj) — project.json, format version 5")
+        m["properties"] = JsonObject(props)
+        m["\$defs"] = JsonObject(defs)
+        return JsonObject(m)
+    }
+
+    /** Adds [extra] properties to the object definition [name]. */
+    private fun withProps(defs: MutableMap<String, JsonElement>, name: String, vararg extra: Pair<String, JsonElement>) {
+        val def = defs.getValue(name).jsonObject
+        val props = LinkedHashMap(def.getValue("properties").jsonObject)
+        for ((k, v) in extra) props[k] = v
+        val d = LinkedHashMap(def)
+        d["properties"] = JsonObject(props)
+        defs[name] = JsonObject(d)
+    }
+
+    private fun num(min: Number, max: Number, description: String) =
+        obj("type" to str("number"), "minimum" to JsonPrimitive(min), "maximum" to JsonPrimitive(max), "description" to str(description))
+
+    /**
+     * Version 6 = version 5 plus material `shading`, light shadows, camera depth of field (`dof`), the composition
+     * `environment` (HDRI panorama), extruded 3D text (`primitive: "text"` + `object3d.text`) and `alphaPacked` video.
+     */
+    private fun buildSchemaV6(): JsonObject {
+        val v5 = buildSchemaV5()
+        val defs = LinkedHashMap(v5.getValue("\$defs").jsonObject)
+        withProps(defs, "material", "shading" to obj(
+            "type" to str("string"), "enum" to JsonArray(listOf("pbr", "flat", "toon", "wireframe").map(::str)),
+            "description" to str("pbr (default): smooth physically based; flat: one normal per face (low poly); toon: hard light bands; wireframe: mesh edges only."),
+        ))
+        defs["text3d"] = obj(
+            "description" to str("Extruded text of object3d layers with primitive \"text\". Pixels; centred on the layer origin, front face towards the default camera."),
+            "type" to str("object"),
+            "properties" to obj(
+                "content" to obj("type" to str("string"), "description" to str("Text; \\n starts a new line.")),
+                "font" to ref("font"),
+                "fontSize" to num(4, 2000, "Pixels (default 200)."),
+                "depth" to num(1, 2000, "Thickness of the extrusion in pixels (default 60)."),
+                "bevel" to num(0, 1000, "Rounded edge width in pixels, at most half the depth (default 4)."),
+                "align" to obj("type" to str("string"), "enum" to JsonArray(listOf("left", "center", "right").map(::str))),
+                "lineHeight" to obj("type" to str("number"), "exclusiveMinimum" to JsonPrimitive(0), "description" to str("Multiple of the font size (default 1.2).")),
+            ),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        val o3 = defs.getValue("object3dContent").jsonObject
+        val o3Props = LinkedHashMap(o3.getValue("properties").jsonObject)
+        val prim = LinkedHashMap(o3Props.getValue("primitive").jsonObject)
+        prim["enum"] = JsonArray(prim.getValue("enum").jsonArray + str("text"))
+        o3Props["primitive"] = JsonObject(prim)
+        o3Props["text"] = ref("text3d")
+        defs["object3dContent"] = JsonObject(LinkedHashMap(o3).also { it["properties"] = JsonObject(o3Props) })
+        defs["depthOfField"] = obj(
+            "description" to str("Depth of field of the camera: 3D layers away from focusDistance are blurred."),
+            "type" to str("object"),
+            "properties" to obj(
+                "enabled" to obj("type" to str("boolean")),
+                "focusDistance" to ref("animFloat"),
+                "range" to ref("animFloat"),
+                "blur" to ref("animFloat"),
+            ),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        withProps(defs, "cameraContent", "dof" to ref("depthOfField"))
+        withProps(
+            defs, "lightContent",
+            "castShadows" to obj("type" to str("boolean"), "description" to str("Directional and point lights: 3D objects cast shadows on 3D objects.")),
+            "shadowDarkness" to ref("animFloat"),
+            "shadowSoftness" to num(0, 8, "Shadow edge softness in shadow-map texels (default 1.5)."),
+        )
+        defs["environment"] = obj(
+            "description" to str("Reflections and ambient light of 3D layers. Without asset a procedural studio is used."),
+            "type" to str("object"),
+            "properties" to obj(
+                "asset" to obj("type" to str("string"), "description" to str("Id of an image asset with an equirectangular (2:1) panorama.")),
+                "intensity" to num(0, 10, "Multiplier (default 1)."),
+                "rotation" to obj("type" to str("number"), "description" to str("Degrees around the vertical axis.")),
+            ),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        withProps(defs, "composition", "environment" to ref("environment"))
+        withProps(defs, "mediaContent", "alphaPacked" to obj("type" to str("boolean"), "description" to str("Video frames hold colour on the left half and alpha (grey) on the right half.")))
+        val props = LinkedHashMap(v5.getValue("properties").jsonObject)
+        props["formatVersion"] = obj("const" to JsonPrimitive(6))
+        val m = LinkedHashMap(v5)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v6.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 6")
         m["properties"] = JsonObject(props)
         m["\$defs"] = JsonObject(defs)
         return JsonObject(m)

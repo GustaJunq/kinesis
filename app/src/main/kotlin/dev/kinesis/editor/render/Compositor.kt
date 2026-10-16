@@ -21,6 +21,9 @@ import dev.kinesis.core.model.MaskShape
 import dev.kinesis.core.model.MatteMode
 import dev.kinesis.core.model.ParamType
 import dev.kinesis.core.model.ParamUnit
+import dev.kinesis.core.model.Primitive
+import dev.kinesis.core.model.Shading
+import dev.kinesis.core.model.Text3D
 import dev.kinesis.core.scene.Content2D
 import dev.kinesis.core.scene.FrameScene
 import dev.kinesis.core.scene.GroupNode
@@ -41,17 +44,32 @@ import kotlin.math.min
 import kotlin.math.pow
 
 /** GPU resources shared by every frame rendered in one EGL context. */
-class RenderResources(assets: AssetManager, val files: AssetFiles) {
+class RenderResources(assets: AssetManager, val files: AssetFiles, proxies: (String) -> VideoProxy? = { null }) {
     val shaders = ShaderLibrary(assets)
     val quad = UnitQuad()
     val pool = TargetPool()
     val typefaces = TypefaceProvider { files.file(it) }
     val content = ContentTextures(typefaces)
     val images = ImageTextures(files, min(4096, Gl.maxTextureSize()))
-    val videos = VideoFrames(files)
-    val meshes = MeshCache(files)
+    val videos = VideoFrames(files, proxies)
+    val meshes = MeshCache(files, typefaces)
+    val environments = EnvironmentMaps(files, min(4096, Gl.maxTextureSize()))
+    private var shadowMap: ShadowMap? = null
+    private var noShadow: ShadowMap? = null
+
+    /** The shadow map of [size] texels (recreated when the size changes). */
+    fun shadowMap(size: Int): ShadowMap = shadowMap?.takeIf { it.size == size } ?: run {
+        shadowMap?.release()
+        ShadowMap(size).also { shadowMap = it }
+    }
+
+    /** A 1×1 depth texture bound to the shadow sampler when nothing casts shadows (sampler types must match). */
+    fun noShadow(): ShadowMap = noShadow ?: ShadowMap(1).also { noShadow = it }
 
     fun release() {
+        shadowMap?.release(); shadowMap = null
+        noShadow?.release(); noShadow = null
+        environments.release()
         pool.releaseAll()
         content.release()
         images.release()
@@ -69,7 +87,22 @@ data class RenderSettings(
     val allowMotionBlur: Boolean = true,
     /** Lighter effects (fewer samples), used by the preview while playing. Export always uses full quality. */
     val preview: Boolean = false,
-)
+    /** Side of the shadow map in texels (3D quality). */
+    val shadowMapSize: Int = 2048,
+    /** Taps per pixel of the depth-of-field blur (3D quality). */
+    val dofSamples: Int = 32,
+    /** Leave the background transparent (pre-rendering a layer) instead of filling it. */
+    val transparentBackground: Boolean = false,
+) {
+    companion object {
+        /** 3D quality presets: low, medium, high. */
+        fun quality3D(level: Int): Pair<Int, Int> = when (level) {
+            0 -> 512 to 12
+            1 -> 1024 to 20
+            else -> 2048 to 32
+        }
+    }
+}
 
 /**
  * Draws a [FrameScene] into an offscreen target of the output size, in premultiplied alpha.
@@ -77,6 +110,11 @@ data class RenderSettings(
  */
 class Compositor(private val res: RenderResources) {
     private var output: RenderTarget? = null
+
+    /** Layer being drawn (for error reports: which layer failed, e.g. out of memory). */
+    @Volatile
+    var currentLayerId: String? = null
+        private set
 
     private class Ctx(
         val project: KnsProject,
@@ -93,7 +131,12 @@ class Compositor(private val res: RenderResources) {
 
         /** While drawing motion-blur sub-frames, the real composite below (for effects that read the backdrop). */
         var backdrop: RenderTarget? = null
+
+        /** Shadow of the first shadow-casting light, rendered once per frame. */
+        var shadow: Shadow? = null
     }
+
+    private class Shadow(val lightIndex: Int, val matrix: Mat4, val map: ShadowMap, val darkness: Float, val softness: Float)
 
     fun render(project: KnsProject, scene: FrameScene, outWidth: Int, outHeight: Int, settings: RenderSettings): RenderTarget {
         val out = output?.takeIf { it.width == outWidth && it.height == outHeight } ?: run {
@@ -109,12 +152,16 @@ class Compositor(private val res: RenderResources) {
             proj = Mat4.scale(2f / scene.width, -2f / scene.height, 1f),
             width = outWidth, height = outHeight,
         )
+        ctx.shadow = buildShadow(ctx)
+        if (ctx.shadow == null) res.noShadow()
         val bg = scene.background
-        out.clear(bg.r * bg.a, bg.g * bg.a, bg.b * bg.a, 1f)
+        currentLayerId = null
+        if (settings.transparentBackground) out.clear() else out.clear(bg.r * bg.a, bg.g * bg.a, bg.b * bg.a, 1f)
         drawNodes(scene.nodes, out, ctx)
         GLES30.glDisable(GLES30.GL_BLEND)
         res.videos.endFrame()
         res.content.trim()
+        res.images.trim()
         return out
     }
 
@@ -124,6 +171,21 @@ class Compositor(private val res: RenderResources) {
         GLES30.glDisable(GLES30.GL_BLEND)
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
         val p = res.shaders.get("fullscreen.vert", "copy.frag")
+        p.use()
+        bindTexture2D(0, target.texture)
+        p.set1i("u_texture", 0)
+        res.quad.draw()
+    }
+
+    /**
+     * Draws [target] as a packed-alpha frame filling a [w]×[h] viewport: straight colour on the left half,
+     * alpha as grey on the right half (what video layers with `alphaPacked` read back).
+     */
+    fun presentPacked(target: RenderTarget, w: Int, h: Int) {
+        GLES30.glViewport(0, 0, w, h)
+        GLES30.glDisable(GLES30.GL_BLEND)
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        val p = res.shaders.get("fullscreen.vert", "pack_alpha.frag")
         p.use()
         bindTexture2D(0, target.texture)
         p.set1i("u_texture", 0)
@@ -169,10 +231,12 @@ class Compositor(private val res: RenderResources) {
                     batch += nodes[j] as Node3D
                     j++
                 }
+                currentLayerId = batch.first().layerId
                 draw3DBatch(batch, target, ctx, opacityOverride = null)
                 i = j
                 continue
             }
+            if (n !is GroupNode) currentLayerId = n.layerId
             drawNode(n, target, ctx)
             i++
         }
@@ -290,11 +354,13 @@ class Compositor(private val res: RenderResources) {
                 drawTexture2D(img.texture, rect, mvp, target, opacity, blend, n.masks, n.wipe)
             }
             is Content2D.Video -> res.videos.frame(n.layerId, c.assetId, c.sourceTime)?.let { v ->
-                val rect = RectF(-v.width / 2f, -v.height / 2f, v.width / 2f, v.height / 2f)
+                // Packed alpha: the visible picture is the left half of the frame.
+                val w = if (c.alphaPacked) v.width / 2f else v.width.toFloat()
+                val rect = RectF(-w / 2f, -v.height / 2f, w / 2f, v.height / 2f)
                 target.bind()
                 applyBlend(blend)
                 val p = res.shaders.get("quad.vert", "quad_oes.frag")
-                setupQuad(p, mvp, rect, flipY = true, texMatrix = v.texMatrix, opacity = opacity, premultiplied = true, masks = n.masks, maskMatrix = null, wipe = n.wipe)
+                setupQuad(p, mvp, rect, flipY = true, texMatrix = v.texMatrix, opacity = opacity, premultiplied = true, masks = n.masks, maskMatrix = null, wipe = n.wipe, alphaPacked = c.alphaPacked)
                 GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
                 GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, v.texture)
                 p.set1i("u_texture", 0)
@@ -329,9 +395,10 @@ class Compositor(private val res: RenderResources) {
 
     private fun setupQuad(
         p: Program, mvp: Mat4, rect: RectF, flipY: Boolean, texMatrix: FloatArray, opacity: Float, premultiplied: Boolean,
-        masks: List<ResolvedMask>, maskMatrix: Affine2D?, wipe: WipeState?,
+        masks: List<ResolvedMask>, maskMatrix: Affine2D?, wipe: WipeState?, alphaPacked: Boolean = false,
     ) {
         p.use()
+        p.set1f("u_alphaPacked", if (alphaPacked) 1f else 0f)
         p.setMat4("u_mvp", mvp.m)
         p.set4f("u_rect", rect.left, rect.top, rect.width(), rect.height())
         p.setMat4("u_texMatrix", texMatrix)
@@ -370,6 +437,34 @@ class Compositor(private val res: RenderResources) {
     // ------------------------------------------------------------------ 3D
 
     private fun draw3DBatch(nodes: List<Node3D>, target: RenderTarget, ctx: Ctx, opacityOverride: Float?) {
+        val dof = ctx.scene.camera.dof
+        if (dof == null) {
+            drawBatchInto(nodes, target, ctx, opacityOverride)
+            return
+        }
+        // Depth of field: render the batch alone, with its distances, then blur by circle of confusion.
+        val layer = res.pool.acquire()
+        layer.clear()
+        drawBatchInto(nodes, layer, ctx, opacityOverride)
+        val depth = res.pool.acquire()
+        depth.clear(1f, 0f, 0f, 0f)
+        drawLinearDepth(nodes, depth, ctx)
+        val blurred = pass("dof.frag", layer) { p ->
+            bindTexture2D(1, depth.texture)
+            p.set1i("u_depth", 1)
+            p.set2f("u_texel", 1f / ctx.width, 1f / ctx.height)
+            p.set1f("u_far", DOF_FAR)
+            p.set1f("u_focus", dof.focusDistance)
+            p.set1f("u_range", dof.range)
+            p.set1f("u_maxBlur", dof.blur * ctx.scale)
+            p.set1i("u_samples", (if (ctx.settings.preview) ctx.settings.dofSamples / 2 else ctx.settings.dofSamples).coerceIn(4, 64))
+        }
+        res.pool.release(depth)
+        composite(blurred, target, ctx, 1f, BlendMode.NORMAL, Affine2D.IDENTITY, emptyList(), null)
+        res.pool.release(blurred)
+    }
+
+    private fun drawBatchInto(nodes: List<Node3D>, target: RenderTarget, ctx: Ctx, opacityOverride: Float?) {
         target.bind()
         GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT)
         GLES30.glEnable(GLES30.GL_DEPTH_TEST)
@@ -377,7 +472,7 @@ class Compositor(private val res: RenderResources) {
         applyBlend(BlendMode.NORMAL)
         val p = res.shaders.get("mesh.vert", "mesh.frag")
         p.use()
-        setupLights(p, ctx.scene)
+        setupLights(p, ctx)
         fun opacityOf(n: Node3D) = opacityOverride ?: n.opacity
         GLES30.glDepthMask(true)
         for (n in nodes) if (opacityOf(n) >= 0.999f) drawMesh(p, n, opacityOf(n))
@@ -392,7 +487,97 @@ class Compositor(private val res: RenderResources) {
         GLES30.glFrontFace(GLES30.GL_CCW)
     }
 
-    private fun setupLights(p: Program, scene: FrameScene) {
+    /** Distance to the camera of every opaque pixel of [nodes], for depth of field. */
+    private fun drawLinearDepth(nodes: List<Node3D>, target: RenderTarget, ctx: Ctx) {
+        target.bind()
+        GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT)
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST)
+        GLES30.glDepthFunc(GLES30.GL_LEQUAL)
+        GLES30.glDepthMask(true)
+        GLES30.glDisable(GLES30.GL_BLEND)
+        val p = res.shaders.get("mesh.vert", "lineardepth.frag")
+        p.use()
+        val cam = ctx.scene.camera
+        p.setMat4("u_viewProj", cam.viewProjection.m)
+        p.set3f("u_cameraPos", cam.position.x, cam.position.y, cam.position.z)
+        p.set1f("u_far", DOF_FAR)
+        for (n in nodes) for ((mesh, model) in meshesOf(n)) {
+            setModel(p, model)
+            mesh.draw()
+        }
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        GLES30.glFrontFace(GLES30.GL_CCW)
+    }
+
+    /** The meshes of a 3D node with their model matrices (text and primitives in one piece, models per part). */
+    private fun meshesOf(n: Node3D): List<Pair<GpuMesh, Mat4>> {
+        val primitive = n.primitive
+        if (primitive == Primitive.TEXT) return listOf(res.meshes.text(n.text3d ?: Text3D()) to n.model)
+        if (primitive != null) return listOf(res.meshes.primitive(primitive) to n.model)
+        val model = res.meshes.model(n.modelAssetId ?: return emptyList()) ?: return emptyList()
+        val matrix = n.model * model.normalization
+        return model.parts.map { it.mesh to matrix }
+    }
+
+    /** All 3D nodes of the scene (inside groups too): shadow casters. */
+    private fun all3D(nodes: List<RenderNode>, out: MutableList<Node3D> = ArrayList()): List<Node3D> {
+        for (n in nodes) when (n) {
+            is Node3D -> out += n
+            is GroupNode -> all3D(n.children, out)
+            else -> Unit
+        }
+        return out
+    }
+
+    /** Renders the shadow map of the first shadow-casting light, fitted to every 3D object of the frame. */
+    private fun buildShadow(ctx: Ctx): Shadow? {
+        val lights = ctx.scene.lights.take(4)
+        val index = lights.indexOfFirst { it.castShadows && it.kind != LightKind.AMBIENT && it.shadowDarkness > 0.001f }
+        if (index < 0) return null
+        val casters = all3D(ctx.scene.nodes).filter { it.material?.shading != Shading.WIREFRAME }
+        if (casters.isEmpty()) return null
+        val drawn = casters.flatMap(::meshesOf)
+        if (drawn.isEmpty()) return null
+        var lo = Vec3(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        var hi = Vec3(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+        for ((mesh, model) in drawn) {
+            val (bmin, bmax) = mesh.bounds
+            for (x in listOf(bmin.x, bmax.x)) for (y in listOf(bmin.y, bmax.y)) for (z in listOf(bmin.z, bmax.z)) {
+                val w = model.transformPoint(Vec3(x, y, z))
+                lo = Vec3(min(lo.x, w.x), min(lo.y, w.y), min(lo.z, w.z))
+                hi = Vec3(max(hi.x, w.x), max(hi.y, w.y), max(hi.z, w.z))
+            }
+        }
+        val center = (lo + hi) * 0.5f
+        val radius = ((hi - lo).length() * 0.5f).coerceAtLeast(1f)
+        val light = lights[index]
+        val matrix = if (light.kind == LightKind.POINT) ShadowCamera.point(center, radius, light.position)
+        else ShadowCamera.directional(center, radius, light.direction)
+        val map = res.shadowMap(ctx.settings.shadowMapSize.coerceIn(256, min(4096, Gl.maxTextureSize())))
+        map.bind()
+        GLES30.glClearDepthf(1f)
+        GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT)
+        GLES30.glDisable(GLES30.GL_BLEND)
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST)
+        GLES30.glDepthFunc(GLES30.GL_LEQUAL)
+        GLES30.glDepthMask(true)
+        GLES30.glEnable(GLES30.GL_POLYGON_OFFSET_FILL)
+        GLES30.glPolygonOffset(1.5f, 2f)
+        val p = res.shaders.get("shadow_depth.vert", "shadow_depth.frag")
+        p.use()
+        p.setMat4("u_lightViewProj", matrix.m)
+        for ((mesh, model) in drawn) {
+            p.setMat4("u_model", model.m)
+            mesh.draw()
+        }
+        GLES30.glDisable(GLES30.GL_POLYGON_OFFSET_FILL)
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+        return Shadow(index, matrix, map, light.shadowDarkness, light.shadowSoftness)
+    }
+
+    private fun setupLights(p: Program, ctx: Ctx) {
+        val scene = ctx.scene
         val cam = scene.camera
         p.setMat4("u_viewProj", cam.viewProjection.m)
         p.set3f("u_cameraPos", cam.position.x, cam.position.y, cam.position.z)
@@ -400,6 +585,28 @@ class Compositor(private val res: RenderResources) {
         p.set3f("u_ambient", amb.r, amb.g, amb.b)
         val luma = 0.2126f * amb.r + 0.7152f * amb.g + 0.0722f * amb.b
         p.set1f("u_envIntensity", (0.25f + luma * 3f).coerceIn(0.25f, 1.6f))
+        // Environment panorama (unit 3) and shadow map (unit 2): always bound so sampler types never clash.
+        val env = scene.environment
+        val envMap = env.asset?.let { res.environments.get(it) }
+        p.set1f("u_envScale", env.intensity.coerceIn(0f, 10f))
+        p.set1f("u_envMapOn", if (envMap != null) 1f else 0f)
+        p.set1f("u_envMaxLod", envMap?.maxLod ?: 0f)
+        p.set1f("u_envRotation", env.rotation / 360f)
+        bindTexture2D(3, envMap?.texture ?: 0)
+        p.set1i("u_envMap", 3)
+        val shadow = ctx.shadow
+        bindTexture2D(2, (shadow?.map ?: res.noShadow()).texture)
+        p.set1i("u_shadowMap", 2)
+        p.set1i("u_shadowLight", shadow?.lightIndex ?: -1)
+        if (shadow != null) {
+            p.setMat4("u_shadowMatrix", shadow.matrix.m)
+            p.set2f("u_shadowTexel", 1f / shadow.map.size, 1f / shadow.map.size)
+            p.set1f("u_shadowDarkness", shadow.darkness)
+            // Softness is in texels of a 2048 map; keep the same blur in world size for smaller maps.
+            p.set1f("u_shadowSoftness", shadow.softness * shadow.map.size / 2048f)
+        }
+        p.set1f("u_wireWidth", 1.5f * max(1f, ctx.width / 1080f))
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
         val lights = scene.lights.take(4)
         p.set1i("u_lightCount", lights.size)
         if (lights.isEmpty()) return
@@ -425,18 +632,23 @@ class Compositor(private val res: RenderResources) {
 
     private fun drawMesh(p: Program, n: Node3D, opacity: Float) {
         p.set1f("u_opacity", opacity)
+        val override = n.material
+        val shading = override?.shading ?: Shading.PBR
+        p.set1i("u_shading", shading.ordinal)
+        val wire = shading == Shading.WIREFRAME
         val primitive = n.primitive
         if (primitive != null) {
-            val mat = n.material ?: return
-            setModel(p, n.model)
+            val mat = override ?: return
             setMaterial(p, mat.color, mat.metallic, mat.roughness, mat.emissive, mat.textureAssetId?.let { res.images.get(it)?.texture } ?: 0)
-            res.meshes.primitive(primitive).draw()
+            for ((mesh, model) in meshesOf(n)) {
+                setModel(p, model)
+                (if (wire) mesh.wireframe() else mesh).draw()
+            }
             return
         }
         val model = res.meshes.model(n.modelAssetId ?: return) ?: return
         val matrix = n.model * model.normalization
         setModel(p, matrix)
-        val override = n.material
         for (part in model.parts) {
             if (override != null) {
                 setMaterial(p, override.color, override.metallic, override.roughness, override.emissive, override.textureAssetId?.let { res.images.get(it)?.texture } ?: part.texture)
@@ -445,7 +657,7 @@ class Compositor(private val res: RenderResources) {
                 // glTF factors are linear; the shader expects sRGB inputs.
                 setMaterial(p, toSrgb(m.baseColor), m.metallic, m.roughness, toSrgb(m.emissive), part.texture)
             }
-            part.mesh.draw()
+            (if (wire) part.mesh.wireframe() else part.mesh).draw()
         }
     }
 
@@ -723,16 +935,9 @@ class Compositor(private val res: RenderResources) {
         p.set1f("u_gamma", e.f("gamma"))
         p.set1f("u_invert", if (e.flag("invert")) 1f else 0f)
         p.set1f("u_opacity", 1f)
-        val primitive = n.primitive
-        if (primitive != null) {
-            setModel(p, n.model)
-            res.meshes.primitive(primitive).draw()
-        } else {
-            val model = res.meshes.model(n.modelAssetId ?: return)
-            if (model != null) {
-                setModel(p, n.model * model.normalization)
-                model.parts.forEach { it.mesh.draw() }
-            }
+        for ((mesh, model) in meshesOf(n)) {
+            setModel(p, model)
+            mesh.draw()
         }
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
         GLES30.glFrontFace(GLES30.GL_CCW)
@@ -774,5 +979,8 @@ class Compositor(private val res: RenderResources) {
 
     companion object {
         private val IDENTITY = Mat4.identityArray()
+
+        /** Distances (pixels) are encoded relative to this for depth of field. */
+        private const val DOF_FAR = 60_000f
     }
 }

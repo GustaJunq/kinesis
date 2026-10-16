@@ -102,6 +102,7 @@ import dev.kinesis.core.model.updateObject3D
 import dev.kinesis.core.model.updateShape
 import dev.kinesis.core.model.updateText
 import dev.kinesis.editor.R
+import dev.kinesis.editor.ui.settings.AppSettings
 import dev.kinesis.editor.ui.common.formatTime
 import dev.kinesis.editor.ui.theme.KColors
 import dev.kinesis.editor.ui.theme.KShapes
@@ -140,6 +141,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var propsFocus by remember { mutableStateOf<String?>(null) }
     var showExport by remember { mutableStateOf(false) }
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
+    var showGraph by remember { mutableStateOf(false) }
     var renderError by remember { mutableStateOf<String?>(null) }
     var tool3D by remember { mutableStateOf(Tool3D.MOVE) }
     var textureTarget by remember { mutableStateOf<String?>(null) }
@@ -147,6 +149,14 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
 
     LaunchedEffect(vm) { vm.notices.collect { snackbar.showSnackbar(it.text) } }
     DisposableEffect(vm) { onDispose { vm.pause(); vm.flushSave() } }
+    val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle, vm) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_STOP) vm.onBackground()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     val loadError = vm.loadError
     if (loadError != null) {
@@ -177,14 +187,21 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         val target = vm.selection.value
         if (uri != null) {
             vm.importMedia(uri, AssetType.FONT, onImported = { asset ->
-                if (target != null) vm.updateLayer(target) { l -> l.updateText { t -> t.copy(font = t.font.copy(asset = asset.id)) } }
+                if (target != null) vm.updateLayer(target) { l ->
+                    l.updateText { t -> t.copy(font = t.font.copy(asset = asset.id)) }
+                        .updateObject3D { o -> o.copy(text = (o.text ?: dev.kinesis.core.model.Text3D()).let { t3 -> t3.copy(font = t3.font.copy(asset = asset.id)) }) }
+                }
             }) { _, _ -> null }
         }
     }
     val pickTexture = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         val target = textureTarget
         textureTarget = null
-        if (uri != null && target != null) {
+        if (uri != null && target == ENVIRONMENT_TARGET) {
+            vm.importMedia(uri, AssetType.IMAGE, onImported = { asset ->
+                vm.edit { p -> p.copy(composition = p.composition.copy(environment = p.composition.environment.copy(asset = asset.id))) }
+            }) { _, _ -> null }
+        } else if (uri != null && target != null) {
             vm.importMedia(uri, AssetType.IMAGE, onImported = { asset ->
                 vm.updateLayer(target) { l ->
                     l.updateObject3D { o -> o.copy(material = o.material.copy(texture = asset.id)) }
@@ -222,6 +239,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
             AddAction.AUDIO -> pickAudio.launch(arrayOf("audio/*"))
             AddAction.MODEL -> pickModel.launch(arrayOf("model/gltf-binary", "model/gltf+json", "application/octet-stream", "*/*"))
             AddAction.CAMERA -> vm.addLayer(Factory.camera(p, t, context.getString(R.string.layer_camera)))
+            AddAction.TEXT3D -> vm.addLayer(Factory.text3d(p, t, context.getString(R.string.default_text), context.getString(R.string.prim_text3d)))
             AddAction.NULL_2D -> vm.addLayer(Factory.nullObject(p, t, false, context.getString(R.string.layer_null)))
             AddAction.NULL_3D -> vm.addLayer(Factory.nullObject(p, t, true, context.getString(R.string.null_3d)))
             else -> {
@@ -364,6 +382,9 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                         val keyframe = animatable?.keyframes?.getOrNull(target.keyIndex)
                         if (layer == null || prop == null || animatable == null || keyframe == null) {
                             curveTarget = null
+                            showGraph = false
+                        } else if (showGraph) {
+                            GraphEditorPanel(vm, layer, prop, stringResource(propLabelRes(prop.labelKey)), onClose = { showGraph = false })
                         } else {
                             CurveEditorPanel(
                                 easing = keyframe.easing,
@@ -371,6 +392,13 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                                 onEasing = { vm.setEasing(layer.id, prop, target.keyIndex, it) },
                                 onLoop = { vm.setLoop(layer.id, prop, it) },
                                 onClose = { curveTarget = null },
+                                saved = AppSettings.savedEasings,
+                                onSave = { AppSettings.saveEasing(context, it) },
+                                onDeleteSaved = { AppSettings.deleteEasing(context, it) },
+                                clipboard = vm.easingClipboard,
+                                onCopy = { vm.copyEasing(it) },
+                                onApplyAll = { vm.setEasingAll(layer.id, prop, it) },
+                                onGraph = { showGraph = true },
                             )
                         }
                     }

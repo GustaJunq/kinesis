@@ -27,6 +27,7 @@ import dev.kinesis.core.model.Material
 import dev.kinesis.core.model.Primitive
 import dev.kinesis.core.model.ShapeContent
 import dev.kinesis.core.model.TextContent
+import dev.kinesis.core.model.Text3D
 import kotlin.math.floor
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -48,7 +49,7 @@ object SceneEvaluator {
         val camera = evaluateCamera(project, time)
         val (ambient, lights) = evaluateLights(project, time)
         val nodes = evaluateContainer(project.layers, time, Affine2D.IDENTITY, camera, comp)
-        return FrameScene(time, comp.width, comp.height, comp.background, camera, ambient, lights, nodes)
+        return FrameScene(time, comp.width, comp.height, comp.background, camera, ambient, lights, nodes, comp.environment)
     }
 
     // ------------------------------------------------------------------ containers
@@ -169,7 +170,9 @@ object SceneEvaluator {
             LayerType.OBJECT3D -> {
                 val o = layer.object3d ?: return null
                 if (o.primitive == Primitive.EMPTY) return null
-                Quad(o.primitive, null, o.size.at(t), resolveMaterial(o.material, t))
+                // Text meshes are built in pixels: no size scaling.
+                val size = if (o.primitive == Primitive.TEXT) 1f else o.size.at(t)
+                Quad(o.primitive, null, size, resolveMaterial(o.material, t))
             }
             LayerType.MODEL3D -> {
                 val m = layer.model3d ?: return null
@@ -178,6 +181,7 @@ object SceneEvaluator {
             else -> return null
         }
         val model = world * Mat4.scale(size, size, size)
+        val text3d = if (primitive == Primitive.TEXT) layer.object3d?.text ?: Text3D() else null
         val pivot = camera.project(world.transformPoint(Vec3.ZERO)) ?: Vec2.ZERO
         return Node3D(
             layerId = layer.id,
@@ -192,6 +196,7 @@ object SceneEvaluator {
             motionBlur = layer.motionBlur,
             transitionBlur = transition.blur,
             post = containerMatrix * transition.matrix(pivot),
+            text3d = text3d,
         )
     }
 
@@ -264,7 +269,7 @@ object SceneEvaluator {
         LayerType.TEXT -> textContent(layer.text ?: TextContent(), t, TextExpression.evaluate(layer, siblings, containerTime, comp))
         LayerType.SHAPE -> shapeContent(layer.shape ?: ShapeContent(), t)
         LayerType.IMAGE -> layer.image?.let { Content2D.Image(it.asset) }
-        LayerType.VIDEO -> layer.video?.let { Content2D.Video(it.asset, it.sourceTime(t).coerceAtLeast(0.0)) }
+        LayerType.VIDEO -> layer.video?.let { Content2D.Video(it.asset, it.sourceTime(t).coerceAtLeast(0.0), it.alphaPacked) }
         else -> null
     }
 
@@ -310,6 +315,7 @@ object SceneEvaluator {
         roughness = m.roughness.at(t).clamp(0.02f, 1f),
         emissive = m.emissive.at(t),
         textureAssetId = m.texture,
+        shading = m.shading,
     )
 
     /**
@@ -400,6 +406,7 @@ object SceneEvaluator {
         var target = Vec3.ZERO
         var forward: Vec3? = null
         var up = Vec3(0f, -1f, 0f)
+        var dof: ResolvedDof? = null
         if (active != null) {
             val (layer0, containerTime, siblings) = active
             val layer = resolved(layer0, siblings, containerTime)
@@ -417,10 +424,14 @@ object SceneEvaluator {
             } else {
                 target = parent.transformPoint(cam.target.at(t))
             }
+            cam.dof?.takeIf { it.enabled }?.let { d ->
+                val blur = d.blur.at(t).clamp(0f, 200f)
+                if (blur > 0.01f) dof = ResolvedDof(d.focusDistance.at(t).coerceAtLeast(1f), d.range.at(t).coerceAtLeast(0f), blur)
+            }
         }
         val view = Mat4.lookAt(position, forward?.let { position + it } ?: target, up)
         val projection = Mat4.perspective(fov, comp.aspect, NEAR_PLANE, FAR_PLANE)
-        return CameraState(position, target, fov, view, projection, comp.width, comp.height)
+        return CameraState(position, target, fov, view, projection, comp.width, comp.height, dof)
     }
 
     fun evaluateLights(project: KnsProject, time: Double): Pair<Color, List<LightState>> {
@@ -450,6 +461,9 @@ object SceneEvaluator {
                 position = pos,
                 direction = (target - pos).normalized(),
                 radius = light.radius.at(t).coerceAtLeast(1f),
+                castShadows = light.castShadows,
+                shadowDarkness = light.shadowDarkness.at(t).clamp(0f, 1f),
+                shadowSoftness = light.shadowSoftness.clamp(0f, 8f),
             )
         }
         return Color(ar, ag, ab) to lights

@@ -1,10 +1,14 @@
 package dev.kinesis.editor.data
 
 import android.content.ContentResolver
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import dev.kinesis.core.edit.Factory
@@ -105,6 +109,9 @@ class ProjectStore(private val context: Context) {
     fun duplicate(id: String): String {
         val newId = UUID.randomUUID().toString()
         dir(id).copyRecursively(dir(newId))
+        // The copy gets its own versions and its own file in Documents.
+        File(dir(newId), MIRROR).delete()
+        File(dir(newId), SNAPSHOTS).deleteRecursively()
         val p = load(newId)
         save(newId, p.copy(meta = p.meta.copy(title = p.meta.title + " (2)", createdAt = Instant.now().toString())))
         return newId
@@ -235,5 +242,98 @@ class ProjectStore(private val context: Context) {
     /** Removes leftovers of interrupted imports. */
     fun cleanup() {
         root.listFiles { f -> f.name.startsWith(".import-") }?.forEach { it.deleteRecursively() }
+    }
+
+    // ------------------------------------------------------------------ snapshots
+
+    /** A saved version of a project's document (assets are shared with the project). */
+    class Snapshot(val file: File, val time: Long)
+
+    private fun snapshotDir(id: String) = File(dir(id), SNAPSHOTS)
+
+    /** Newest first. */
+    fun snapshots(id: String): List<Snapshot> = snapshotDir(id).listFiles { f -> f.isFile && f.name.endsWith(".json") }.orEmpty()
+        .mapNotNull { f -> f.nameWithoutExtension.toLongOrNull()?.let { Snapshot(f, it) } }
+        .sortedByDescending { it.time }
+
+    /** Saves [project] as a new snapshot, keeping the newest [MAX_SNAPSHOTS]. Skipped when identical to the newest one. */
+    fun snapshot(id: String, project: KnsProject) {
+        val text = KnsprojJson.encode(project)
+        val existing = snapshots(id)
+        if (existing.firstOrNull()?.file?.let { runCatching { it.readText() }.getOrNull() } == text) return
+        val dir = snapshotDir(id).apply { mkdirs() }
+        var time = System.currentTimeMillis()
+        while (File(dir, "$time.json").exists()) time++
+        SafeFile.writeText(File(dir, "$time.json"), text, keepBackup = false)
+        (snapshots(id).drop(MAX_SNAPSHOTS)).forEach { it.file.delete() }
+    }
+
+    fun loadSnapshot(snapshot: Snapshot): KnsProject = KnsprojJson.decode(snapshot.file.readText())
+
+    // ------------------------------------------------------------------ crash recovery
+
+    private val sessionFile = File(root, ".session")
+
+    /** Marks [id] as open in the editor; the mark is left behind if the app dies before [endSession]. */
+    fun beginSession(id: String) = runCatching { sessionFile.writeText(id) }
+
+    fun endSession(id: String) {
+        runCatching { if (sessionFile.isFile && sessionFile.readText() == id) sessionFile.delete() }
+    }
+
+    /** The project that was open when the app last stopped without closing the editor, if it still exists. */
+    fun interruptedSession(): String? = runCatching { sessionFile.takeIf { it.isFile }?.readText()?.trim() }.getOrNull()
+        ?.takeIf { it.isNotEmpty() && projectFile(it).isFile }
+
+    fun clearSession() {
+        sessionFile.delete()
+    }
+
+    // ------------------------------------------------------------------ copy in a user-visible folder
+
+    /**
+     * Writes the project as a `.knsproj` into `Documents/Kinesis` (Android 11+) or `Download/Kinesis` (Android 10),
+     * where it survives uninstalling the app. The same file is overwritten on later calls. Returns false when not
+     * possible (older Android, storage refused).
+     */
+    fun mirrorToDocuments(id: String): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        val resolver = context.contentResolver
+        val marker = File(dir(id), MIRROR)
+        fun write(uri: Uri): Boolean = resolver.openOutputStream(uri, "wt")?.use { out -> export(id, out); true } ?: false
+        marker.takeIf { it.isFile }?.readText()?.let(Uri::parse)?.let { uri ->
+            try {
+                if (write(uri)) return true
+            } catch (e: Exception) {
+                // Deleted by the user or no longer ours (e.g. after reinstalling): create a new file below.
+            }
+        }
+        val title = load(id).meta.title.ifBlank { "Kinesis" }.replace(Regex("[^\\p{L}\\p{N} ._-]"), "_").take(60)
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "$title-${id.take(8)}.knsproj")
+            put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+        }
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/Kinesis")
+            MediaStore.Files.getContentUri("external")
+        } else {
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Kinesis")
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        }
+        val uri = resolver.insert(collection, values) ?: return false
+        return try {
+            if (!write(uri)) return false
+            marker.writeText(uri.toString())
+            true
+        } catch (e: Exception) {
+            runCatching { resolver.delete(uri, null, null) }
+            false
+        }
+    }
+
+    companion object {
+        const val MAX_SNAPSHOTS = 10
+        private const val SNAPSHOTS = ".snapshots"
+        private const val MIRROR = ".mirror"
     }
 }

@@ -70,6 +70,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import dev.kinesis.editor.ui.common.formatTime
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -206,7 +208,7 @@ fun layerIcon(layer: Layer): ImageVector = when (layer.type) {
 
 enum class AddAction {
     TEXT, RECTANGLE, ELLIPSE, POLYGON, STAR, LINE, IMAGE, VIDEO, AUDIO,
-    CUBE, SPHERE, CYLINDER, CONE, TORUS, PLANE, NULL_2D, NULL_3D, MODEL, CAMERA, LIGHT_DIRECTIONAL, LIGHT_POINT, LIGHT_AMBIENT,
+    CUBE, SPHERE, CYLINDER, CONE, TORUS, PLANE, TEXT3D, NULL_2D, NULL_3D, MODEL, CAMERA, LIGHT_DIRECTIONAL, LIGHT_POINT, LIGHT_AMBIENT,
 }
 
 private class AddItem(val action: AddAction, val label: Int, val icon: ImageVector)
@@ -238,6 +240,7 @@ fun AddSheet(section: AddSection, onDismiss: () -> Unit, onAdd: (AddAction) -> U
             AddItem(AddAction.CONE, R.string.prim_cone, Icons.Filled.Category),
             AddItem(AddAction.TORUS, R.string.prim_torus, Icons.Filled.DonutLarge),
             AddItem(AddAction.PLANE, R.string.prim_plane, Icons.Filled.Square),
+            AddItem(AddAction.TEXT3D, R.string.prim_text3d, Icons.Filled.TextFields),
             AddItem(AddAction.NULL_3D, R.string.null_3d, Icons.Filled.CenterFocusStrong),
             AddItem(AddAction.MODEL, R.string.layer_model3d, Icons.Filled.Token),
         ),
@@ -321,6 +324,13 @@ fun CurveEditorPanel(
     onLoop: (dev.kinesis.core.anim.LoopMode) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    saved: List<Easing> = emptyList(),
+    onSave: ((Easing) -> Unit)? = null,
+    onDeleteSaved: ((Easing) -> Unit)? = null,
+    clipboard: Easing? = null,
+    onCopy: ((Easing) -> Unit)? = null,
+    onApplyAll: ((Easing) -> Unit)? = null,
+    onGraph: (() -> Unit)? = null,
 ) {
     var current by remember(easing) { mutableStateOf(easing) }
     var handles by remember(easing) { mutableStateOf(easing.bezierOrNull() ?: Easing.CubicBezier(0.42f, 0f, 0.58f, 1f)) }
@@ -468,12 +478,47 @@ fun CurveEditorPanel(
             PillChip(stringResource(R.string.loop_cycle), loop == dev.kinesis.core.anim.LoopMode.CYCLE, { onLoop(dev.kinesis.core.anim.LoopMode.CYCLE) })
             PillChip(stringResource(R.string.loop_pingpong), loop == dev.kinesis.core.anim.LoopMode.PINGPONG, { onLoop(dev.kinesis.core.anim.LoopMode.PINGPONG) })
         }
+        fun pick(e: Easing) {
+            current = e
+            e.bezierOrNull()?.let { handles = it }
+            (e as? Easing.Cyclic)?.let { wave = it }
+            onEasing(e)
+        }
+        if (onSave != null) {
+            OverlineLabel(stringResource(R.string.my_curves))
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                item { PillChip("+ " + stringResource(R.string.save_curve), selected = false, onClick = { onSave(current) }) }
+                items(saved) { e -> PillChip(savedLabel(e), selected = current == e, onClick = { pick(e) }) }
+            }
+            if (onDeleteSaved != null && current in saved) {
+                TextButton(onClick = { onDeleteSaved(current) }) { Text(stringResource(R.string.delete_saved_curve)) }
+            }
+        }
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            if (onCopy != null) item { TextButton(onClick = { onCopy(current) }) { Text(stringResource(R.string.copy_curve)) } }
+            if (clipboard != null) item { TextButton(onClick = { pick(clipboard) }) { Text(stringResource(R.string.paste_curve)) } }
+            if (onApplyAll != null) item { TextButton(onClick = { onApplyAll(current) }) { Text(stringResource(R.string.apply_to_all_keyframes)) } }
+            if (onGraph != null) item { TextButton(onClick = onGraph) { Text(stringResource(R.string.graph_editor)) } }
+        }
     }
 }
 
 private fun fmt(v: Float) = ((v * 100).roundToInt() / 100f).toString()
 
+/** Short label of a saved curve. */
+private fun savedLabel(e: Easing): String = when (e) {
+    is Easing.Preset -> easingLabel(e.preset)
+    is Easing.CubicBezier -> "(${fmt(e.x1)}, ${fmt(e.y1)}, ${fmt(e.x2)}, ${fmt(e.y2)})"
+    is Easing.Cyclic -> "∿ ${fmt(e.cycles)}×"
+}
+
 // ---------------------------------------------------------------------------------------- export
+
+/** "1 min 20 s" / "45 s". */
+private fun formatDuration(seconds: Double): String {
+    val s = seconds.roundToInt().coerceAtLeast(1)
+    return if (s >= 60) "${s / 60} min ${s % 60} s" else "$s s"
+}
 
 @Composable
 fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState, onDismiss: () -> Unit) {
@@ -535,9 +580,10 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
                         Text(stringResource(R.string.export_info, "%.1f".format(comp.duration), comp.fps.roundToInt()), fontSize = 12.sp, color = KColors.TextSecondary)
                     }
                     is ExportUiState.Running -> {
-                        Text(stringResource(R.string.exporting))
+                        Text(stringResource(if (state.preRender) R.string.prerendering else R.string.exporting))
                         LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
-                        Text("${(state.progress * 100).roundToInt()}%", color = KColors.TextSecondary)
+                        val eta = state.etaSeconds?.let { stringResource(R.string.export_eta, formatDuration(it)) }
+                        Text("${(state.progress * 100).roundToInt()}%" + (eta?.let { "  ·  $it" } ?: ""), color = KColors.TextSecondary)
                     }
                     is ExportUiState.Done -> {
                         Text(stringResource(R.string.export_done))
@@ -548,7 +594,23 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
                     }
                     is ExportUiState.Failed -> {
                         Text(stringResource(R.string.export_failed), color = KColors.Danger)
+                        if (state.time != null) {
+                            val where = state.layerName?.ifBlank { null } ?: state.layerId
+                            Text(
+                                if (where != null) stringResource(R.string.export_failed_at_layer, formatTime(state.time, project.composition.fps), where)
+                                else stringResource(R.string.export_failed_at, formatTime(state.time, project.composition.fps)),
+                                fontSize = 13.sp,
+                            )
+                        }
+                        if (state.outOfMemory) Text(stringResource(R.string.export_failed_memory), fontSize = 12.sp, color = KColors.TextSecondary)
                         Text(state.message, fontSize = 12.sp, color = KColors.TextSecondary)
+                        if (state.time != null) Text(stringResource(R.string.export_resume_hint), fontSize = 12.sp, color = KColors.TextSecondary)
+                        val layerId = state.layerId
+                        if (layerId != null && vm.canPreRender(layerId)) {
+                            OutlinedButton(onClick = { vm.preRenderLayer(layerId) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.prerender_layer))
+                            }
+                        }
                     }
                 }
             }

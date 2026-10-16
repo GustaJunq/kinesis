@@ -1,5 +1,10 @@
 package dev.kinesis.editor.ui.editor
 
+import dev.kinesis.editor.ui.settings.AppSettings
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import dev.kinesis.editor.R
 import android.app.Application
 import android.graphics.Bitmap
 import android.net.Uri
@@ -10,6 +15,8 @@ import dev.kinesis.core.anim.Easing
 import dev.kinesis.core.anim.KeyframeOps
 import dev.kinesis.core.edit.AnimMapper
 import dev.kinesis.core.edit.AnimProp
+import dev.kinesis.core.edit.KeyframeClip
+import dev.kinesis.core.edit.KeyframeClipboard
 import dev.kinesis.core.edit.History
 import dev.kinesis.core.edit.TimelineOps
 import dev.kinesis.core.edit.mapAnimatables
@@ -22,11 +29,16 @@ import dev.kinesis.core.model.LayerTree
 import dev.kinesis.editor.data.ProjectStore
 import dev.kinesis.editor.media.AudioMixer
 import dev.kinesis.editor.media.ExportCancelled
+import dev.kinesis.core.edit.PreRender
+import dev.kinesis.editor.media.ExportResolution
+import dev.kinesis.editor.media.ExportQuality
+import dev.kinesis.editor.media.ExportFailure
 import dev.kinesis.editor.media.ExportSettings
 import dev.kinesis.editor.media.PcmCache
 import dev.kinesis.editor.media.PreviewAudio
 import dev.kinesis.editor.media.VideoExporter
 import dev.kinesis.editor.media.VideoGallery
+import dev.kinesis.editor.media.VideoProxies
 import dev.kinesis.editor.render.AssetFiles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,9 +63,17 @@ import kotlin.math.abs
 
 sealed class ExportUiState {
     data object Idle : ExportUiState()
-    data class Running(val progress: Float) : ExportUiState()
+    /** [etaSeconds]: estimated time left, once known. [preRender]: rendering one layer instead of the video. */
+    data class Running(val progress: Float, val etaSeconds: Double? = null, val preRender: Boolean = false) : ExportUiState()
     data class Done(val file: File, val galleryUri: Uri?) : ExportUiState()
-    data class Failed(val message: String) : ExportUiState()
+    /** Where it stopped ([time], [layerId]) when known; the finished blocks are kept for the next try. */
+    data class Failed(
+        val message: String,
+        val time: Double? = null,
+        val layerId: String? = null,
+        val layerName: String? = null,
+        val outOfMemory: Boolean = false,
+    ) : ExportUiState()
 }
 
 /** Short user-facing notices (shown in a snackbar). */
@@ -104,6 +124,8 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
 
     val files: AssetFiles
     private val pcm: PcmCache
+    /** Light copies of heavy videos for the preview. */
+    val proxies: VideoProxies
     private val mixer: AudioMixer
     private val previewAudio: PreviewAudio
     private var saveJob: Job? = null
@@ -132,11 +154,86 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         history = History(loaded)
         files = store.assetFiles(projectId) { _project.value }
         pcm = PcmCache(File(app.cacheDir, "pcm/$projectId"), files)
+        proxies = VideoProxies(File(app.cacheDir, "proxies/$projectId"), app.assets, files, pcm)
         mixer = AudioMixer(pcm).also { it.setProject(loaded) }
         previewAudio = PreviewAudio(mixer)
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { pcm.prepare(loaded) }
             _audioRevision.value++
+        }
+        if (error == null) {
+            store.beginSession(projectId)
+            // A version of the project as it was opened, to go back to.
+            viewModelScope.launch(Dispatchers.IO) { runCatching { store.snapshot(projectId, loaded) } }
+            buildProxies()
+        }
+    }
+
+    // ------------------------------------------------------------------ preview proxies
+
+    /** Makes missing proxies of heavy videos in the background (one at a time); the preview switches when ready. */
+    fun buildProxies() {
+        if (!AppSettings.useProxies || loadError != null) return
+        val snapshot = _project.value
+        viewModelScope.launch(proxyDispatcher) {
+            proxies.build(snapshot) { withMain { _mediaRevision.value++ } }
+        }
+    }
+
+    private fun withMain(block: () -> Unit) {
+        viewModelScope.launch(Dispatchers.Main) { block() }
+    }
+
+    // ------------------------------------------------------------------ versions and safety copies
+
+    private var lastSnapshot = System.currentTimeMillis()
+    private var lastMirror = 0L
+    @Volatile
+    private var mirrorPending = false
+
+    /** Saved versions of this project (newest first). */
+    fun snapshots(): List<ProjectStore.Snapshot> = store.snapshots(projectId)
+
+    /** Replaces the document by a saved version (the current state is saved as a version first, and can be undone). */
+    fun restoreSnapshot(snapshot: ProjectStore.Snapshot) {
+        val current = _project.value
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                store.snapshot(projectId, current)
+                val restored = store.loadSnapshot(snapshot)
+                withContext(Dispatchers.Main) {
+                    edit { restored }
+                    notify(text(R.string.version_restored))
+                }
+            } catch (e: Exception) {
+                notify(e.message ?: "Cannot restore", true)
+            }
+        }
+    }
+
+    /** After a save: a version every few minutes and the copy in Documents (throttled, in the background). */
+    private fun afterSave(project: KnsProject) {
+        val now = System.currentTimeMillis()
+        if (now - lastSnapshot > SNAPSHOT_INTERVAL_MS) {
+            lastSnapshot = now
+            runCatching { store.snapshot(projectId, project) }
+        }
+        mirrorPending = true
+        if (now - lastMirror > MIRROR_INTERVAL_MS) mirrorNow()
+    }
+
+    private fun mirrorNow() {
+        if (!AppSettings.mirrorToDocuments || !mirrorPending || loadError != null) return
+        mirrorPending = false
+        lastMirror = System.currentTimeMillis()
+        val id = projectId
+        val st = store
+        backgroundScope.launch {
+            try {
+                st.mirrorToDocuments(id)
+            } catch (e: Exception) {
+                Log.w("Kinesis", "copy to Documents failed", e)
+            }
         }
     }
 
@@ -207,7 +304,9 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
             if (loadError != null || !dirty) return
             dirty = false
             try {
-                store.save(projectId, _project.value)
+                val saved = _project.value
+                store.save(projectId, saved)
+                afterSave(saved)
             } catch (e: Exception) {
                 dirty = true
                 Log.e("Kinesis", "save failed", e)
@@ -220,6 +319,17 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         saveJob?.cancel()
         saveJob = null
         viewModelScope.launch(Dispatchers.IO) { saveNow() }
+    }
+
+    /** The app went to the background (it may be killed there): save now and refresh the copy in Documents. */
+    fun onBackground() {
+        saveJob?.cancel()
+        saveJob = null
+        viewModelScope.launch(Dispatchers.IO) {
+            saveNow()
+            lastMirror = 0L
+            mirrorNow()
+        }
     }
 
     fun saveThumbnail(bitmap: Bitmap) {
@@ -445,6 +555,51 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     fun setEasing(layerId: String, prop: AnimProp<*>, index: Int, easing: Easing) =
         updateLayer(layerId) { l -> prop.setEasing(l, index, easing) }
 
+    /** Applies [easing] to every keyframe segment of [prop]. */
+    fun setEasingAll(layerId: String, prop: AnimProp<*>, easing: Easing) =
+        updateLayer(layerId) { l -> prop.get(l).keyframes.indices.fold(l) { acc, i -> prop.setEasing(acc, i, easing) } }
+
+    // ------------------------------------------------------------------ clipboards (kept while the editor is open)
+
+    /** A copied curve, pasted onto other keyframes, properties or layers. */
+    var easingClipboard by mutableStateOf<Easing?>(null)
+        private set
+
+    fun copyEasing(easing: Easing) {
+        easingClipboard = easing
+        notify(text(R.string.curve_copied))
+    }
+
+    /** Copied keyframes (see [KeyframeClipboard]). */
+    var keyframeClip by mutableStateOf<KeyframeClip?>(null)
+        private set
+
+    /** Copies the keyframes of every animated property of [layerId], or only of [propIds]. */
+    fun copyKeyframes(layerId: String, propIds: Set<String>? = null) {
+        val layer = LayerTree.find(current, layerId) ?: return
+        val clip = KeyframeClipboard.copy(layer, propIds)
+        if (clip == null) {
+            notify(text(R.string.keyframes_nothing_to_copy))
+        } else {
+            keyframeClip = clip
+            notify(text(R.string.keyframes_copied, clip.entries.size))
+        }
+    }
+
+    /** Pastes the copied keyframes into [layerId] starting at the playhead. */
+    fun pasteKeyframes(layerId: String) {
+        val clip = keyframeClip ?: return
+        var count = 0
+        updateLayer(layerId) { l ->
+            val (pasted, n) = KeyframeClipboard.paste(l, clip, localTime(l))
+            count = n
+            pasted
+        }
+        notify(if (count == 0) text(R.string.keyframes_paste_none) else text(R.string.keyframes_pasted, count))
+    }
+
+    private fun text(id: Int, vararg args: Any): String = getApplication<Application>().getString(id, *args)
+
     /** Moves every keyframe of a layer that sits at local time [from] to [to] (timeline diamonds). */
     fun moveKeyframesAt(layerId: String, from: Double, to: Double, coalesceKey: String) =
         updateLayer(layerId, coalesceKey) { l ->
@@ -474,6 +629,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
                 layerId?.let { select(it) }
                 _mediaRevision.value++
                 onImported(asset)
+                if (type == AssetType.VIDEO) buildProxies()
                 if (type == AssetType.VIDEO || type == AssetType.AUDIO) {
                     withContext(Dispatchers.IO) { runCatching { pcm.ensure(asset.id) } }
                     _audioRevision.value++
@@ -507,8 +663,12 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
                 val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
                 val safeTitle = snapshot.meta.title.replace(Regex("[^A-Za-z0-9_-]+"), "_").trim('_').ifEmpty { "kinesis" }.take(40)
                 val out = File(dir, "$safeTitle-$stamp.mp4")
+                val eta = Eta()
                 withContext(exportDispatcher) {
-                    VideoExporter(app.assets, files, pcm).export(snapshot, settings, out, { p -> _export.value = ExportUiState.Running(p) }) { exportCancelled }
+                    VideoExporter(app.assets, files, pcm).export(
+                        snapshot, settings, out, { p -> _export.value = ExportUiState.Running(p, eta.update(p)) }, { exportCancelled },
+                        workDir = File(app.cacheDir, "export/$projectId"),
+                    )
                 }
                 val uri = withContext(Dispatchers.IO) { VideoGallery.save(app, out, out.name) }
                 _export.value = ExportUiState.Done(out, uri)
@@ -516,7 +676,59 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
                 _export.value = ExportUiState.Idle
             } catch (e: Throwable) {
                 Log.e("Kinesis", "export failed", e)
-                _export.value = ExportUiState.Failed(e.message ?: e.javaClass.simpleName)
+                _export.value = failure(e)
+            }
+        }
+    }
+
+    private fun failure(e: Throwable): ExportUiState.Failed {
+        if (e !is ExportFailure) return ExportUiState.Failed(e.message ?: e.javaClass.simpleName)
+        val layer = e.layerId?.let { LayerTree.find(current, it) }
+        return ExportUiState.Failed(e.message ?: "", e.time, layer?.id, layer?.name, e.outOfMemory)
+    }
+
+    /** Whether [layerId] can be replaced by a pre-rendered video. */
+    fun canPreRender(layerId: String): Boolean = PreRender.canPreRender(current, layerId)
+
+    /**
+     * Renders [layerId] alone into a video with transparency and shows that video instead (the layer stays,
+     * hidden). Lightens heavy layers (many effects, 3D) for export. Undoable.
+     */
+    fun preRenderLayer(layerId: String) {
+        if (_export.value is ExportUiState.Running) return
+        val snapshot = current
+        val range = PreRender.range(snapshot, layerId) ?: return
+        val layer = LayerTree.find(snapshot, layerId) ?: return
+        pause()
+        exportCancelled = false
+        val app = getApplication<Application>()
+        _export.value = ExportUiState.Running(0f, preRender = true)
+        exportJob = viewModelScope.launch {
+            val tmp = File(app.cacheDir, "prerender/${layer.id}.mp4").apply { parentFile?.mkdirs() }
+            try {
+                val eta = Eta()
+                withContext(exportDispatcher) {
+                    VideoExporter(app.assets, files, pcm).export(
+                        PreRender.isolate(snapshot, layerId), ExportSettings(ExportResolution.ORIGINAL, ExportQuality.HIGH, includeAudio = false), tmp,
+                        { p -> _export.value = ExportUiState.Running(p, eta.update(p), preRender = true) }, { exportCancelled },
+                        workDir = File(app.cacheDir, "export/$projectId-layer"), range = range, packAlpha = true,
+                    )
+                }
+                val asset = withContext(Dispatchers.IO) { store.importMedia(projectId, current, Uri.fromFile(tmp), AssetType.VIDEO) }
+                val name = text(R.string.prerender_layer_name, layer.name.ifBlank { layer.type.name.lowercase() })
+                var newId: String? = null
+                edit { p -> PreRender.replace(p, layerId, asset, range, name).also { newId = it.second }.first }
+                newId?.let { select(it) }
+                _mediaRevision.value++
+                _export.value = ExportUiState.Idle
+                notify(text(R.string.prerender_done))
+            } catch (e: ExportCancelled) {
+                _export.value = ExportUiState.Idle
+            } catch (e: Throwable) {
+                Log.e("Kinesis", "pre-render failed", e)
+                _export.value = failure(e)
+            } finally {
+                tmp.delete()
             }
         }
     }
@@ -533,9 +745,15 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         previewAudio.stop()
         playJob?.cancel()
         exportCancelled = true
+        proxies.cancelled = true
         if (saveJob?.isActive == true) {
             saveJob?.cancel()
             runBlocking(Dispatchers.IO) { saveNow() }
+        }
+        if (loadError == null) {
+            store.endSession(projectId)
+            lastMirror = 0L
+            mirrorNow()
         }
         exportDispatcher.close()
         super.onCleared()
@@ -543,3 +761,30 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
 }
 
 private const val MIN_DURATION = 0.5
+private const val SNAPSHOT_INTERVAL_MS = 3 * 60_000L
+private const val MIRROR_INTERVAL_MS = 2 * 60_000L
+
+/** Time left from the progress so far (ignores progress that was already there, e.g. resumed blocks). */
+private class Eta {
+    private var startNs = 0L
+    private var startProgress = -1f
+
+    fun update(progress: Float): Double? {
+        val now = System.nanoTime()
+        if (startProgress < 0f) {
+            startNs = now
+            startProgress = progress
+            return null
+        }
+        val done = progress - startProgress
+        val elapsed = (now - startNs) / 1e9
+        if (done < 0.02f || elapsed < 2.0) return null
+        return elapsed / done * (1f - progress)
+    }
+}
+
+/** Proxies are made one at a time, across editors. */
+private val proxyDispatcher = Executors.newSingleThreadExecutor { r -> Thread(r, "kinesis-proxies").apply { isDaemon = true } }.asCoroutineDispatcher()
+
+/** Work that must finish after the editor closes (the copy in Documents). */
+private val backgroundScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob())

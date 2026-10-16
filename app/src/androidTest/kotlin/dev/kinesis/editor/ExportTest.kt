@@ -121,4 +121,79 @@ class ExportTest {
         val second = export(p2, videoFiles, "reexport")
         assertTrue(second.isFile && second.length() > 10_000)
     }
+
+    /** A cancelled export keeps its finished blocks and the next export of the same project resumes from them. */
+    @Test
+    fun cancelledExportResumesFromItsBlocks() {
+        var p = Factory.newProject("blocks", 360, 640, 15.0, 11.0, dev.kinesis.core.math.Color.parse("#203040"), null, "test")
+        p = p.copy(layers = listOf(Factory.text(p, 0.0, "blocks", "t").copy(duration = 11.0)))
+        val files = AssetFiles { null }
+        val work = File(dir, "work")
+        val out = File(dir, "blocks.mp4")
+        val exporter = VideoExporter(app.assets, files, PcmCache(File(dir, "pcm-blocks"), files))
+        val settings = ExportSettings(ExportResolution.ORIGINAL, ExportQuality.STANDARD, includeAudio = false)
+        var last = 0f
+        try {
+            exporter.export(p, settings, out, { last = it }, { last > 0.5f }, workDir = work)
+            throw AssertionError("export was not cancelled")
+        } catch (e: dev.kinesis.editor.media.ExportCancelled) {
+            // expected
+        }
+        val kept = work.walk().filter { it.name.startsWith("video-") && it.name.endsWith(".mp4") }.count()
+        assertTrue("blocks kept: $kept", kept >= 1)
+        var firstReport = -1f
+        exporter.export(p, settings, out, { if (firstReport < 0f) firstReport = it }, { false }, workDir = work)
+        assertTrue("resumed at $firstReport", firstReport >= 0.3f)
+        val r = MediaMetadataRetriever()
+        r.setDataSource(out.path)
+        val duration = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)!!.toLong()
+        assertTrue("duration $duration ms", duration in 10_500..11_500)
+        assertNotNull(r.getFrameAtTime(10_000_000, MediaMetadataRetriever.OPTION_CLOSEST))
+        r.release()
+        assertTrue("blocks removed after success", work.walk().none { it.name.startsWith("video-") })
+    }
+
+    /** Pre-rendering a layer: colour on the left half, alpha on the right, then drawn back as a packed video. */
+    @Test
+    fun packedAlphaPreRender() {
+        var p = Factory.newProject("packed", 360, 640, 15.0, 2.0, dev.kinesis.core.math.Color.parse("#FF0000"), null, "test")
+        val star0 = Factory.shape(p, 0.0, dev.kinesis.core.model.ShapeKind.STAR, "star")
+        val star = star0.copy(shape = star0.shape!!.copy(fill = star0.shape!!.fill.copy(color = dev.kinesis.core.anim.anim(dev.kinesis.core.math.Color.parse("#FFFF00")))))
+        p = p.copy(layers = listOf(star))
+        val files = AssetFiles { null }
+        val out = File(dir, "packed.mp4")
+        val exporter = VideoExporter(app.assets, files, PcmCache(File(dir, "pcm-packed"), files))
+        val range = dev.kinesis.core.edit.PreRender.range(p, star.id)!!
+        exporter.export(dev.kinesis.core.edit.PreRender.isolate(p, star.id), ExportSettings(ExportResolution.ORIGINAL, ExportQuality.HIGH, includeAudio = false), out, {}, { false }, range = range, packAlpha = true)
+        val r = MediaMetadataRetriever()
+        r.setDataSource(out.path)
+        assertEquals("720", r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH))
+        val frame = r.getFrameAtTime(500_000, MediaMetadataRetriever.OPTION_CLOSEST)!!
+        r.release()
+        Shots.log("packed-frame", frame)
+        // Alpha half: white in the middle of the star, black in the corner (the red background is not rendered).
+        assertTrue(android.graphics.Color.red(frame.getPixel(540, 320)) > 200)
+        assertTrue(android.graphics.Color.red(frame.getPixel(370, 10)) < 40)
+
+        // Shown as a packed video over a blue background: the star, and blue around it.
+        var p2 = Factory.newProject("over", 360, 640, 15.0, 2.0, dev.kinesis.core.math.Color.parse("#0000FF"), null, "test")
+        val asset = Asset("pre", AssetType.VIDEO, "assets/pre.mp4", width = 720, height = 640, duration = 2.0)
+        p2 = dev.kinesis.core.edit.PreRender.replace(p2.copy(layers = listOf(star)), star.id, asset, range, "pre").first
+        val videoFiles = AssetFiles { id -> if (id == "pre") out else null }
+        PbufferContext().use {
+            val res = RenderResources(app.assets, videoFiles)
+            val comp = Compositor(res)
+            var bmp = comp.readPixels(comp.render(p2, SceneEvaluator.evaluate(p2, 0.5), 360, 640, RenderSettings(1)))
+            var attempt = 0
+            while (android.graphics.Color.blue(bmp.getPixel(180, 320)) > 200 && attempt++ < 4) {
+                Thread.sleep(250)
+                bmp = comp.readPixels(comp.render(p2, SceneEvaluator.evaluate(p2, 0.5), 360, 640, RenderSettings(1)))
+            }
+            Shots.log("packed-over-blue", bmp)
+            assertTrue("corner stays blue", android.graphics.Color.blue(bmp.getPixel(5, 5)) > 200)
+            assertTrue("star drawn in the middle", android.graphics.Color.blue(bmp.getPixel(180, 320)) < 120)
+            comp.release()
+            res.release()
+        }
+    }
 }

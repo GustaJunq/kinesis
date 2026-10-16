@@ -1,0 +1,175 @@
+{
+  "format": "knsproj",
+  "formatVersion": 6,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Ambiente HDRI e sombreamentos"
+  },
+  "composition": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 6,
+    "background": "#1B2233",
+    "environment": {
+      "asset": "ceu",
+      "intensity": 1.2,
+      "rotation": 0
+    }
+  },
+  "assets": [
+    {
+      "id": "ceu",
+      "type": "image",
+      "path": "assets/ceu.jpg",
+      "name": "ceu.jpg",
+      "mimeType": "image/jpeg",
+      "width": 1024,
+      "height": 512
+    }
+  ],
+  "layers": [
+    {
+      "id": "metal",
+      "type": "object3d",
+      "name": "Esfera metálica",
+      "duration": 6,
+      "transform3d": {
+        "position": [
+          -260,
+          -170,
+          0
+        ]
+      },
+      "object3d": {
+        "primitive": "sphere",
+        "size": 300,
+        "material": {
+          "color": "#E6E8EC",
+          "metallic": 1,
+          "roughness": 0.12
+        }
+      }
+    },
+    {
+      "id": "facetado",
+      "type": "object3d",
+      "name": "Esfera facetada",
+      "duration": 6,
+      "transform3d": {
+        "position": [
+          260,
+          -170,
+          0
+        ]
+      },
+      "object3d": {
+        "primitive": "sphere",
+        "size": 300,
+        "material": {
+          "color": "#4C8DFF",
+          "metallic": 0,
+          "roughness": 0.5,
+          "shading": "flat"
+        }
+      }
+    },
+    {
+      "id": "toon",
+      "type": "object3d",
+      "name": "Toro cartoon",
+      "duration": 6,
+      "transform3d": {
+        "position": [
+          -260,
+          200,
+          0
+        ],
+        "rotation": {
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                60,
+                0,
+                0
+              ]
+            },
+            {
+              "time": 6,
+              "value": [
+                60,
+                360,
+                0
+              ]
+            }
+          ]
+        }
+      },
+      "object3d": {
+        "primitive": "torus",
+        "size": 300,
+        "material": {
+          "color": "#FF6B8B",
+          "roughness": 0.4,
+          "shading": "toon"
+        }
+      }
+    },
+    {
+      "id": "arame",
+      "type": "object3d",
+      "name": "Cubo aramado",
+      "duration": 6,
+      "transform3d": {
+        "position": [
+          260,
+          200,
+          0
+        ],
+        "rotation": {
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                -20,
+                0,
+                0
+              ]
+            },
+            {
+              "time": 6,
+              "value": [
+                -20,
+                360,
+                0
+              ]
+            }
+          ]
+        }
+      },
+      "object3d": {
+        "primitive": "cube",
+        "size": 260,
+        "material": {
+          "color": "#9BE564",
+          "shading": "wireframe"
+        }
+      }
+    },
+    {
+      "id": "key",
+      "type": "light",
+      "duration": 6,
+      "light": {
+        "kind": "directional",
+        "intensity": 1.0,
+        "position": [
+          -900,
+          -1300,
+          -1400
+        ]
+      }
+    }
+  ]
+}
