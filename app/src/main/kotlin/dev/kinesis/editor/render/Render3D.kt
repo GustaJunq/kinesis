@@ -25,6 +25,10 @@ class ShadowMap(val size: Int) {
     val framebuffer: Int
 
     init {
+        // Created lazily in the middle of a frame: keep the caller's framebuffer and texture bindings.
+        val previous = IntArray(2)
+        GLES30.glGetIntegerv(GLES30.GL_FRAMEBUFFER_BINDING, previous, 0)
+        GLES30.glGetIntegerv(GLES30.GL_TEXTURE_BINDING_2D, previous, 1)
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texture)
         GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, GLES30.GL_DEPTH_COMPONENT24, size, size, 0, GLES30.GL_DEPTH_COMPONENT, GLES30.GL_UNSIGNED_INT, null)
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
@@ -33,7 +37,6 @@ class ShadowMap(val size: Int) {
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_COMPARE_MODE, GLES30.GL_COMPARE_REF_TO_TEXTURE)
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_COMPARE_FUNC, GLES30.GL_LEQUAL)
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0)
         val ids = IntArray(1)
         GLES30.glGenFramebuffers(1, ids, 0)
         framebuffer = ids[0]
@@ -42,7 +45,8 @@ class ShadowMap(val size: Int) {
         GLES30.glDrawBuffers(1, intArrayOf(GLES30.GL_NONE), 0)
         GLES30.glReadBuffer(GLES30.GL_NONE)
         val status = GLES30.glCheckFramebufferStatus(GLES30.GL_FRAMEBUFFER)
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, previous[0])
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, previous[1])
         if (status != GLES30.GL_FRAMEBUFFER_COMPLETE) {
             release()
             throw GlException("Shadow framebuffer incomplete: 0x${Integer.toHexString(status)}")
@@ -125,7 +129,11 @@ object TextMeshBuilder {
             paint.getTextPath(line, 0, line.length, x, i * lineStep - fm.ascent, linePath)
             path.addPath(linePath)
         }
-        val contours = contoursOf(path, tolerance = max(0.2f, t.fontSize / 500f))
+        // Variable fonts draw many glyphs as overlapping strokes (non-zero fill): merge them first, or the
+        // overlaps would read as holes in the extrusion.
+        val merged = Path()
+        val outline = if (merged.op(path, Path(), Path.Op.UNION)) merged else path
+        val contours = contoursOf(outline, tolerance = max(0.2f, t.fontSize / 500f))
         if (contours.isEmpty()) return TextExtrusion.extrude(emptyList(), t.depth, t.bevel)
         val all = contours.flatten()
         val cx = (all.minOf { it.x } + all.maxOf { it.x }) / 2f

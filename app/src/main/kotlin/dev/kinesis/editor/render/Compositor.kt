@@ -146,6 +146,7 @@ class Compositor(private val res: RenderResources) {
             width = outWidth, height = outHeight,
         )
         ctx.shadow = buildShadow(ctx)
+        if (ctx.shadow == null) res.noShadow()
         val bg = scene.background
         out.clear(bg.r * bg.a, bg.g * bg.a, bg.b * bg.a, 1f)
         drawNodes(scene.nodes, out, ctx)

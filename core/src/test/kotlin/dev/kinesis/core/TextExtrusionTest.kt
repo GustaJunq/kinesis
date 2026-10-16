@@ -103,4 +103,22 @@ class TextExtrusionTest {
         assertEquals(0, TextExtrusion.extrude(emptyList(), 10f, 0f).vertexCount)
         assertEquals(0, TextExtrusion.extrude(listOf(listOf(Vec2(0f, 0f), Vec2(1f, 0f), Vec2(2f, 0f))), 10f, 0f).vertexCount)
     }
+
+    /** Letters with collinear runs and nearly collinear points (as glyph outlines come) keep their whole face. */
+    @Test
+    fun letterEKeepsItsWholeFace() {
+        // "E" (y down), with extra points along the straight edges like Path.approximate produces.
+        val e = listOf(
+            Vec2(0f, 0f), Vec2(50f, 0f), Vec2(100f, 0f), Vec2(100f, 20f), Vec2(25f, 20f), Vec2(25f, 40f), Vec2(80f, 40f),
+            Vec2(80f, 60f), Vec2(25f, 60f), Vec2(25f, 80f), Vec2(25f, 80.00001f), Vec2(100f, 80f), Vec2(100f, 100f),
+            Vec2(60f, 100f), Vec2(0f, 100f), Vec2(0f, 70f), Vec2(0.00002f, 50f), Vec2(0f, 30f),
+        )
+        val area = abs(TextExtrusion.signedArea(e))
+        for (contour in listOf(e, e.reversed())) for (bevel in listOf(0f, 4f)) {
+            val m = TextExtrusion.extrude(listOf(contour), depth = 30f, bevel = bevel)
+            if (bevel == 0f) assertEquals(area, capArea(m, -1f), 0.5f)
+            else assertTrue("front cap too small: ${capArea(m, -1f)} of $area", capArea(m, -1f) > area * 0.55f)
+            assertConsistentWinding(m)
+        }
+    }
 }
