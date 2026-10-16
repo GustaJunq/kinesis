@@ -2,6 +2,20 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.1.3-hotfix — 2026-10-16
+
+Sem mudança de formato (`.knsproj` v6).
+
+### Corrigido
+- **Cenas 3D com muitos objetos travavam.** O motion blur reavaliava a cena inteira para cada objeto e cada
+  sub-quadro; agora cada instante é avaliado uma vez por quadro.
+
+### Melhorado
+- Objetos 3D com motion blur que ficam parados durante o obturador são desenhados sem o custo do desfoque.
+- Objetos totalmente fora do enquadramento da câmera deixam de ser desenhados (câmera e profundidade de campo).
+- Menos trabalho por objeto: malhas calculadas uma vez por quadro, material e sombreamento só reenviados à GPU
+  quando mudam, ordenação de objetos translúcidos e cálculo do shadow map sem alocações.
+
 ## 0.1.3 — 2026-10-16
 
 Formato `.knsproj` **v6** (abre v1 a v5).

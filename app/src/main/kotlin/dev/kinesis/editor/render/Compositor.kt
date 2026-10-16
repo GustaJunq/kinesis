@@ -132,6 +132,15 @@ class Compositor(private val res: RenderResources) {
         /** While drawing motion-blur sub-frames, the real composite below (for effects that read the backdrop). */
         var backdrop: RenderTarget? = null
 
+        /** Scenes evaluated at motion-blur sub-frame times (shared by every blurred layer of the frame), by layer id. */
+        val subScenes = HashMap<Double, Map<String, RenderNode>>()
+
+        /** Whether a 3D layer with motion blur stays put during the shutter (then it is drawn without blur). */
+        val staticDuringShutter = HashMap<String, Boolean>()
+
+        /** Meshes of each 3D node (several passes need them: shadow, depth of field, colour). */
+        val meshes = java.util.IdentityHashMap<Node3D, List<Pair<GpuMesh, Mat4>>>()
+
         /** Shadow of the first shadow-casting light, rendered once per frame. */
         var shadow: Shadow? = null
     }
@@ -245,7 +254,36 @@ class Compositor(private val res: RenderResources) {
     private fun motionBlurOn(n: RenderNode, ctx: Ctx): Boolean {
         val mb = ctx.project.composition.motionBlur
         return n.motionBlur && mb.enabled && ctx.settings.allowMotionBlur && ctx.settings.motionBlurSamples > 1 && mb.shutterAngle > 0f &&
-            !(n is Node2D && n.content is Content2D.Video)
+            !(n is Node2D && n.content is Content2D.Video) && !(n is Node3D && isStaticDuringShutter(n, ctx))
+    }
+
+    /** The scene at composition time [t], indexed by layer id (evaluated once per frame and time). */
+    private fun sceneAt(ctx: Ctx, t: Double): Map<String, RenderNode> = ctx.subScenes.getOrPut(t) {
+        val index = HashMap<String, RenderNode>()
+        fun walk(nodes: List<RenderNode>) {
+            for (x in nodes) {
+                index[x.layerId] = x
+                if (x is GroupNode) walk(x.children)
+            }
+        }
+        walk(SceneEvaluator.evaluate(ctx.project, t).nodes)
+        index
+    }
+
+    /** True when [n] looks the same at both ends of the shutter interval: motion blur would only cost time. */
+    private fun isStaticDuringShutter(n: Node3D, ctx: Ctx): Boolean = ctx.staticDuringShutter.getOrPut(n.layerId) {
+        if (n.effects.isNotEmpty() || n.transitionBlur > 0f) return@getOrPut false
+        val comp = ctx.project.composition
+        val half = comp.motionBlur.shutterAngle / 360.0 * comp.frameDuration / 2
+        for (t in doubleArrayOf(ctx.scene.time - half, ctx.scene.time + half)) {
+            val o = sceneAt(ctx, t)[n.layerId] as? Node3D ?: return@getOrPut false
+            if (o.primitive != n.primitive || o.modelAssetId != n.modelAssetId || o.text3d != n.text3d) return@getOrPut false
+            if (o.post != n.post || abs(o.opacity - n.opacity) > 1e-4f) return@getOrPut false
+            val a = o.model.m
+            val b = n.model.m
+            for (i in 0 until 16) if (abs(a[i] - b[i]) > 1e-3f) return@getOrPut false
+        }
+        true
     }
 
     private fun isBatchable(n: Node3D, ctx: Ctx): Boolean =
@@ -307,7 +345,7 @@ class Compositor(private val res: RenderResources) {
         val accum = res.pool.acquire()
         for (k in 0 until samples) {
             val t = ctx.scene.time - shutter / 2 + shutter * (k + 0.5) / samples
-            val sub = if (k == samples / 2 && samples % 2 == 1) n else findNode(SceneEvaluator.evaluate(ctx.project, t).nodes, n.layerId)
+            val sub = if (k == samples / 2 && samples % 2 == 1) n else sceneAt(ctx, t)[n.layerId]
             if (sub == null) continue
             val tmp = res.pool.acquire()
             val outer = ctx.backdrop
@@ -327,14 +365,6 @@ class Compositor(private val res: RenderResources) {
         }
         composite(accum, target, ctx, 1f, n.blendMode, Affine2D.IDENTITY, emptyList(), null)
         res.pool.release(accum)
-    }
-
-    private fun findNode(nodes: List<RenderNode>, id: String): RenderNode? {
-        for (n in nodes) {
-            if (n.layerId == id) return n
-            if (n is GroupNode) findNode(n.children, id)?.let { return it }
-        }
-        return null
     }
 
     // ------------------------------------------------------------------ 2D content
@@ -473,14 +503,22 @@ class Compositor(private val res: RenderResources) {
         val p = res.shaders.get("mesh.vert", "mesh.frag")
         p.use()
         setupLights(p, ctx)
+        // Uniforms persist in the program: remember what was set last to skip repeating it for every object.
+        lastShading = -1
+        lastOpacity = Float.NaN
+        lastMaterial = null
         fun opacityOf(n: Node3D) = opacityOverride ?: n.opacity
+        // Objects entirely outside the view are not drawn (shadows and depth of field have their own passes).
+        val visible = if (nodes.size > 1) nodes.filter { inView(it, ctx) } else nodes
         GLES30.glDepthMask(true)
-        for (n in nodes) if (opacityOf(n) >= 0.999f) drawMesh(p, n, opacityOf(n))
-        val translucent = nodes.filter { opacityOf(it) < 0.999f && opacityOf(it) > 0.001f }
-            .sortedByDescending { ctx.scene.camera.depthOf(it.model.transformPoint(Vec3.ZERO)) }
+        for (n in visible) if (opacityOf(n) >= 0.999f) drawMesh(p, n, opacityOf(n), ctx)
+        val translucent = visible.filter { opacityOf(it) < 0.999f && opacityOf(it) > 0.001f }
+            .map { it to ctx.scene.camera.depthOf(it.model.transformPoint(Vec3.ZERO)) }
+            .sortedByDescending { it.second }
+            .map { it.first }
         if (translucent.isNotEmpty()) {
             GLES30.glDepthMask(false)
-            for (n in translucent) drawMesh(p, n, opacityOf(n))
+            for (n in translucent) drawMesh(p, n, opacityOf(n), ctx)
             GLES30.glDepthMask(true)
         }
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
@@ -501,16 +539,65 @@ class Compositor(private val res: RenderResources) {
         p.setMat4("u_viewProj", cam.viewProjection.m)
         p.set3f("u_cameraPos", cam.position.x, cam.position.y, cam.position.z)
         p.set1f("u_far", DOF_FAR)
-        for (n in nodes) for ((mesh, model) in meshesOf(n)) {
-            setModel(p, model)
-            mesh.draw()
+        for (n in nodes) {
+            if (nodes.size > 1 && !inView(n, ctx)) continue
+            for ((mesh, model) in meshesOf(n, ctx)) {
+                setModel(p, model)
+                mesh.draw()
+            }
         }
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
         GLES30.glFrontFace(GLES30.GL_CCW)
     }
 
+    private var lastShading = -1
+    private var lastOpacity = Float.NaN
+    private var lastMaterial: MaterialKey? = null
+
+    private data class MaterialKey(
+        val r: Float, val g: Float, val b: Float, val a: Float, val metallic: Float, val roughness: Float,
+        val er: Float, val eg: Float, val eb: Float, val texture: Int,
+    )
+
+    /** False when the bounding boxes of every mesh of [n] lie completely outside the camera frustum. */
+    private fun inView(n: Node3D, ctx: Ctx): Boolean {
+        val vp = ctx.scene.camera.viewProjection.m
+        val list = meshesOf(n, ctx)
+        if (list.isEmpty()) return true
+        for ((mesh, model) in list) {
+            val (lo, hi) = mesh.bounds
+            val m = model.m
+            var outside = 0x3F
+            for (corner in 0 until 8) {
+                val x = if (corner and 1 == 0) lo.x else hi.x
+                val y = if (corner and 2 == 0) lo.y else hi.y
+                val z = if (corner and 4 == 0) lo.z else hi.z
+                val wx = m[0] * x + m[4] * y + m[8] * z + m[12]
+                val wy = m[1] * x + m[5] * y + m[9] * z + m[13]
+                val wz = m[2] * x + m[6] * y + m[10] * z + m[14]
+                val cx = vp[0] * wx + vp[4] * wy + vp[8] * wz + vp[12]
+                val cy = vp[1] * wx + vp[5] * wy + vp[9] * wz + vp[13]
+                val cz = vp[2] * wx + vp[6] * wy + vp[10] * wz + vp[14]
+                val cw = (vp[3] * wx + vp[7] * wy + vp[11] * wz + vp[15]) * 1.05f + 1f
+                var code = 0
+                if (cx < -cw) code = code or 1
+                if (cx > cw) code = code or 2
+                if (cy < -cw) code = code or 4
+                if (cy > cw) code = code or 8
+                if (cz < -cw) code = code or 16
+                if (cz > cw) code = code or 32
+                outside = outside and code
+                if (outside == 0) break
+            }
+            if (outside == 0) return true
+        }
+        return false
+    }
+
     /** The meshes of a 3D node with their model matrices (text and primitives in one piece, models per part). */
-    private fun meshesOf(n: Node3D): List<Pair<GpuMesh, Mat4>> {
+    private fun meshesOf(n: Node3D, ctx: Ctx): List<Pair<GpuMesh, Mat4>> = ctx.meshes.getOrPut(n) { buildMeshes(n) }
+
+    private fun buildMeshes(n: Node3D): List<Pair<GpuMesh, Mat4>> {
         val primitive = n.primitive
         if (primitive == Primitive.TEXT) return listOf(res.meshes.text(n.text3d ?: Text3D()) to n.model)
         if (primitive != null) return listOf(res.meshes.primitive(primitive) to n.model)
@@ -536,18 +623,29 @@ class Compositor(private val res: RenderResources) {
         if (index < 0) return null
         val casters = all3D(ctx.scene.nodes).filter { it.material?.shading != Shading.WIREFRAME }
         if (casters.isEmpty()) return null
-        val drawn = casters.flatMap(::meshesOf)
+        val drawn = casters.flatMap { meshesOf(it, ctx) }
         if (drawn.isEmpty()) return null
         var lo = Vec3(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
         var hi = Vec3(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+        var loX = lo.x; var loY = lo.y; var loZ = lo.z
+        var hiX = hi.x; var hiY = hi.y; var hiZ = hi.z
         for ((mesh, model) in drawn) {
             val (bmin, bmax) = mesh.bounds
-            for (x in listOf(bmin.x, bmax.x)) for (y in listOf(bmin.y, bmax.y)) for (z in listOf(bmin.z, bmax.z)) {
-                val w = model.transformPoint(Vec3(x, y, z))
-                lo = Vec3(min(lo.x, w.x), min(lo.y, w.y), min(lo.z, w.z))
-                hi = Vec3(max(hi.x, w.x), max(hi.y, w.y), max(hi.z, w.z))
+            val m = model.m
+            for (corner in 0 until 8) {
+                val x = if (corner and 1 == 0) bmin.x else bmax.x
+                val y = if (corner and 2 == 0) bmin.y else bmax.y
+                val z = if (corner and 4 == 0) bmin.z else bmax.z
+                val wx = m[0] * x + m[4] * y + m[8] * z + m[12]
+                val wy = m[1] * x + m[5] * y + m[9] * z + m[13]
+                val wz = m[2] * x + m[6] * y + m[10] * z + m[14]
+                if (wx < loX) loX = wx; if (wx > hiX) hiX = wx
+                if (wy < loY) loY = wy; if (wy > hiY) hiY = wy
+                if (wz < loZ) loZ = wz; if (wz > hiZ) hiZ = wz
             }
         }
+        lo = Vec3(loX, loY, loZ)
+        hi = Vec3(hiX, hiY, hiZ)
         val center = (lo + hi) * 0.5f
         val radius = ((hi - lo).length() * 0.5f).coerceAtLeast(1f)
         val light = lights[index]
@@ -630,17 +728,23 @@ class Compositor(private val res: RenderResources) {
         p.set1fv("u_lightRadius[0]", 4, radii)
     }
 
-    private fun drawMesh(p: Program, n: Node3D, opacity: Float) {
-        p.set1f("u_opacity", opacity)
+    private fun drawMesh(p: Program, n: Node3D, opacity: Float, ctx: Ctx) {
+        if (opacity != lastOpacity) {
+            p.set1f("u_opacity", opacity)
+            lastOpacity = opacity
+        }
         val override = n.material
         val shading = override?.shading ?: Shading.PBR
-        p.set1i("u_shading", shading.ordinal)
+        if (shading.ordinal != lastShading) {
+            p.set1i("u_shading", shading.ordinal)
+            lastShading = shading.ordinal
+        }
         val wire = shading == Shading.WIREFRAME
         val primitive = n.primitive
         if (primitive != null) {
             val mat = override ?: return
             setMaterial(p, mat.color, mat.metallic, mat.roughness, mat.emissive, mat.textureAssetId?.let { res.images.get(it)?.texture } ?: 0)
-            for ((mesh, model) in meshesOf(n)) {
+            for ((mesh, model) in meshesOf(n, ctx)) {
                 setModel(p, model)
                 (if (wire) mesh.wireframe() else mesh).draw()
             }
@@ -668,6 +772,9 @@ class Compositor(private val res: RenderResources) {
     }
 
     private fun setMaterial(p: Program, color: Color, metallic: Float, roughness: Float, emissive: Color, texture: Int) {
+        val key = MaterialKey(color.r, color.g, color.b, color.a, metallic, roughness, emissive.r, emissive.g, emissive.b, texture)
+        if (key == lastMaterial) return
+        lastMaterial = key
         p.set4f("u_baseColor", color.r, color.g, color.b, color.a)
         p.set1f("u_metallic", metallic)
         p.set1f("u_roughness", roughness)
@@ -935,7 +1042,7 @@ class Compositor(private val res: RenderResources) {
         p.set1f("u_gamma", e.f("gamma"))
         p.set1f("u_invert", if (e.flag("invert")) 1f else 0f)
         p.set1f("u_opacity", 1f)
-        for ((mesh, model) in meshesOf(n)) {
+        for ((mesh, model) in meshesOf(n, ctx)) {
             setModel(p, model)
             mesh.draw()
         }
