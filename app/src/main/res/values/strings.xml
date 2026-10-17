@@ -160,7 +160,7 @@
     <string name="nav_projects">Projects</string>
     <string name="nav_settings">Settings</string>
     <string name="new_project">New project</string>
-    <string name="next_keyframe">Next keyframe</string>
+    <string name="next_keyframe">Next keyframe or marker</string>
     <string name="no_layers_hint">No layers yet. Tap + to add text, shapes, media or 3D objects.</string>
     <string name="no_projects">No projects yet</string>
     <string name="no_projects_hint">Create a project or import a .knsproj file.</string>
@@ -194,7 +194,7 @@
     <string name="point_corner">Corner</string>
     <string name="point_smooth">Smooth</string>
     <string name="presets_hint">Start a project with a ready format.</string>
-    <string name="prev_keyframe">Previous keyframe</string>
+    <string name="prev_keyframe">Previous keyframe or marker</string>
     <string name="prim_cone">Cone</string>
     <string name="prim_cube">Cube</string>
     <string name="prim_cylinder">Cylinder</string>
@@ -466,4 +466,25 @@
     <string name="captions_weight_medium">Medium</string>
     <string name="captions_weight_bold">Bold</string>
     <string name="captions_weight_black">Black</string>
+
+    <!-- 0.1.4 hotfix: markers, audio panel -->
+    <string name="audio_panel">Audio</string>
+    <string name="extract_audio">Extract audio</string>
+    <string name="audio_level">Level</string>
+    <string name="audio_volume_animated">The volume is animated: edit its keyframes in Properties.</string>
+    <string name="equalizer">Equalizer</string>
+    <string name="eq_flat">Flat</string>
+    <string name="eq_bass_boost">Bass Boost</string>
+    <string name="eq_treble_boost">Treble Boost</string>
+    <string name="eq_vocal">Vocal</string>
+    <string name="eq_reset">Restore defaults</string>
+    <string name="add_marker">Add marker at the playhead</string>
+    <string name="marker">Marker</string>
+    <string name="marker_name">Name</string>
+    <string name="marker_move_here">Move to the playhead</string>
+    <string name="audio_none_in_video">This video has no audio track.</string>
+    <string name="audio_unsupported_format">This audio format (%1$s) cannot be extracted without re-encoding.</string>
+    <string name="audio_layer_name">%1$s (audio)</string>
+    <string name="audio_extracted">Audio extracted into its own layer; the video layer was muted.</string>
+    <string name="audio_extract_failed">Could not extract the audio.</string>
 </resources>

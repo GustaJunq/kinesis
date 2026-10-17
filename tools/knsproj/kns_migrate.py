@@ -92,7 +92,13 @@ def v6_to_v7(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7}
+def v7_to_v8(doc):
+    """Version 8 only adds optional fields (markers, the eq of audio and video clips)."""
+    doc["formatVersion"] = 8
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7, 7: v7_to_v8}
 
 
 def migrate(doc, to_version):

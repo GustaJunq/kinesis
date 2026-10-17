@@ -393,6 +393,30 @@ class Format7Tests(unittest.TestCase):
         self.assertEqual([], [i["code"] for i in cli.validate_project(minimal(layers=[layer]), None).issues])
 
 
+class Format8Tests(unittest.TestCase):
+    """Format v8: timeline markers and the equalizer of audio/video clips (parity with Kotlin)."""
+
+    def codes(self, doc):
+        return [i["code"] for i in cli.validate_project(doc, None).issues]
+
+    def test_markers_and_eq_are_valid(self):
+        doc = minimal(markers=[{"id": "m1", "time": 1.5, "name": "Verso", "color": "#FFC857"}, {"id": "m2", "time": 8}])
+        self.assertEqual([], self.codes(doc))
+        audio = {"id": "a", "type": "audio", "audio": {"asset": "x", "eq": [{"type": "lowShelf", "frequency": 80, "gain": -6, "q": 0.7}]}}
+        doc = minimal(layers=[audio], assets=[{"id": "x", "type": "audio", "path": "assets/x.m4a"}])
+        self.assertEqual([], self.codes(doc))
+
+    def test_invalid_markers_and_bands(self):
+        self.assertEqual(["marker.duplicateId"], self.codes(minimal(markers=[{"id": "x", "time": 1}, {"id": "x", "time": 2}])))
+        self.assertIn("schema", self.codes(minimal(markers=[{"id": "x", "time": -2}])))
+        bad = {"id": "a", "type": "audio", "audio": {"asset": "x", "eq": [{"frequency": 5, "gain": 40, "q": 50}]}}
+        doc = minimal(layers=[bad], assets=[{"id": "x", "type": "audio", "path": "assets/x.m4a"}])
+        self.assertIn("schema", self.codes(doc))  # the schema bounds the ranges; Kotlin reports audio.eq for the same input
+
+    def test_version_7_documents_migrate_to_8(self):
+        self.assertEqual(8, kns_migrate.migrate(minimal(formatVersion=7), 8)["formatVersion"])
+
+
 class ExampleTests(unittest.TestCase):
     """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
 

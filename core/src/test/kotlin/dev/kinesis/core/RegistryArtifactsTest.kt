@@ -27,6 +27,7 @@ import java.io.File
  * - `schema/knsproj-v5.schema.json` — the v4 schema plus the cyclic (wave) easing;
  * - `schema/knsproj-v6.schema.json` — the v5 schema plus shading, shadows, depth of field, environment, 3D text, packed alpha;
  * - `schema/knsproj-v7.schema.json` — the v6 schema with `cyclic.offset` as the skew of each cycle and the old shift as `cyclic.phase`;
+ * - `schema/knsproj-v8.schema.json` — the v7 schema plus timeline `markers` and the `eq` of audio and video clips;
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -58,6 +59,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV7() = check(File(root, "schema/knsproj-v7.schema.json"), JsonPretty.print(buildSchemaV7()) + "\n")
+
+    @Test
+    fun schemaV8() = check(File(root, "schema/knsproj-v8.schema.json"), JsonPretty.print(buildSchemaV8()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -352,6 +356,52 @@ class RegistryArtifactsTest {
         val m = LinkedHashMap(v6)
         m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v7.schema.json")
         m["title"] = str("Kinesis project (.knsproj) — project.json, format version 7")
+        m["properties"] = JsonObject(props)
+        m["\$defs"] = JsonObject(defs)
+        return JsonObject(m)
+    }
+
+    private fun buildSchemaV8(): JsonObject {
+        val v7 = buildSchemaV7()
+        val defs = LinkedHashMap(v7.getValue("\$defs").jsonObject)
+        defs["marker"] = obj(
+            "description" to str("A named point in time on the timeline ruler, independent of the layers."),
+            "type" to str("object"),
+            "properties" to obj(
+                "id" to obj("type" to str("string"), "minLength" to JsonPrimitive(1)),
+                "time" to obj("type" to str("number"), "minimum" to JsonPrimitive(0), "maximum" to JsonPrimitive(3600), "description" to str("Composition seconds.")),
+                "name" to obj("type" to str("string")),
+                "color" to obj("type" to str("string"), "pattern" to str("^#[0-9a-fA-F]{6}\$"), "description" to str("#RRGGBB; default colour when omitted.")),
+            ),
+            "required" to JsonArray(listOf(str("id"), str("time"))),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        defs["eqBand"] = obj(
+            "description" to str("One band of the parametric equalizer."),
+            "type" to str("object"),
+            "properties" to obj(
+                "type" to obj("enum" to JsonArray(listOf(str("peak"), str("lowShelf"), str("highShelf"))), "description" to str("Default peak.")),
+                "frequency" to num(20, 20000, "Hz (default 1000)."),
+                "gain" to num(-24, 24, "dB (default 0)."),
+                "q" to num(0.1, 10, "Bandwidth: higher is narrower (default 1)."),
+            ),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        withProps(
+            defs, "mediaContent",
+            "eq" to obj(
+                "type" to str("array"), "maxItems" to JsonPrimitive(8), "items" to ref("eqBand"),
+                "description" to str("Parametric equalizer applied after the volume of the clip; omitted or empty = off."),
+            ),
+        )
+        val props = LinkedHashMap<String, JsonElement>()
+        for ((k, v) in v7.getValue("properties").jsonObject) {
+            props[k] = if (k == "formatVersion") obj("const" to JsonPrimitive(8)) else v
+            if (k == "assets") props["markers"] = obj("type" to str("array"), "items" to ref("marker"), "description" to str("Timeline markers (format v8)."))
+        }
+        val m = LinkedHashMap(v7)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v8.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 8")
         m["properties"] = JsonObject(props)
         m["\$defs"] = JsonObject(defs)
         return JsonObject(m)

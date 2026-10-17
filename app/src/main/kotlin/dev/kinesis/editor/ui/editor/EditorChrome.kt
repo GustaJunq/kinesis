@@ -25,6 +25,9 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.CreateNewFolder
@@ -114,6 +117,10 @@ fun EditorTransport(
     canUndo: Boolean,
     canRedo: Boolean,
     hasSelection: Boolean,
+    /** Whether the selected layer has a keyframe at the playhead (the "+ ◆" button then removes it). */
+    hasKeyframeHere: Boolean,
+    /** Previous / next only need something to jump to: a selected layer's keyframes or the markers. */
+    canNavigate: Boolean,
     onPrevKeyframe: () -> Unit,
     onNextKeyframe: () -> Unit,
     onPlay: () -> Unit,
@@ -127,7 +134,7 @@ fun EditorTransport(
     ) {
         Text(formatTime(time, fps), style = KType.MonoLarge, color = KColors.TextPrimary, modifier = Modifier.widthIn(min = 76.dp))
         Spacer(Modifier.weight(1f))
-        TransportIcon(Icons.Outlined.SkipPrevious, R.string.prev_keyframe, onPrevKeyframe, enabled = hasSelection)
+        TransportIcon(Icons.Outlined.SkipPrevious, R.string.prev_keyframe, onPrevKeyframe, enabled = canNavigate)
         Box(
             Modifier.size(KDims.MinTouch).clip(CircleShape).background(KColors.ChipActive).clickable(role = Role.Button, onClick = onPlay),
             contentAlignment = Alignment.Center,
@@ -138,17 +145,26 @@ fun EditorTransport(
                 tint = KColors.OnChipActive, modifier = Modifier.size(28.dp),
             )
         }
-        TransportIcon(Icons.Outlined.SkipNext, R.string.next_keyframe, onNextKeyframe, enabled = hasSelection)
+        TransportIcon(Icons.Outlined.SkipNext, R.string.next_keyframe, onNextKeyframe, enabled = canNavigate)
         Spacer(Modifier.weight(1f))
+        // One button for both: "+ ◆" adds a keyframe at the playhead; when there is one it turns into a filled "− ◆" that removes it.
+        val label = stringResource(if (hasKeyframeHere) R.string.remove_keyframe else R.string.add_keyframe)
+        val fg = when {
+            !hasSelection -> KColors.Disabled
+            hasKeyframeHere -> KColors.OnAccent
+            else -> KColors.Keyframe
+        }
         Row(
-            Modifier.heightIn(min = 36.dp).clip(KShapes.Pill).border(1.dp, if (hasSelection) KColors.Keyframe else KColors.LineStrong, KShapes.Pill)
-                .clickable(enabled = hasSelection, role = Role.Button, onClickLabel = stringResource(R.string.add_keyframe), onClick = onAddKeyframe)
+            Modifier.heightIn(min = 36.dp).clip(KShapes.Pill)
+                .background(if (hasSelection && hasKeyframeHere) KColors.Keyframe else androidx.compose.ui.graphics.Color.Transparent)
+                .border(1.dp, if (hasSelection) KColors.Keyframe else KColors.LineStrong, KShapes.Pill)
+                .clickable(enabled = hasSelection, role = Role.Button, onClickLabel = label, onClick = onAddKeyframe)
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.Add, stringResource(R.string.add_keyframe), tint = if (hasSelection) KColors.Keyframe else KColors.Disabled, modifier = Modifier.size(16.dp))
+            Icon(if (hasKeyframeHere) Icons.Filled.Remove else Icons.Filled.Add, label, tint = fg, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
-            Text("◆", color = if (hasSelection) KColors.Keyframe else KColors.Disabled, style = MaterialTheme.typography.labelSmall)
+            Text("◆", color = fg, style = MaterialTheme.typography.labelSmall)
         }
         TransportIcon(Icons.AutoMirrored.Outlined.Undo, R.string.undo, onUndo, enabled = canUndo)
         TransportIcon(Icons.AutoMirrored.Outlined.Redo, R.string.redo, onRedo, enabled = canRedo)
@@ -204,7 +220,19 @@ fun EditorToolBar(enabled: (EditorTool) -> Boolean, onTool: (EditorTool) -> Unit
 
 /** Actions on the selected layer (shown only while a layer is selected). */
 @Composable
-fun SelectionActions(onProperties: () -> Unit, onSplit: () -> Unit, onDuplicate: () -> Unit, onGroup: () -> Unit, onDelete: () -> Unit, loop: Boolean, onLoop: () -> Unit) {
+fun SelectionActions(
+    onProperties: () -> Unit,
+    onSplit: () -> Unit,
+    onDuplicate: () -> Unit,
+    onGroup: () -> Unit,
+    onDelete: () -> Unit,
+    loop: Boolean,
+    onLoop: () -> Unit,
+    /** Shown only for layers with sound (video, audio): the equalizer and volume panel. */
+    onAudio: (() -> Unit)? = null,
+    /** Shown only for video layers that have a sound track. */
+    onExtractAudio: (() -> Unit)? = null,
+) {
     Row(
         Modifier.fillMaxWidth().background(KColors.Bar).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -214,6 +242,8 @@ fun SelectionActions(onProperties: () -> Unit, onSplit: () -> Unit, onDuplicate:
         ActionChip(Icons.Outlined.ContentCut, R.string.split, onSplit)
         ActionChip(Icons.Outlined.ContentCopy, R.string.duplicate, onDuplicate)
         ActionChip(Icons.Outlined.CreateNewFolder, R.string.group, onGroup)
+        if (onAudio != null) ActionChip(Icons.Outlined.GraphicEq, R.string.audio_panel, onAudio)
+        if (onExtractAudio != null) ActionChip(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
         ActionChip(Icons.Outlined.Delete, R.string.delete, onDelete, danger = true)
         ActionChip(Icons.Outlined.Repeat, R.string.loop, onLoop, accent = loop)
     }

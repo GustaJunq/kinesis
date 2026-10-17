@@ -243,6 +243,31 @@ data class ShapeContent(
 @Serializable
 data class ImageContent(val asset: String)
 
+@Serializable
+enum class EqBandType {
+    @SerialName("peak") PEAK,
+    @SerialName("lowShelf") LOW_SHELF,
+    @SerialName("highShelf") HIGH_SHELF,
+}
+
+/** One band of the parametric equalizer: [frequency] in Hz, [gain] in dB, [q] = bandwidth (higher is narrower). */
+@Serializable
+data class EqBand(
+    val type: EqBandType = EqBandType.PEAK,
+    val frequency: Float = 1000f,
+    val gain: Float = 0f,
+    val q: Float = 1f,
+) {
+    companion object {
+        const val MIN_FREQUENCY = 20f
+        const val MAX_FREQUENCY = 20000f
+        const val MAX_GAIN = 24f
+        const val MIN_Q = 0.1f
+        const val MAX_Q = 10f
+        const val MAX_BANDS = 8
+    }
+}
+
 /** Video or audio clip. */
 @Serializable
 data class MediaContent(
@@ -262,6 +287,8 @@ data class MediaContent(
      * pre-rendered layers the app writes. The layer is drawn at half the frame width with that transparency.
      */
     val alphaPacked: Boolean = false,
+    /** Parametric equalizer (format v8), applied after the volume of the clip; empty = off. */
+    val eq: List<EqBand> = emptyList(),
 ) {
     /** Media time (seconds) shown at layer-local time [local]. */
     fun sourceTime(local: Double): Double = sourceStart + local * speed

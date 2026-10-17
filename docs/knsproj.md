@@ -1,10 +1,10 @@
-# Formato `.knsproj` — versão 7
+# Formato `.knsproj` — versão 8
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v7.schema.json`](../schema/knsproj-v7.schema.json) (JSON Schema draft 2020-12);
+- **Schema oficial:** [`schema/knsproj-v8.schema.json`](../schema/knsproj-v8.schema.json) (JSON Schema draft 2020-12);
   os das versões 1 a 5 continuam em [`schema/`](../schema)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
@@ -60,7 +60,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 7,
+  "formatVersion": 8,
   "generator": "Claude Code /knsproj",
   "meta": { "title": "Meu vídeo", "createdAt": "2026-10-14T12:00:00Z" },
   "composition": {
@@ -77,11 +77,12 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `7` (documentos das versões `1` a `6` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `8` (documentos das versões `1` a `7` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
 | `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120), `duration` (s), `background`, `motionBlur`, `environment` (seção 5.13) |
 | `assets` | array | mídias embutidas (seção 6) |
+| `markers` | array | marcadores da timeline (formato v8): `[{ "id", "time", "name"?, "color"? }]`; `time` em segundos da composição (0 a 3600), `id` único, `color` `#RRGGBB`. Independem das camadas; o app os usa para navegar (botões anterior/próximo) e como pontos de ímã ao arrastar clipes |
 | `layers` | array | camadas de topo, em ordem de pintura |
 
 ## 4. Propriedades animáveis
@@ -306,7 +307,12 @@ A semântica completa e o exemplo "Bounce Text" estão em [`expressoes.md`](expr
 "image": { "asset": "logo" }
 "video": { "asset": "clip", "sourceStart": 2.0, "speed": 1.0, "volume": 1, "muted": false, "fadeIn": 0, "fadeOut": 0.5 }
 "audio": { "asset": "music", "sourceStart": 0, "speed": 1, "volume": 0.8, "fadeIn": 1, "fadeOut": 2 }
+"audio": { "asset": "voz", "eq": [ { "type": "lowShelf", "frequency": 80, "gain": -6, "q": 0.7 }, { "type": "peak", "frequency": 4000, "gain": 4, "q": 1 } ] }
 ```
+
+`eq` (formato v8, em `video` e `audio`): equalizador paramétrico de até 8 bandas aplicado depois do volume. Cada banda tem
+`type` (`peak`, `lowShelf` ou `highShelf`; padrão `peak`), `frequency` (20 a 20000 Hz, padrão 1000), `gain` (−24 a 24 dB, padrão 0) e `q` (0,1 a 10, padrão 1;
+maior = mais estreito). Ausente ou vazio = desligado. É não destrutivo (o arquivo de mídia não muda) e vale no preview e na exportação.
 
 - Imagens e vídeos são exibidos no tamanho nativo (pixels), centrados; use `transform.scale` para ajustar.
 - `sourceStart`: ponto de entrada na mídia (s). O instante local `t` mostra a mídia em `sourceStart + t·speed`.
@@ -784,7 +790,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v7.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v8.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -825,7 +831,7 @@ Erros da versão 6 e 7: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeigh
   profundidade de campo da câmera, `composition.environment` e vídeo com `alphaPacked` (seções 5.4, 5.6, 5.8, 5.9 e
   5.13; só campos novos, documentos v5 abrem sem mudança); **v7** → em `{"cyclic": …}`, `offset` passa a ser a
   assimetria de cada ciclo e o antigo deslocamento vira `phase` (a migração v6→v7 move o valor antigo de `offset` para
-  `phase`, então projetos v5/v6 ficam idênticos).
+  `phase`, então projetos v5/v6 ficam idênticos). **v8** → `markers` na raiz e `eq` nos clipes de áudio/vídeo (seções 2 e 5; só campos novos, documentos v7 abrem sem mudança).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.

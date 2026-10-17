@@ -12,7 +12,7 @@ import kotlin.math.roundToInt
 const val FORMAT_ID = "knsproj"
 
 /** Format version written by this build. Older versions are migrated on load; newer ones are rejected. */
-const val FORMAT_VERSION = 7
+const val FORMAT_VERSION = 8
 
 /** Root of a `.knsproj` document (`project.json`). */
 @Serializable
@@ -23,11 +23,24 @@ data class KnsProject(
     @EncodeDefault val meta: ProjectMeta = ProjectMeta(),
     @EncodeDefault val composition: Composition = Composition(),
     val assets: List<Asset> = emptyList(),
+    /** Time references on the timeline, independent of the layers. Order is not significant. */
+    val markers: List<Marker> = emptyList(),
     /** Top-level layers in painter's order: index 0 is drawn first (bottom), the last layer is on top. */
     @EncodeDefault val layers: List<Layer> = emptyList(),
 ) {
     fun asset(id: String?): Asset? = if (id == null) null else assets.firstOrNull { it.id == id }
 }
+
+/** A named point in time on the timeline ruler (format v8). */
+@Serializable
+data class Marker(
+    @EncodeDefault val id: String,
+    /** Composition seconds. */
+    @EncodeDefault val time: Double,
+    val name: String = "",
+    /** `#RRGGBB`; null uses the default colour. */
+    val color: String? = null,
+)
 
 @Serializable
 data class ProjectMeta(

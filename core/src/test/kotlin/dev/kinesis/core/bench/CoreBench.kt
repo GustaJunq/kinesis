@@ -84,6 +84,11 @@ class CoreBench {
         val sphere = Primitives.sphere(256, 256)
         val m = Mat4.rotationY(17f)
         report("mesh_transform_${sphere.vertexCount}_vertices", median(25, 8) { sphere.transformed(m) })
+        // Equalizer: one minute of 48 kHz stereo through five bands (the real-time budget for that is 60 000 ms).
+        val minute = FloatArray(48_000 * 60 * 2) { i -> kotlin.math.sin(i * 0.01f) * 0.5f }
+        val eq = dev.kinesis.core.audio.StereoEq(dev.kinesis.core.audio.EqPresets.vocal(), 48_000)
+        report("eq_5_bands_60s_stereo_48k", median(7, 3) { eq.reset(); var f = 0; while (f < 48_000 * 60) { eq.process(minute, f, 256); f += 256 } })
+
         val model = glb(500)
         java.io.File(System.getProperty("java.io.tmpdir"), "bench-500.glb").writeBytes(model)
         report("gltf_load_500x500_grid_${model.size / 1024}KiB", median(15, 5) { dev.kinesis.core.geom.GltfLoader.load(model) })

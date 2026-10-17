@@ -152,6 +152,20 @@ def validate(project, available_files=None):
     if not (0 <= mb.get("shutterAngle", 180) <= 720):
         err("composition.motionBlur", "composition.motionBlur.shutterAngle", "shutterAngle must be between 0 and 720")
 
+    marker_ids = set()
+    for i, m in enumerate(project.get("markers", []) or []):
+        path = f"markers[{i}]"
+        mid = m.get("id", "")
+        if not str(mid).strip():
+            err("marker.id", f"{path}.id", "marker id must not be empty")
+        elif mid in marker_ids:
+            err("marker.duplicateId", f"{path}.id", f"duplicate marker id '{mid}'")
+        else:
+            marker_ids.add(mid)
+        t = m.get("time", 0)
+        if not (isinstance(t, (int, float)) and 0 <= t <= 3600):
+            err("marker.time", f"{path}.time", "marker time must be between 0 and 3600 seconds")
+
     assets_by_id = {}
     for i, asset in enumerate(project.get("assets", []) or []):
         path = f"assets[{i}]"
@@ -376,6 +390,13 @@ def validate(project, available_files=None):
                     err("light.shadow", f"{p}.light.shadowSoftness", "shadowSoftness must be between 0 and 8")
                 if light.get("castShadows") and light.get("kind", "directional") == "ambient":
                     warn("light.shadow", f"{p}.light.castShadows", "ambient lights do not cast shadows")
+            media_eq = ((layer.get("video") or layer.get("audio")) or {}).get("eq") or []
+            if len(media_eq) > 8:
+                err("audio.eq", f"{p}.eq", "at most 8 equalizer bands")
+            for bi, band in enumerate(media_eq):
+                f, g, q = band.get("frequency", 1000), band.get("gain", 0), band.get("q", 1)
+                if not (20 <= f <= 20000 and -24 <= g <= 24 and 0.1 <= q <= 10):
+                    err("audio.eq", f"{p}.eq[{bi}]", "frequency 20-20000 Hz, gain ±24 dB and q 0.1-10 are required")
             if (layer.get("video") or {}).get("alphaPacked") and ltype != "video":
                 warn("media.alphaPacked", p, "alphaPacked only applies to video layers")
             if layer.get("null") is not None and ltype != "null":
