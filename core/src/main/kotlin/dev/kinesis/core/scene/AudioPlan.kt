@@ -24,6 +24,8 @@ class AudioClip(
     val fadeOut: Double,
     /** Layer end in composition time (fade-out reference). */
     val layerEnd: Double,
+    /** Equalizer bands of the clip (empty = off). */
+    val eq: List<dev.kinesis.core.model.EqBand> = emptyList(),
 ) {
     /** Source media time heard at composition time [t]. */
     fun sourceTime(t: Double): Double = sourceStart + (t - layerOrigin) * speed
@@ -69,6 +71,7 @@ object AudioPlan {
                             fadeIn = media.fadeIn,
                             fadeOut = media.fadeOut,
                             layerEnd = absEnd,
+                            eq = media.eq,
                         )
                     }
                     else -> Unit

@@ -326,6 +326,7 @@ object TimelineOps {
     /** Top-level times that clips and the playhead snap to: composition bounds and layer edges. */
     fun snapPoints(project: KnsProject, excludeId: String? = null): List<Double> {
         val pts = sortedSetOf(0.0, project.composition.duration)
+        for (m in project.markers) pts += m.time
         for (l in project.layers) {
             if (l.id == excludeId) continue
             pts += l.start

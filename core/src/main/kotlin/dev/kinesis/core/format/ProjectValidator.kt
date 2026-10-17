@@ -6,6 +6,7 @@ import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.EffectRegistry
 import dev.kinesis.core.model.EffectTarget
 import dev.kinesis.core.model.EffectValue
+import dev.kinesis.core.model.EqBand
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerType
@@ -63,6 +64,15 @@ object ProjectValidator {
             } else if (availableFiles != null && asset.path !in availableFiles) {
                 err("asset.missingFile", "$path.path", "file '${asset.path}' is not present in the project")
             }
+        }
+
+        // Markers
+        val markerIds = HashSet<String>()
+        project.markers.forEachIndexed { i, m ->
+            val path = "markers[$i]"
+            if (m.id.isBlank()) err("marker.id", "$path.id", "marker id must not be empty")
+            else if (!markerIds.add(m.id)) err("marker.duplicateId", "$path.id", "duplicate marker id '${m.id}'")
+            if (!(m.time >= 0.0 && m.time <= 3600.0)) err("marker.time", "$path.time", "marker time must be between 0 and 3600 seconds")
         }
 
         // Layers (ids are unique across the whole tree)
@@ -254,6 +264,14 @@ object ProjectValidator {
                     checkAnimatable(l.shadowDarkness, "$p.light.shadowDarkness", d)
                     if (l.shadowSoftness !in 0f..8f) err("light.shadow", "$p.light.shadowSoftness", "shadowSoftness must be between 0 and 8")
                     if (l.castShadows && l.kind == LightKind.AMBIENT) warn("light.shadow", "$p.light.castShadows", "ambient lights do not cast shadows")
+                }
+                layer.media?.let { m ->
+                    if (m.eq.size > EqBand.MAX_BANDS) err("audio.eq", "$p.eq", "at most ${EqBand.MAX_BANDS} equalizer bands")
+                    m.eq.forEachIndexed { bi, b ->
+                        if (b.frequency !in EqBand.MIN_FREQUENCY..EqBand.MAX_FREQUENCY || b.gain !in -EqBand.MAX_GAIN..EqBand.MAX_GAIN || b.q !in EqBand.MIN_Q..EqBand.MAX_Q) {
+                            err("audio.eq", "$p.eq[$bi]", "frequency 20-20000 Hz, gain ±${EqBand.MAX_GAIN.toInt()} dB and q ${EqBand.MIN_Q}-${EqBand.MAX_Q.toInt()} are required")
+                        }
+                    }
                 }
                 if (layer.video?.alphaPacked == true && layer.type != LayerType.VIDEO) warn("media.alphaPacked", "$p", "alphaPacked only applies to video layers")
                 if (layer.type == LayerType.CAMERA) cameraCount++
