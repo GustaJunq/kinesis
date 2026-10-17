@@ -220,7 +220,7 @@ pub fn extrude(contours: &[Vec<P>], depth: f32, bevel: f32, bevel_steps: i32) ->
                 if (ra.z - rb.z).abs() < 1e-6 && (ra.inset - rb.inset).abs() < 1e-6 {
                     continue;
                 }
-                let mut v = |out: &mut Mesh, ring: &Ring, vertex: usize, nn: P, u: f32, vv: f32| -> i32 {
+                let v = |out: &mut Mesh, ring: &Ring, vertex: usize, nn: P, u: f32, vv: f32| -> i32 {
                     let p = at(ci, vertex, ring.inset);
                     let nv = V3 { x: nn.x * ring.s, y: nn.y * ring.s, z: ring.c }.normalized();
                     out.vertex(p.x, p.y, ring.z, nv.x, nv.y, nv.z, u, vv)

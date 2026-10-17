@@ -1,7 +1,9 @@
 //! JNI bindings, class `dev.kinesis.core.nativebridge.NativeCore` (see core/src/main/kotlin/.../nativebridge).
 
 use crate::extrude::{self, P};
-use jni::objects::{JClass, JFloatArray, JIntArray, JLongArray, JObject, JObjectArray, JString};
+use jni::objects::{JClass, JFloatArray, JIntArray, JObject, JObjectArray, JString};
+#[cfg(feature = "whisper")]
+use jni::objects::JLongArray;
 use jni::sys::{jboolean, jint, jlong, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 

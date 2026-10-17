@@ -140,6 +140,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var showEffects by remember { mutableStateOf(false) }
     var propsFocus by remember { mutableStateOf<String?>(null) }
     var showExport by remember { mutableStateOf(false) }
+    var showCaptions by remember { mutableStateOf(false) }
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
     var showGraph by remember { mutableStateOf(false) }
     var renderError by remember { mutableStateOf<String?>(null) }
@@ -264,6 +265,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 onClose = { vm.flushSave(); onClose() },
                 onRename = { renaming = true },
                 onSettings = { vm.pause(); showSettings = true },
+                onCaptions = { vm.pause(); showCaptions = true },
                 onExport = { vm.pause(); showExport = true },
             )
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = KColors.Accent)
@@ -442,5 +444,6 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
             },
         )
     }
+    if (showCaptions) CaptionsSheet(vm, project, onDismiss = { showCaptions = false })
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })
 }

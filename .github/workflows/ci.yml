@@ -23,6 +23,9 @@ jobs:
       - name: Unit tests (core engine + .knsproj format)
         run: ./gradlew --no-daemon :core:test
 
+      # Rust library (text extrusion + Whisper) for the Android ABIs; Gradle packs app/src/main/jniLibs into the APK.
+      - uses: ./.github/actions/native
+
       - name: Build debug APK
         run: ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest
 
@@ -44,6 +47,52 @@ jobs:
           path: |
             core/build/reports/tests/
             app/build/reports/tests/
+
+  native:
+    name: Rust core (tests, parity with Kotlin, benchmark)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/target
+          key: native-host-${{ runner.os }}-${{ hashFiles('native/Cargo.lock', 'native/Cargo.toml') }}
+
+      - name: Rust unit tests
+        working-directory: native
+        run: cargo test --release --locked
+
+      - name: Build the library (with and without Whisper)
+        working-directory: native
+        run: |
+          cargo build --release --locked --features whisper
+          cargo build --release --locked
+
+      # With the library built, the core tests also run the Rust text extrusion and compare it with the Kotlin one.
+      - name: Core tests with the native library (parity)
+        run: ./gradlew --no-daemon :core:test --tests '*NativeParityTest*' --tests '*TextExtrusionTest*' -i
+
+      - name: Benchmark (Kotlin vs Rust)
+        run: |
+          {
+            echo '### Benchmark (ms, median; lower is better)'
+            echo '```'
+            KINESIS_BENCH=1 ./gradlew --no-daemon :core:test --tests '*CoreBench*' -i | grep -E 'BENCH ' | sed 's/^ *//'
+            (cd native && cargo run --release --locked --example bench 2>/dev/null | sed 's/text_extrude_24_glyphs_bevel/text_extrude_24_glyphs_bevel_rust_native/')
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
   cli:
     name: CLI and shader checks
@@ -80,6 +129,8 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+
+      - uses: ./.github/actions/native
 
       - name: Build app and test APKs
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest

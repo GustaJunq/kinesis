@@ -40,6 +40,13 @@ import dev.kinesis.editor.media.VideoExporter
 import dev.kinesis.editor.media.VideoGallery
 import dev.kinesis.editor.media.VideoProxies
 import dev.kinesis.editor.render.AssetFiles
+import dev.kinesis.editor.speech.SpeechModels
+import dev.kinesis.editor.speech.Transcriber
+import dev.kinesis.editor.speech.WhisperModel
+import dev.kinesis.core.edit.Captions
+import dev.kinesis.core.edit.CaptionSegment
+import dev.kinesis.core.edit.CaptionStyle
+import dev.kinesis.core.nativebridge.NativeCore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -74,6 +81,14 @@ sealed class ExportUiState {
         val layerName: String? = null,
         val outOfMemory: Boolean = false,
     ) : ExportUiState()
+}
+
+/** What the captions panel is doing. [progress] is 0..1, or null while unknown. */
+sealed class CaptionUiState {
+    data object Idle : CaptionUiState()
+    data class Downloading(val model: WhisperModel, val progress: Float?) : CaptionUiState()
+    data class Transcribing(val progress: Float?) : CaptionUiState()
+    data class Failed(val message: String) : CaptionUiState()
 }
 
 /** Short user-facing notices (shown in a snackbar). */
@@ -741,7 +756,112 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         if (_export.value !is ExportUiState.Running) _export.value = ExportUiState.Idle
     }
 
+    // ------------------------------------------------------------------ captions (Whisper, offline)
+
+    val speechModels = SpeechModels(app)
+    private val _captionState = MutableStateFlow<CaptionUiState>(CaptionUiState.Idle)
+    val captionState: StateFlow<CaptionUiState> = _captionState.asStateFlow()
+    private var captionJob: Job? = null
+    @Volatile
+    private var captionCancelled = false
+    @Volatile
+    private var whisper: NativeCore.Whisper? = null
+
+    /** Whether this build can recognise speech at all (the native library with Whisper is part of it). */
+    val speechSupported: Boolean get() = Transcriber.supported
+
+    /** Downloads a model once (needs a connection); afterwards recognition works offline. */
+    fun downloadModel(model: WhisperModel) {
+        if (captionJob?.isActive == true) return
+        captionCancelled = false
+        _captionState.value = CaptionUiState.Downloading(model, 0f)
+        captionJob = viewModelScope.launch(speechDispatcher) {
+            try {
+                speechModels.download(model, { p -> _captionState.value = CaptionUiState.Downloading(model, p) }, { captionCancelled })
+                _captionState.value = CaptionUiState.Idle
+            } catch (e: Exception) {
+                _captionState.value = if (captionCancelled) CaptionUiState.Idle else CaptionUiState.Failed(text(R.string.captions_download_failed))
+            }
+        }
+    }
+
+    fun importModel(uri: Uri) {
+        viewModelScope.launch(speechDispatcher) {
+            val ok = speechModels.import(uri)
+            _captionState.value = if (ok) CaptionUiState.Idle else CaptionUiState.Failed(text(R.string.captions_bad_model))
+        }
+    }
+
+    /** The layers whose speech can be recognised: video and audio layers that make sound. */
+    fun speechSources(p: KnsProject = current): List<Layer> {
+        val ids = dev.kinesis.core.scene.AudioPlan.clips(p).map { it.layerId }.toSet()
+        return LayerTree.all(p).filter { it.id in ids }
+    }
+
+    /** Recognises the speech of [layerId] and adds the captions as a group of text layers above everything. */
+    fun transcribe(layerId: String, language: String) {
+        if (captionJob?.isActive == true) return
+        val model = speechModels.best() ?: return
+        val clip = dev.kinesis.core.scene.AudioPlan.clips(current).firstOrNull { it.layerId == layerId } ?: return
+        captionCancelled = false
+        _captionState.value = CaptionUiState.Transcribing(null)
+        captionJob = viewModelScope.launch(speechDispatcher) {
+            try {
+                val pcmData = pcm.ensure(clip.assetId)
+                if (pcmData == null) {
+                    _captionState.value = CaptionUiState.Failed(text(R.string.captions_no_audio))
+                    return@launch
+                }
+                val segments = Transcriber.transcribe(
+                    model, pcmData, clip, language, maxChars = 42,
+                    onProgress = { p -> if (!captionCancelled) _captionState.value = CaptionUiState.Transcribing(p / 100f) },
+                    handle = { w -> whisper = w },
+                )
+                whisper = null
+                when {
+                    captionCancelled -> _captionState.value = CaptionUiState.Idle
+                    segments == null -> _captionState.value = CaptionUiState.Failed(NativeCore.Whisper.error.ifBlank { text(R.string.captions_failed) })
+                    segments.isEmpty() -> _captionState.value = CaptionUiState.Failed(text(R.string.captions_none_found))
+                    else -> withContext(Dispatchers.Main) {
+                        edit { Captions.add(it, segments, CaptionStyle(), text(R.string.captions)).first }
+                        _captionState.value = CaptionUiState.Idle
+                    }
+                }
+            } catch (e: Throwable) {
+                whisper = null
+                Log.w("Kinesis", "transcription failed", e)
+                _captionState.value = if (captionCancelled) CaptionUiState.Idle else CaptionUiState.Failed(
+                    if (e is OutOfMemoryError) text(R.string.captions_memory) else text(R.string.captions_failed),
+                )
+            }
+        }
+    }
+
+    fun cancelCaptionJob() {
+        captionCancelled = true
+        whisper?.cancel()
+    }
+
+    fun dismissCaptionState() {
+        if (_captionState.value is CaptionUiState.Failed) _captionState.value = CaptionUiState.Idle
+    }
+
+    /** Replaces the captions of [groupId] (text and interval edits, split, merge, delete). */
+    fun setCaptions(groupId: String, segments: List<CaptionSegment>, coalesceKey: String? = null) =
+        edit(coalesceKey) { Captions.replaceSegments(it, groupId, segments) }
+
+    fun setCaptionStyle(groupId: String, style: CaptionStyle, coalesceKey: String? = null) =
+        edit(coalesceKey) { Captions.applyStyle(it, groupId, style) }
+
+    fun importSrt(groupId: String?, srt: String) {
+        val segments = Captions.parseSrt(srt)
+        if (segments.isEmpty()) { notify(text(R.string.captions_srt_empty), true); return }
+        edit { p -> if (groupId != null && LayerTree.find(p, groupId) != null) Captions.replaceSegments(p, groupId, segments) else Captions.add(p, segments, CaptionStyle(), text(R.string.captions)).first }
+    }
+
     override fun onCleared() {
+        captionCancelled = true
+        whisper?.cancel()
         previewAudio.stop()
         playJob?.cancel()
         exportCancelled = true
@@ -784,6 +904,7 @@ private class Eta {
 }
 
 /** Proxies are made one at a time, across editors. */
+private val speechDispatcher = Executors.newSingleThreadExecutor { r -> Thread(r, "kinesis-speech").apply { isDaemon = true } }.asCoroutineDispatcher()
 private val proxyDispatcher = Executors.newSingleThreadExecutor { r -> Thread(r, "kinesis-proxies").apply { isDaemon = true } }.asCoroutineDispatcher()
 
 /** Work that must finish after the editor closes (the copy in Documents). */

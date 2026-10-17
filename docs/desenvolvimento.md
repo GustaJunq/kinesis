@@ -69,6 +69,7 @@ kinesis/
 ├── core/        Kotlin/JVM puro (sem Android): modelo, motor de animação, avaliação de cena,
 │                formato .knsproj, validador, operações de timeline, undo, malhas e leitor glTF,
 │                motor de expressões (pacote expr, interpretador Rhino embutido)
+├── native/      Rust (JNI): extrusão de texto 3D e motor do Whisper; o core usa só se a biblioteca estiver presente
 ├── app/         Android: Jetpack Compose (UI), OpenGL ES 3.0 (render), MediaCodec (vídeo/áudio/exportação)
 ├── schema/      JSON Schema oficial do project.json
 ├── tools/       CLI knsproj (Python) e verificação de shaders
@@ -99,10 +100,49 @@ kinesis/
   atômica (`arquivo temporário → fsync → rename`) e mantém `project.json.bak`, as últimas 10 versões em `.snapshots/` e,
   opcionalmente, uma cópia `.knsproj` em `Documentos/Kinesis`.
 
+## Núcleo nativo (Rust)
+
+`native/` é um crate Rust (`libkinesis_native.so`) chamado por JNI através de `NativeCore` (no core, Kotlin puro). A
+biblioteca é **opcional**: sem ela (testes na JVM, build sem Rust) tudo continua em Kotlin. O que está nela:
+
+| Peça | Por quê em Rust |
+|---|---|
+| `extrude` (extrusão de texto 3D) | Port fiel de `TextExtrusion`: entram dois vetores primitivos (pontos e tamanhos dos contornos), saem quatro (posições, normais, UVs, índices); sem objetos por ponto. Resultado idêntico ao Kotlin (teste de paridade). |
+| `whisper` (feature `whisper`) | whisper.cpp via `whisper-rs`; precisa de qualquer forma de código nativo. Progresso e cancelamento por atômicos, sem chamar a JVM de dentro do Rust. |
+
+### O que **não** foi migrado, e por quê (benchmark do Kotlin, `CoreBench`, JVM aquecida)
+
+Foi medido antes de decidir (`KINESIS_BENCH=1 ./gradlew :core:test --tests '*CoreBench*' -i`):
+
+| Carga | Kotlin (ms) | Decisão |
+|---|---|---|
+| Avaliar a cena: 500 camadas com keyframes × 30 quadros | ≈ 9–15 (≈ 0,6 µs por camada e quadro) | **Não migrar**: já é ~0,3 ms por quadro; JNI custaria mais que o cálculo. |
+| Avaliar a cena: 100 camadas com expressões × 30 quadros | ≈ 107–116 (≈ 37 µs por expressão) | **Não migrar**: o custo é o interpretador JavaScript (Rhino). Trocar o motor quebraria a compatibilidade da API de expressões. |
+| Ler glTF de 500 mil triângulos (12 MB) | ≈ 9 | **Não migrar**: leitura em bloco, já rápida. |
+| Transformar malha de 66 mil vértices | ≈ 6,5 | **Não migrar**. |
+| Extrusão de 24 glifos (240+120 pontos, bevel) | ≈ 54–59 | **Migrado**. |
+
+Resultado da extrusão (mesma carga, mesma máquina x86_64): Kotlin ≈ 54–59 ms; Rust chamado por JNI ≈ 20–27 ms; Rust
+puro ≈ 17 ms (`cargo run --release --example bench`). Ou seja, **2 a 3 vezes mais rápido** já contando a ida e volta
+pelo JNI. Esses números são do HotSpot (JIT forte); no ART do celular o Kotlin tende a ser mais lento, mas **não foi
+medido em aparelho**. O CI imprime a mesma comparação no resumo do job "Rust core".
+
+### Compilar
+
+```bash
+cd native && cargo test --release                       # testes Rust
+cd native && cargo build --release                      # biblioteca para esta máquina (os testes do core a usam sozinhos)
+native/build-android.sh                                 # .so para arm64-v8a, armeabi-v7a e x86_64 (precisa de NDK, cargo-ndk, cmake)
+```
+
+O CI faz o mesmo (`.github/actions/native`) antes de montar o APK; `build-android.sh` copia também `libc++_shared.so`,
+que o whisper.cpp exige.
+
 ## Testes
 
 ```bash
-./gradlew :core:test                          # motor de animação, expressões, formato, validador, operações, glTF
+./gradlew :core:test                          # motor de animação, expressões, formato, validador, operações, glTF, legendas
+(cd native && cargo test --release)           # núcleo em Rust; com a biblioteca compilada, :core:test compara Rust e Kotlin
 python3 -m unittest discover -s tools/tests   # CLI, schema e paridade com o validador Kotlin
 python3 tools/check_shaders.py                # compila todos os shaders com glslangValidator
 ```

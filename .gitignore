@@ -48,3 +48,6 @@ __pycache__/
 *.pfx
 keystore.properties
 /native/target/
+
+# Native libraries built from native/ (CI and native/build-android.sh)
+/app/src/main/jniLibs/
