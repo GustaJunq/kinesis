@@ -373,6 +373,26 @@ class Format6Tests(unittest.TestCase):
         self.assertEqual(6, kns_migrate.migrate(minimal(formatVersion=5), 6)["formatVersion"])
 
 
+class Format7Tests(unittest.TestCase):
+    """Format v7: cyclic.offset is the skew of each cycle; the old shift is cyclic.phase."""
+
+    def test_v6_offset_becomes_phase(self):
+        layer = {"id": "a", "type": "shape", "shape": {}, "transform": {"rotation": {"keyframes": [
+            {"time": 0, "value": 0, "easing": {"cyclic": {"offset": 0.1, "cycles": 2.5}}},
+            {"time": 1, "value": 90, "easing": {"cyclic": {"offset": 0}}}]}}}
+        out = kns_migrate.migrate(minimal(formatVersion=6, layers=[layer]), 7)
+        kf = out["layers"][0]["transform"]["rotation"]["keyframes"]
+        self.assertEqual({"cyclic": {"cycles": 2.5, "phase": 0.1}}, kf[0]["easing"])
+        self.assertEqual({"cyclic": {}}, kf[1]["easing"])
+        self.assertEqual(7, out["formatVersion"])
+
+    def test_skew_and_phase_are_valid(self):
+        layer = {"id": "a", "type": "shape", "shape": {}, "transform": {"rotation": {"keyframes": [
+            {"time": 0, "value": 0, "easing": {"cyclic": {"offset": -0.8, "cycles": 3.5, "phase": 0.1}}},
+            {"time": 1, "value": 90}]}}}
+        self.assertEqual([], [i["code"] for i in cli.validate_project(minimal(layers=[layer]), None).issues])
+
+
 class ExampleTests(unittest.TestCase):
     """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
 

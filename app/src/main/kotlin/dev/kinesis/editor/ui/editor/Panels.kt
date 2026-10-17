@@ -384,12 +384,12 @@ fun CurveEditorPanel(
                         val cy = current as? Easing.Cyclic
                         if (cy != null) {
                             wave = if (dragging == 3) {
-                                // The first crest follows the finger and the wave keeps its frequency, so the offset moves.
-                                val off = x - 0.5f / cy.cycles
-                                cy.copy(offset = if (abs(off) < 0.02f) 0f else ((off * 100).roundToInt() / 100f).coerceIn(-1f, 1f))
+                                // The first crest follows the finger: its place inside the cycle is the skew (offset).
+                                val off = Easing.Cyclic.offsetForPeak((x - cy.phase) * cy.cycles)
+                                cy.copy(offset = if (abs(off) < 0.04f) 0f else (off * 100).roundToInt() / 100f)
                             } else {
                                 // The trough after the crest ends one full wave: its distance from the start sets the quantity.
-                                val span = (x - cy.offset).coerceAtLeast(1f / Easing.Cyclic.MAX_CYCLES)
+                                val span = (x - cy.phase).coerceAtLeast(1f / Easing.Cyclic.MAX_CYCLES)
                                 cy.copy(cycles = ((1f / span * 2f).roundToInt() / 2f).coerceIn(Easing.Cyclic.MIN_CYCLES, Easing.Cyclic.MAX_CYCLES))
                             }
                             current = wave
@@ -418,7 +418,7 @@ fun CurveEditorPanel(
             }
             drawPath(path, KColors.Accent, style = Stroke(3.dp.toPx()))
             if (cyc != null) {
-                // Top handle: first crest (offset). Bottom handle: the trough after it (quantity of waves).
+                // Top handle: first crest (skew of each cycle). Bottom handle: the trough after it (quantity of waves).
                 val top = pos(cyc.peak.coerceIn(0f, 1f), 1f)
                 val bottom = pos(cyc.trough.coerceIn(0f, 1f), 0f)
                 drawLine(KColors.Keyframe.copy(alpha = 0.5f), top, pos(top.x / w, 0f), strokeWidth = 2f)

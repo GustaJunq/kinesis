@@ -127,7 +127,7 @@ object JsonPretty {
  * version N and returns one of version N + 1.
  */
 object Migrations {
-    private val steps: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to ::v1ToV2, 2 to ::v2ToV3, 3 to ::v3ToV4, 4 to ::v4ToV5, 5 to ::v5ToV6)
+    private val steps: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to ::v1ToV2, 2 to ::v2ToV3, 3 to ::v3ToV4, 4 to ::v4ToV5, 5 to ::v5ToV6, 6 to ::v6ToV7)
 
     fun migrate(root: JsonObject, fromVersion: Int): JsonObject {
         var doc = root
@@ -142,6 +142,28 @@ object Migrations {
 
     /** Version 3 only adds optional fields (expressions, text property animators), so version 2 documents are valid as they are. */
     fun v2ToV3(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(3)))
+
+    /**
+     * Version 7 changes what `cyclic.offset` means: in v5/v6 it shifted the whole wave, now it skews each cycle (fast
+     * rise / slow fall or the opposite). The old shift is kept as `cyclic.phase`, so v6 projects look the same.
+     */
+    fun v6ToV7(doc: JsonObject): JsonObject {
+        fun walk(e: JsonElement): JsonElement = when (e) {
+            is JsonObject -> {
+                val cyclic = e["cyclic"] as? JsonObject
+                if (cyclic != null && e.size == 1) {
+                    val shift = (cyclic["offset"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
+                    val m = LinkedHashMap(cyclic)
+                    m.remove("offset")
+                    if (shift != 0.0) m["phase"] = JsonPrimitive(shift)
+                    JsonObject(mapOf("cyclic" to JsonObject(m)))
+                } else JsonObject(e.mapValues { walk(it.value) })
+            }
+            is JsonArray -> JsonArray(e.map(::walk))
+            else -> e
+        }
+        return JsonObject((walk(doc) as JsonObject) + ("formatVersion" to JsonPrimitive(7)))
+    }
 
     /**
      * Version 6 only adds optional fields (material shading, light shadows, camera depth of field, the composition

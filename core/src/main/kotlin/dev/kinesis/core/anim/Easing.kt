@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.pow
 import kotlin.math.sin
 
@@ -32,18 +33,36 @@ sealed class Easing {
     }
 
     /**
-     * Wave between the two keyframe values: `0.5 − 0.5·cos(2π · cycles · (u − offset))`. It starts at 0 and, with the
-     * default [offset] of 0 and a half-integer [cycles] (1.5, 2.5, 3.5, ...), ends at 1, so the segment reaches both
-     * keyframe values without a jump. Segment ends are always exact (u ≤ 0 → 0, u ≥ 1 → 1); another offset or a
-     * whole number of cycles makes the wave start or end mid-swing, which shows as a jump at that end.
+     * Wave between the two keyframe values: `0.5 − 0.5·cos(2π·g)`, where `g` is the progress of the current cycle
+     * after a temporal skew. It starts at 0 and, with a half-integer [cycles] (1.5, 2.5, 3.5, ...), ends at 1, so
+     * the segment reaches both keyframe values without a jump. Segment ends are always exact (u ≤ 0 → 0, u ≥ 1 → 1).
      *
-     * @property offset how far the wave is shifted to the right, as a fraction of the segment (−1..1); a negative
-     * value moves it earlier.
+     * [offset] is the horizontal skew of each cycle, not a shift: it moves the crest inside the cycle and leaves the
+     * minimum, the maximum, the number of cycles and their length alone. The crest sits at fraction
+     * `0.5 + 0.45·offset` of the cycle, so a negative offset rises fast and falls slowly, 0 is the symmetric wave and a
+     * positive offset rises slowly and falls fast. Time inside a cycle is mapped piecewise-linearly onto the two halves
+     * of the cosine ([warp]), so the curve stays continuous and flat at every crest and trough. A trailing partial
+     * cycle (the half cycle of 3.5) is squeezed the same way so it still ends exactly on the keyframe value.
+     *
+     * @property offset skew of each cycle (−1..1); negative = fast rise, positive = fast fall.
      * @property cycles number of full waves across the segment (0.5..64).
+     * @property phase how far the whole wave is shifted to the right, as a fraction of the segment (−1..1). Not
+     * editable: it keeps the look of v0.1.2–v0.1.3 projects, whose `offset` was a shift (see the v6→v7 migration).
      */
-    data class Cyclic(val offset: Float = 0f, val cycles: Float = DEFAULT_CYCLES) : Easing() {
+    data class Cyclic(val offset: Float = 0f, val cycles: Float = DEFAULT_CYCLES, val phase: Float = 0f) : Easing() {
+        /** Where the crest sits inside a cycle, 0..1. */
+        val peakFraction: Float get() = 0.5f + SKEW_RANGE * offset
+
         /** The unclamped wave (what the curve editor draws). */
-        fun wave(u: Float): Float = (0.5 - 0.5 * cos(2.0 * PI * cycles * (u - offset))).toFloat()
+        fun wave(u: Float): Float {
+            val x = cycles.toDouble() * (u - phase)
+            val k = floor(x)
+            val f = (x - k).toFloat()
+            val whole = floor(cycles.toDouble())
+            val tail = cycles - whole.toFloat()
+            val g = if (k == whole && tail > 1e-6f && phase == 0f) tail * warp(f / tail, peakFraction) else warp(f, peakFraction)
+            return (0.5 - 0.5 * cos(2.0 * PI * g)).toFloat()
+        }
 
         override fun transform(u: Float): Float = when {
             u <= 0f -> 0f
@@ -52,15 +71,24 @@ sealed class Easing {
         }
 
         /** Where the wave first reaches 1 after its start (the handle that moves [offset]). */
-        val peak: Float get() = offset + 0.5f / cycles
+        val peak: Float get() = phase + peakFraction / cycles
 
         /** Where the wave first returns to 0 after [peak] (the handle that sets [cycles]). */
-        val trough: Float get() = offset + 1f / cycles
+        val trough: Float get() = phase + 1f / cycles
 
         companion object {
             const val MIN_CYCLES = 0.5f
             const val MAX_CYCLES = 64f
             const val DEFAULT_CYCLES = 3.5f
+
+            /** How far the crest can move from the middle of the cycle at |offset| = 1. */
+            const val SKEW_RANGE = 0.45f
+
+            /** Maps cycle progress [t] (0..1) so that the crest [peak] lands on the middle of the cosine. */
+            fun warp(t: Float, peak: Float): Float = if (t < peak) 0.5f * t / peak else 0.5f + 0.5f * (t - peak) / (1f - peak)
+
+            /** The offset that puts the crest at [fraction] of the cycle. */
+            fun offsetForPeak(fraction: Float): Float = ((fraction - 0.5f) / SKEW_RANGE).coerceIn(-1f, 1f)
         }
     }
 

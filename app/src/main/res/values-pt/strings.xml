@@ -362,7 +362,7 @@
     <string name="camera_rotation_hint">Posição e rotação são independentes. Arraste no viewport para girar a câmera sem mover a posição; use pinça para avançar e recuar.</string>
     <string name="easing_cyclic">Cíclico</string>
     <string name="cyclic_info">cíclico · offset %1$s · %2$s ondas</string>
-    <string name="cyclic_hint">Alça superior: offset (deslize para deslocar a onda). Alça inferior: quantidade (deslize para ter mais ou menos ondas).</string>
+    <string name="cyclic_hint">Alça superior: offset = assimetria (deslize para a esquerda: sobe rápido e desce devagar; para a direita: o contrário). Alça inferior: quantidade (deslize para ter mais ou menos ondas).</string>
     <string name="prim_text3d">Texto 3D</string>
     <string name="shading">Sombreamento</string>
     <string name="shading_pbr">Realista</string>

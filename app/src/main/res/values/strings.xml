@@ -362,7 +362,7 @@
     <string name="camera_rotation_hint">Position and rotation are independent. Drag in the viewport to turn the camera in place; pinch to dolly forward and back.</string>
     <string name="easing_cyclic">Cyclic</string>
     <string name="cyclic_info">cyclic · offset %1$s · %2$s waves</string>
-    <string name="cyclic_hint">Top handle: offset (slide it to shift the wave). Bottom handle: quantity (slide it to add or remove waves).</string>
+    <string name="cyclic_hint">Top handle: offset = skew (slide it left for a fast rise and slow fall, right for the opposite). Bottom handle: quantity (slide it to add or remove waves).</string>
     <string name="prim_text3d">3D text</string>
     <string name="shading">Shading</string>
     <string name="shading_pbr">Realistic</string>

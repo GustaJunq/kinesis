@@ -7,9 +7,9 @@
 
 ## Quando usar
 - Pêndulos, pulsações, balanços e tremidos regulares com **dois** keyframes (em vez de dezenas de keyframes alternados ou `wiggle`).
-- `cycles` = número de ondas completas no trecho; `offset` (-1..1) desloca a onda para a direita (fração do trecho).
+- `cycles` = número de ondas completas no trecho; `offset` (-1..1) é a assimetria de cada ciclo: negativo sobe rápido e desce devagar, 0 é simétrico, positivo sobe devagar e desce rápido (min/máx e duração dos ciclos não mudam).
 
 ## Armadilhas
-- Para a curva sair de 0 e chegar em 1 **sem salto**, use `offset: 0` e `cycles` com meio (1,5; 2,5; 3,5...). Com outros valores a onda começa ou termina no meio de um balanço e o valor salta no começo ou no fim do trecho.
+- Para a curva sair de 0 e chegar em 1 **sem salto**, use `cycles` com meio (1,5; 2,5; 3,5...). Com um número inteiro de ciclos a onda termina em 0 em vez de 1, e o valor salta no fim do trecho.
 - O easing vale para o trecho que **começa** no keyframe onde está escrito.
 - `cycles` aceita de 0,5 a 64 e `offset` de -1 a 1.
