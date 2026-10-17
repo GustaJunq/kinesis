@@ -28,4 +28,8 @@ dependencies {
 tasks.test {
     // Tests validate the shipped examples against the official JSON Schema.
     systemProperty("kinesis.repoRoot", projectDir.parentFile.absolutePath)
+    // The Rust library of native/ (cargo build --release), when it was built for this machine: the tests then also
+    // run the native code and compare it with the Kotlin version.
+    val nativeLib = file("../native/target/release")
+    if (nativeLib.isDirectory) systemProperty("java.library.path", nativeLib.absolutePath)
 }

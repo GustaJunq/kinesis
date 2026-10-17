@@ -1,6 +1,7 @@
 package dev.kinesis.core.geom
 
 import dev.kinesis.core.math.Vec2
+import dev.kinesis.core.nativebridge.NativeCore
 import dev.kinesis.core.math.Vec3
 import kotlin.math.PI
 import kotlin.math.abs
@@ -10,7 +11,8 @@ import kotlin.math.sqrt
 
 /**
  * Builds extruded, optionally bevelled, solids from flat outlines (the contours of text glyphs). Pure geometry:
- * the app turns glyphs into contours and caches the resulting [Mesh].
+ * the app turns glyphs into contours and caches the resulting [Mesh]. Runs in Rust (`native/`) when the native
+ * library is loaded, in Kotlin otherwise; both give the same geometry.
  *
  * Coordinates are Kinesis pixels (+x right, +y down); the front face is at z = -depth/2, facing the default camera,
  * the back face at z = +depth/2.
@@ -27,7 +29,11 @@ object TextExtrusion {
      * a contour inside an even number of others is an outline, inside an odd number it is a hole.
      * [bevel] (clamped to depth/2) rounds the front and back edges with [bevelSteps] segments.
      */
-    fun extrude(contours: List<List<Vec2>>, depth: Float, bevel: Float, bevelSteps: Int = 3): Mesh {
+    fun extrude(contours: List<List<Vec2>>, depth: Float, bevel: Float, bevelSteps: Int = 3): Mesh =
+        NativeCore.extrudeText(contours, depth, bevel, bevelSteps) ?: extrudeJvm(contours, depth, bevel, bevelSteps)
+
+    /** The Kotlin implementation, used when the native library is missing; the Rust port in `native/` mirrors it. */
+    fun extrudeJvm(contours: List<List<Vec2>>, depth: Float, bevel: Float, bevelSteps: Int = 3): Mesh {
         val polys = contours.map(::clean).filter { it.size >= 3 && abs(signedArea(it)) > 1e-4f }
         if (polys.isEmpty() || depth <= 0f) return EMPTY
 
