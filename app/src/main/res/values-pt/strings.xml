@@ -362,7 +362,7 @@
     <string name="camera_rotation_hint">Posição e rotação são independentes. Arraste no viewport para girar a câmera sem mover a posição; use pinça para avançar e recuar.</string>
     <string name="easing_cyclic">Cíclico</string>
     <string name="cyclic_info">cíclico · offset %1$s · %2$s ondas</string>
-    <string name="cyclic_hint">Alça superior: offset (deslize para deslocar a onda). Alça inferior: quantidade (deslize para ter mais ou menos ondas).</string>
+    <string name="cyclic_hint">Alça superior: offset = assimetria (deslize para a esquerda: sobe rápido e desce devagar; para a direita: o contrário). Alça inferior: quantidade (deslize para ter mais ou menos ondas).</string>
     <string name="prim_text3d">Texto 3D</string>
     <string name="shading">Sombreamento</string>
     <string name="shading_pbr">Realista</string>
@@ -431,4 +431,39 @@
     <string name="prerender_layer">Pré-renderizar esta camada</string>
     <string name="prerender_layer_name">%1$s (pré-renderizada)</string>
     <string name="prerender_done">Camada pré-renderizada: a original fica oculta logo abaixo. Exporte de novo.</string>
+
+    <!-- Legendas (Whisper, no aparelho) -->
+    <string name="captions">Legendas</string>
+    <string name="captions_generate">Gerar a partir da fala</string>
+    <string name="captions_edit">Legendas do vídeo</string>
+    <string name="captions_unsupported">O reconhecimento de fala não faz parte desta versão.</string>
+    <string name="captions_no_source">Adicione uma camada de vídeo ou áudio com fala para gerar legendas.</string>
+    <string name="captions_source">Camada</string>
+    <string name="captions_language">Idioma falado</string>
+    <string name="captions_need_model">O reconhecimento roda no seu aparelho. Ele precisa de um modelo de fala, baixado uma única vez (a única vez em que o Kinesis usa a internet) ou importado de um arquivo. Modelos maiores são mais precisos e mais lentos.</string>
+    <string name="captions_download_model">%1$s · %2$d MB</string>
+    <string name="captions_import_model">Importar arquivo de modelo (ggml .bin)</string>
+    <string name="captions_downloading">Baixando o modelo %1$s…</string>
+    <string name="captions_transcribing">Reconhecendo a fala… pode demorar em vídeos longos; mantenha o app aberto.</string>
+    <string name="captions_transcribe">Gerar legendas</string>
+    <string name="captions_download_failed">O download falhou. Verifique a conexão e tente de novo; ele continua de onde parou.</string>
+    <string name="captions_bad_model">Esse arquivo não é um modelo Whisper (ggml).</string>
+    <string name="captions_no_audio">Não foi possível ler o áudio desta camada.</string>
+    <string name="captions_failed">O reconhecimento de fala falhou.</string>
+    <string name="captions_memory">Memória insuficiente. Tente um modelo menor ou um trecho mais curto.</string>
+    <string name="captions_none_found">Nenhuma fala encontrada.</string>
+    <string name="captions_empty">Ainda não há legendas. Gere acima ou importe um arquivo .srt.</string>
+    <string name="captions_import_srt">Importar .srt</string>
+    <string name="captions_export_srt">Compartilhar .srt</string>
+    <string name="captions_delete_all">Apagar legendas</string>
+    <string name="captions_srt_empty">Nenhuma legenda encontrada nesse arquivo.</string>
+    <string name="captions_split">Dividir no cursor</string>
+    <string name="captions_merge">Juntar com a próxima</string>
+    <string name="captions_size">Tamanho</string>
+    <string name="captions_position">Altura</string>
+    <string name="captions_text_color">Cor</string>
+    <string name="captions_outline">Contorno</string>
+    <string name="captions_weight_medium">Médio</string>
+    <string name="captions_weight_bold">Negrito</string>
+    <string name="captions_weight_black">Preto</string>
 </resources>

@@ -69,7 +69,30 @@ def v5_to_v6(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6}
+def _cyclic_to_phase(node):
+    if isinstance(node, dict):
+        cyc = node.get("cyclic")
+        if isinstance(cyc, dict) and len(node) == 1:
+            shift = cyc.pop("offset", 0)
+            if shift:
+                cyc["phase"] = shift
+            return node
+        for v in node.values():
+            _cyclic_to_phase(v)
+    elif isinstance(node, list):
+        for v in node:
+            _cyclic_to_phase(v)
+    return node
+
+
+def v6_to_v7(doc):
+    """Version 7: cyclic.offset is now the skew of each cycle; the old shift of the whole wave becomes cyclic.phase."""
+    doc = _cyclic_to_phase(copy.deepcopy(doc))
+    doc["formatVersion"] = 7
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7}
 
 
 def migrate(doc, to_version):

@@ -12,8 +12,8 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
-- Schema oficial: `schema/knsproj-v6.schema.json` (formato versão 6; arquivos v1 a v5 ainda abrem e são migrados). Escreva sempre `"formatVersion": 6`.
-  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`;
+- Schema oficial: `schema/knsproj-v7.schema.json` (formato versão 7; arquivos v1 a v6 ainda abrem e são migrados). Escreva sempre `"formatVersion": 7`.
+  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`; v7 `cyclic.offset` = assimetria (skew) de cada ciclo, `phase` = deslocamento;
   v6 texto 3D (`primitive: "text"`), `material.shading`, sombras (`light.castShadows`), profundidade de campo (`camera.dof`),
   ambiente HDRI (`composition.environment`) e vídeo com transparência (`video.alphaPacked`).
 - Expressões (APIs, unidades, matriz de compatibilidade): `docs/expressoes.md`
@@ -204,7 +204,7 @@ Valores possíveis (o schema é a fonte da verdade):
 - Animadores de texto: `typewriter`, `fade`, `slideUp`, `slideDown`, `slideLeft`, `slideRight`, `scale`, `rotate`, `wave`;
   `unit`: `character` | `word` | `line`; `order`: `forward` | `backward` | `center` | `random`; `mode`: `in` | `out`.
 - Easings: `linear`, `hold`, `ease`, `easeIn`, `easeOut`, `easeInOut`, `easeIn/Out/InOut` + `Sine|Quad|Cubic|Quart|Quint|Expo|Circ|Back|Bounce|Elastic`,
-  `{"cubicBezier": [x1, y1, x2, y2]}` ou a onda `{"cyclic": {"offset": 0, "cycles": 3.5}}` (oscila entre os dois keyframes;
+  `{"cubicBezier": [x1, y1, x2, y2]}` ou a onda `{"cyclic": {"offset": 0, "cycles": 3.5}}` (oscila entre os dois keyframes; `offset` −1..1 assimetria: negativo sobe rápido/desce devagar, positivo o contrário;
   `offset` 0 e `cycles` com meio, como 2,5 ou 3,5, para começar em 0 e terminar em 1 sem salto).
 - Track matte: `"matte": {"layer": "<id irmão>", "mode": "alpha"}` — a camada-fonte some automaticamente.
 - Máscaras: `"masks": [{"shape": "ellipse", "mode": "add", "size": [600, 400], "feather": 30}]`.

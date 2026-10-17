@@ -362,7 +362,7 @@
     <string name="camera_rotation_hint">Position and rotation are independent. Drag in the viewport to turn the camera in place; pinch to dolly forward and back.</string>
     <string name="easing_cyclic">Cyclic</string>
     <string name="cyclic_info">cyclic · offset %1$s · %2$s waves</string>
-    <string name="cyclic_hint">Top handle: offset (slide it to shift the wave). Bottom handle: quantity (slide it to add or remove waves).</string>
+    <string name="cyclic_hint">Top handle: offset = skew (slide it left for a fast rise and slow fall, right for the opposite). Bottom handle: quantity (slide it to add or remove waves).</string>
     <string name="prim_text3d">3D text</string>
     <string name="shading">Shading</string>
     <string name="shading_pbr">Realistic</string>
@@ -431,4 +431,39 @@
     <string name="prerender_layer">Pre-render this layer</string>
     <string name="prerender_layer_name">%1$s (pre-rendered)</string>
     <string name="prerender_done">Layer pre-rendered: the original is hidden below it. Export again.</string>
+
+    <!-- Captions (Whisper, on the device) -->
+    <string name="captions">Captions</string>
+    <string name="captions_generate">Generate from speech</string>
+    <string name="captions_edit">Captions of the video</string>
+    <string name="captions_unsupported">Speech recognition is not part of this build.</string>
+    <string name="captions_no_source">Add a video or audio layer with speech to generate captions.</string>
+    <string name="captions_source">Layer</string>
+    <string name="captions_language">Spoken language</string>
+    <string name="captions_need_model">Recognition runs on your device. It needs a speech model, downloaded once (the only time Kinesis uses the internet) or imported from a file. Bigger models are more accurate and slower.</string>
+    <string name="captions_download_model">%1$s · %2$d MB</string>
+    <string name="captions_import_model">Import a model file (ggml .bin)</string>
+    <string name="captions_downloading">Downloading the %1$s model…</string>
+    <string name="captions_transcribing">Recognising speech… this can take a while for long videos; keep the app open.</string>
+    <string name="captions_transcribe">Generate captions</string>
+    <string name="captions_download_failed">The download failed. Check your connection and try again; it continues where it stopped.</string>
+    <string name="captions_bad_model">That file is not a Whisper (ggml) model.</string>
+    <string name="captions_no_audio">The audio of this layer could not be read.</string>
+    <string name="captions_failed">Speech recognition failed.</string>
+    <string name="captions_memory">Not enough memory. Try a smaller model or a shorter clip.</string>
+    <string name="captions_none_found">No speech was found.</string>
+    <string name="captions_empty">No captions yet. Generate them above or import an .srt file.</string>
+    <string name="captions_import_srt">Import .srt</string>
+    <string name="captions_export_srt">Share .srt</string>
+    <string name="captions_delete_all">Delete captions</string>
+    <string name="captions_srt_empty">No captions found in that file.</string>
+    <string name="captions_split">Split at playhead</string>
+    <string name="captions_merge">Join with next</string>
+    <string name="captions_size">Size</string>
+    <string name="captions_position">Height</string>
+    <string name="captions_text_color">Colour</string>
+    <string name="captions_outline">Outline</string>
+    <string name="captions_weight_medium">Medium</string>
+    <string name="captions_weight_bold">Bold</string>
+    <string name="captions_weight_black">Black</string>
 </resources>

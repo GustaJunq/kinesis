@@ -27,6 +27,8 @@ Basicamente offline-first.
 - **60 efeitos** (brilho, desfoque, glitch, vidro, chroma key…), transições e motion blur.
 - **3D:** cubos, esferas, modelos GLB, **texto 3D** com profundidade e chanfro, luzes com **sombras**, iluminação por
   **panorama (HDRI)**, câmera com **profundidade de campo**, nulos para montar rigs e estilos flat, toon e wireframe.
+- **Legendas automáticas** geradas **no aparelho** pelo Whisper (sem internet depois de baixar o modelo uma vez):
+  edite texto, tempos e aparência; importe e compartilhe `.srt`.
 - **Exportar MP4** até 4K, direto para a galeria. A exportação mostra o tempo restante e, se falhar, continua de onde
   parou e indica a camada pesada — que pode ser **pré-renderizada** com um toque.
 - Prévia com resolução ajustável (cheia, ½, ¼) para aparelhos mais simples.
@@ -45,7 +47,8 @@ para fazer backup ou passar para outro aparelho. O formato é aberto e documenta
 
 ## Privacidade
 
-O Kinesis funciona 100% offline: não há contas, anúncios, telemetria nem chamadas de rede.
+O Kinesis funciona 100% offline: não há contas, anúncios nem telemetria. A **única** conexão de rede é o download opcional do
+modelo de fala das legendas, que só acontece quando você toca em baixar (dá para importar o arquivo do modelo em vez disso).
 
 ## Para desenvolvedores
 

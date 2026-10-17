@@ -1,10 +1,10 @@
-# Formato `.knsproj` — versão 6
+# Formato `.knsproj` — versão 7
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v6.schema.json`](../schema/knsproj-v6.schema.json) (JSON Schema draft 2020-12);
+- **Schema oficial:** [`schema/knsproj-v7.schema.json`](../schema/knsproj-v7.schema.json) (JSON Schema draft 2020-12);
   os das versões 1 a 5 continuam em [`schema/`](../schema)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
@@ -60,7 +60,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 ```json
 {
   "format": "knsproj",
-  "formatVersion": 6,
+  "formatVersion": 7,
   "generator": "Claude Code /knsproj",
   "meta": { "title": "Meu vídeo", "createdAt": "2026-10-14T12:00:00Z" },
   "composition": {
@@ -77,7 +77,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `6` (documentos das versões `1` a `5` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `7` (documentos das versões `1` a `6` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
 | `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120), `duration` (s), `background`, `motionBlur`, `environment` (seção 5.13) |
@@ -160,13 +160,17 @@ Ou uma **curva cíclica** (formato v5): o valor *oscila* entre o do keyframe e o
 "easing": { "cyclic": { "offset": 0, "cycles": 3.5 } }
 ```
 
-- Progresso `0,5 − 0,5·cos(2π · cycles · (u − offset))`, com `u` de 0 a 1 no trecho. `cycles` (0,5 a 64, padrão 3,5)
-  é o número de ondas completas; `offset` (−1 a 1, padrão 0) desloca a onda para a direita, como fração do trecho.
+- Valor `0,5 − 0,5·cos(2π·g)`, em que `g` é o progresso do ciclo atual, deformado no tempo. `cycles` (0,5 a 64,
+  padrão 3,5) é o número de ondas completas; `offset` (−1 a 1, padrão 0) é a **assimetria (skew)** de cada ciclo:
+  negativo = sobe rápido e desce devagar, 0 = onda simétrica, positivo = sobe devagar e desce rápido. O pico fica em
+  `0,5 + 0,45·offset` do ciclo. Mínimo, máximo, número e duração dos ciclos não mudam; a curva é contínua (sem saltos).
+  `phase` (−1 a 1, padrão 0, formato v7) desloca a onda inteira para a direita: é o antigo `offset` da v5/v6, mantido
+  pela migração para que projetos antigos fiquem iguais.
 - Com `offset: 0` e `cycles` com meio (1,5; 2,5; 3,5…) a onda sai de 0 e chega em 1, então o trecho vai do valor de um
   keyframe ao do outro sem salto. Outros valores fazem a onda começar ou terminar no meio de um balanço (as pontas do
   trecho continuam exatas, então aparece um salto nessa ponta).
 - No app, o editor de curvas tem o modo **Cíclico** com duas alças amarelas: a **superior** é o primeiro pico
-  (arrastar muda o `offset`) e a **inferior** é o vale seguinte (arrastar muda a quantidade, `cycles`).
+  (arrastar muda o `offset`, ou seja, a assimetria) e a **inferior** é o vale seguinte (arrastar muda a quantidade, `cycles`).
 
 ## 5. Camadas
 
@@ -780,7 +784,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v6.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v7.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -802,7 +806,7 @@ Avisos (não impedem a importação): `keyframe.outOfRange` (todos os keyframes 
 `object3d.text` (`text` em primitiva que não é `text`), `light.shadow` (luz ambiente com `castShadows`),
 `media.alphaPacked` (`alphaPacked` fora de camada de vídeo).
 
-Erros da versão 6: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeight` fora da faixa), `light.shadow`
+Erros da versão 6 e 7: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeight` fora da faixa), `light.shadow`
 (`shadowSoftness` fora de 0–8), `composition.environment` (`intensity` fora de 0–10; `asset` precisa ser uma imagem).
 
 ## 12. Versionamento e compatibilidade
@@ -819,7 +823,9 @@ Erros da versão 6: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeight` f
   só campos novos, documentos v3 abrem sem mudança); **v5** → easing cíclico `{"cyclic": …}` (seção 4, Easing; só um
   campo novo, documentos v4 abrem sem mudança); **v6** → texto 3D extrudado, `material.shading`, sombras das luzes,
   profundidade de campo da câmera, `composition.environment` e vídeo com `alphaPacked` (seções 5.4, 5.6, 5.8, 5.9 e
-  5.13; só campos novos, documentos v5 abrem sem mudança).
+  5.13; só campos novos, documentos v5 abrem sem mudança); **v7** → em `{"cyclic": …}`, `offset` passa a ser a
+  assimetria de cada ciclo e o antigo deslocamento vira `phase` (a migração v6→v7 move o valor antigo de `offset` para
+  `phase`, então projetos v5/v6 ficam idênticos).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.

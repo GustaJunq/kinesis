@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
@@ -75,6 +76,7 @@ fun EditorTopBar(
     onClose: () -> Unit,
     onRename: () -> Unit,
     onSettings: () -> Unit,
+    onCaptions: () -> Unit,
     onExport: () -> Unit,
 ) {
     Row(
@@ -95,6 +97,9 @@ fun EditorTopBar(
                 style = KType.MonoSmall, color = KColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.clickable(onClickLabel = stringResource(R.string.settings), role = Role.Button, onClick = onSettings),
             )
+        }
+        IconButton(onClick = onCaptions, modifier = Modifier.size(KDims.MinTouch)) {
+            Icon(Icons.Outlined.ClosedCaption, stringResource(R.string.captions), tint = KColors.TextPrimary)
         }
         PrimaryButton(stringResource(R.string.export), onExport, Modifier.padding(end = 8.dp), compact = true)
     }

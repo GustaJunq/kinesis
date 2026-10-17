@@ -83,6 +83,9 @@ jobs:
       - name: Unit tests
         run: ./gradlew --no-daemon :core:test
 
+      # Rust library (text extrusion + Whisper): the release APK must contain it.
+      - uses: ./.github/actions/native
+
       - name: Build the production APK (assembleRelease)
         env:
           KINESIS_KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}

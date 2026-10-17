@@ -99,7 +99,7 @@ object ColorSerializer : KSerializer<Color> {
     }
 }
 
-/** Preset name (`"easeOutCubic"`), `{"cubicBezier": [x1, y1, x2, y2]}` or `{"cyclic": {"offset": 0, "cycles": 3.5}}`. */
+/** Preset name (`"easeOutCubic"`), `{"cubicBezier": [x1, y1, x2, y2]}` or `{"cyclic": {"offset": 0, "cycles": 3.5}}` (offset = skew of each cycle). */
 object EasingSerializer : KSerializer<Easing> {
     override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor
     override fun serialize(encoder: Encoder, value: Easing) =
@@ -113,7 +113,10 @@ object EasingSerializer : KSerializer<Easing> {
             put("cubicBezier", buildJsonArray { add(e.x1.toJson()); add(e.y1.toJson()); add(e.x2.toJson()); add(e.y2.toJson()) })
         }
         is Easing.Cyclic -> buildJsonObject {
-            put("cyclic", buildJsonObject { put("offset", e.offset.toJson()); put("cycles", e.cycles.toJson()) })
+            put("cyclic", buildJsonObject {
+                put("offset", e.offset.toJson()); put("cycles", e.cycles.toJson())
+                if (e.phase != 0f) put("phase", e.phase.toJson())
+            })
         }
     }
 
@@ -134,11 +137,13 @@ object EasingSerializer : KSerializer<Easing> {
             val obj = e["cyclic"] as? JsonObject ?: throw SerializationException("cyclic must be {\"offset\": …, \"cycles\": …}")
             val offset = obj["offset"]?.number("offset") ?: 0f
             val cycles = obj["cycles"]?.number("cycles") ?: Easing.Cyclic.DEFAULT_CYCLES
+            val phase = obj["phase"]?.number("phase") ?: 0f
             if (offset !in -1f..1f) throw SerializationException("cyclic offset must be between -1 and 1")
+            if (phase !in -1f..1f) throw SerializationException("cyclic phase must be between -1 and 1")
             if (cycles !in Easing.Cyclic.MIN_CYCLES..Easing.Cyclic.MAX_CYCLES) {
                 throw SerializationException("cyclic cycles must be between ${Easing.Cyclic.MIN_CYCLES} and ${Easing.Cyclic.MAX_CYCLES}")
             }
-            return Easing.Cyclic(offset, cycles)
+            return Easing.Cyclic(offset, cycles, phase)
         }
         throw SerializationException("easing must be a preset name, {\"cubicBezier\": [x1, y1, x2, y2]} or {\"cyclic\": {\"offset\": 0, \"cycles\": 3.5}}, got $e")
     }

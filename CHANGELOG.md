@@ -2,6 +2,24 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.1.4 — 2026-10-17
+
+Formato `.knsproj` **v7** (abre v1 a v6; projetos antigos ficam idênticos).
+
+### Adicionado
+- **Legendas automáticas.** O Whisper (whisper.cpp) reconhece a fala **no próprio aparelho**, sem API externa e sem
+  internet depois de baixar um modelo (ou importar o arquivo). As legendas são um grupo de camadas de texto na
+  timeline: edite texto e tempos, divida/junte, mude tamanho, posição, cor e contorno; importe e compartilhe `.srt`.
+  Saem na exportação como qualquer outra camada.
+- **Núcleo nativo em Rust** (`native/`): extrusão de texto 3D e o motor do Whisper, via JNI, com a versão em Kotlin como
+  reserva. O restante do core continua em Kotlin porque, medido, não era gargalo (ver `docs/desenvolvimento.md`).
+
+### Mudado
+- **Cíclico: o `offset` agora é a assimetria (skew) de cada ciclo**, não um deslocamento. Negativo: sobe rápido e desce
+  devagar; 0: simétrico; positivo: sobe devagar e desce rápido. Mínimo, máximo, número e duração dos ciclos não mudam e
+  a curva continua contínua. O deslocamento antigo passa a se chamar `phase` (migração v6→v7 automática).
+- O app agora pede a permissão de internet, usada somente para baixar o modelo de fala quando você pede.
+
 ## 0.1.3-hotfix — 2026-10-16
 
 Sem mudança de formato (`.knsproj` v6).
