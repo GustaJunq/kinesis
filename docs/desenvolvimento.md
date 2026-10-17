@@ -110,6 +110,13 @@ biblioteca é **opcional**: sem ela (testes na JVM, build sem Rust) tudo continu
 | `extrude` (extrusão de texto 3D) | Port fiel de `TextExtrusion`: entram dois vetores primitivos (pontos e tamanhos dos contornos), saem quatro (posições, normais, UVs, índices); sem objetos por ponto. Resultado idêntico ao Kotlin (teste de paridade). |
 | `whisper` (feature `whisper`) | whisper.cpp via `whisper-rs`; precisa de qualquer forma de código nativo. Progresso e cancelamento por atômicos, sem chamar a JVM de dentro do Rust. |
 
+### Escala da timeline e áudio (Kotlin, no core)
+
+`TimelineScale` (core) é a única conversão entre segundos e pixels da trilha: régua, clipes, waveform, keyframes,
+marcadores e cursor a usam. `span()` devolve o trecho visível de um clipe sem limitar seu tamanho real (a causa do bug
+de zoom era a largura do clipe ser cortada pelas restrições da trilha). O equalizador (`StereoEq`, biquads RBJ) roda no
+mixer, por clipe, no preview e na exportação.
+
 ### O que **não** foi migrado, e por quê (benchmark do Kotlin, `CoreBench`, JVM aquecida)
 
 Foi medido antes de decidir (`KINESIS_BENCH=1 ./gradlew :core:test --tests '*CoreBench*' -i`):
@@ -121,6 +128,7 @@ Foi medido antes de decidir (`KINESIS_BENCH=1 ./gradlew :core:test --tests '*Cor
 | Ler glTF de 500 mil triângulos (12 MB) | ≈ 9 | **Não migrar**: leitura em bloco, já rápida. |
 | Transformar malha de 66 mil vértices | ≈ 6,5 | **Não migrar**. |
 | Extrusão de 24 glifos (240+120 pontos, bevel) | ≈ 54–59 | **Migrado**. |
+| Equalizador de 5 bandas em 1 min de áudio estéreo 48 kHz | ≈ 89 (0,15 % do tempo real) | **Fica em Kotlin**: custa uma fração do tempo real, o JNI não ganharia nada. |
 
 Resultado da extrusão (mesma carga, mesma máquina x86_64): Kotlin ≈ 54–59 ms; Rust chamado por JNI ≈ 20–27 ms; Rust
 puro ≈ 17 ms (`cargo run --release --example bench`). Ou seja, **2 a 3 vezes mais rápido** já contando a ida e volta

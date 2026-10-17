@@ -44,6 +44,9 @@ import dev.kinesis.editor.speech.SpeechModels
 import dev.kinesis.editor.speech.Transcriber
 import dev.kinesis.editor.speech.WhisperModel
 import dev.kinesis.core.edit.Captions
+import dev.kinesis.core.edit.Markers
+import dev.kinesis.core.model.updateMedia
+import dev.kinesis.editor.media.AudioExtractor
 import dev.kinesis.core.edit.CaptionSegment
 import dev.kinesis.core.edit.CaptionStyle
 import dev.kinesis.core.nativebridge.NativeCore
@@ -522,14 +525,108 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     fun toggleKeyframe(layerId: String, prop: AnimProp<*>) =
         updateLayer(layerId) { l -> prop.toggleKeyframe(l, localTime(l)) }
 
-    /** Keyframes the transform of the selected layer at the playhead: every animated property, or the whole transform if none is. */
-    fun addKeyframeAtPlayhead() {
+    /** The properties the "+ ◆" button works on: the animated ones of the transform, or the first four when none is. */
+    private fun keyframeTargets(layer: Layer): List<AnimProp<*>> {
+        val transform = dev.kinesis.core.edit.LayerProps.sections(layer).firstOrNull()?.props ?: return emptyList()
+        return transform.filter { it.isAnimated(layer) }.ifEmpty { transform.take(4) }
+    }
+
+    /** Whether the selected layer has a keyframe at the playhead on the properties the "+ ◆" button works on. */
+    fun hasKeyframeAtPlayhead(p: KnsProject = current, time: Double = _time.value): Boolean {
+        val layer = _selection.value?.let { LayerTree.find(p, it) } ?: return false
+        val t = time - LayerTree.containerOffset(p, layer.id) - layer.start
+        return keyframeTargets(layer).any { it.hasKeyframeAt(layer, t) }
+    }
+
+    /**
+     * The "+ ◆" button: removes the keyframes at the playhead when there are any on the selected layer's properties,
+     * otherwise adds them (every animated property, or the whole transform if none is). One undo step either way.
+     */
+    fun toggleKeyframeAtPlayhead() {
         val layer = selectedLayer() ?: return
-        val transform = dev.kinesis.core.edit.LayerProps.sections(layer).firstOrNull()?.props ?: return
-        val targets = transform.filter { it.isAnimated(layer) }.ifEmpty { transform.take(4) }
+        val targets = keyframeTargets(layer)
+        val remove = hasKeyframeAtPlayhead()
         updateLayer(layer.id) { l ->
             val t = localTime(l)
-            targets.fold(l) { acc, prop -> if (prop.hasKeyframeAt(acc, t)) acc else prop.toggleKeyframe(acc, t) }
+            targets.fold(l) { acc, prop ->
+                val has = prop.hasKeyframeAt(acc, t)
+                if (remove == has) prop.toggleKeyframe(acc, t) else acc
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ markers
+
+    fun addMarker(time: Double) = edit { Markers.add(it, time).first }
+    fun addMarkerAtPlayhead() = addMarker(_time.value)
+    fun renameMarker(id: String, name: String) = edit { Markers.rename(it, id, name) }
+    fun moveMarker(id: String, time: Double) = edit { Markers.move(it, id, time) }
+    fun recolorMarker(id: String, color: String?) = edit { Markers.recolor(it, id, color) }
+    fun removeMarker(id: String) = edit { Markers.remove(it, id) }
+
+    // ------------------------------------------------------------------ audio
+
+    /** Edits the audio/video clip content of [layerId] (volume, fades, equalizer); gestures coalesce with [coalesceKey]. */
+    fun updateMedia(layerId: String, coalesceKey: String? = null, transform: (dev.kinesis.core.model.MediaContent) -> dev.kinesis.core.model.MediaContent) =
+        updateLayer(layerId, coalesceKey) { l -> l.updateMedia(transform) }
+
+    /** Video layers that have a sound track to take out. */
+    fun canExtractAudio(layer: Layer?): Boolean =
+        layer?.type == dev.kinesis.core.model.LayerType.VIDEO && current.asset(layer.video?.asset)?.hasAudio != false
+
+    /**
+     * Takes the sound track of a video layer out into an independent audio layer (above it, same place and trim). The
+     * track is copied without re-encoding into an `.m4a` of the project; the video file is not touched, and the
+     * video layer is muted so the sound is not heard twice. One undo step.
+     */
+    fun extractAudio(layerId: String) {
+        val layer = LayerTree.find(current, layerId) ?: return
+        val media = layer.video ?: return
+        val asset = current.asset(media.asset) ?: return
+        if (asset.hasAudio == false) { notify(text(R.string.audio_none_in_video), true); return }
+        val source = files.file(asset.id)?.takeIf { it.isFile } ?: return
+        val app = getApplication<Application>()
+        _busy.value = true
+        viewModelScope.launch {
+            val tmp = File(app.cacheDir, "extract/${projectId}_${System.nanoTime()}.m4a").also { it.parentFile?.mkdirs() }
+            try {
+                when (val r = withContext(Dispatchers.IO) { AudioExtractor.extract(source, tmp) }) {
+                    is AudioExtractor.Result.NoAudio -> notify(text(R.string.audio_none_in_video), true)
+                    is AudioExtractor.Result.Unsupported -> notify(text(R.string.audio_unsupported_format, r.mime), true)
+                    is AudioExtractor.Result.Done -> {
+                        val newAsset = withContext(Dispatchers.IO) { store.importMedia(projectId, current, Uri.fromFile(tmp), AssetType.AUDIO) }
+                        val name = text(R.string.audio_layer_name, layerDisplayName(layer))
+                        var newId: String? = null
+                        edit { p ->
+                            val here = LayerTree.find(p, layerId) ?: return@edit p
+                            val loc = LayerTree.locate(p, layerId) ?: return@edit p
+                            val base = dev.kinesis.core.edit.Factory.audio(p, here.start, newAsset, name)
+                            val audioLayer = base.copy(
+                                duration = here.duration,
+                                audio = dev.kinesis.core.model.MediaContent(
+                                    newAsset.id, sourceStart = media.sourceStart, speed = media.speed, volume = media.volume,
+                                    fadeIn = media.fadeIn, fadeOut = media.fadeOut, eq = media.eq,
+                                ),
+                            )
+                            newId = audioLayer.id
+                            val withAsset = if (p.assets.any { it.id == newAsset.id }) p else p.copy(assets = p.assets + newAsset)
+                            val muted = LayerTree.update(withAsset, layerId) { v -> v.updateMedia { it.copy(muted = true) } }
+                            LayerTree.insert(muted, loc.containerId, loc.index + 1, audioLayer)
+                        }
+                        newId?.let { select(it) }
+                        _mediaRevision.value++
+                        withContext(Dispatchers.IO) { runCatching { pcm.ensure(newAsset.id) } }
+                        _audioRevision.value++
+                        notify(text(R.string.audio_extracted))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("Kinesis", "audio extraction failed", e)
+                notify(text(R.string.audio_extract_failed), true)
+            } finally {
+                tmp.delete()
+                _busy.value = false
+            }
         }
     }
 

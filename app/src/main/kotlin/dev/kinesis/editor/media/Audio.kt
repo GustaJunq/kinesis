@@ -217,6 +217,25 @@ class AudioMixer(private val pcm: PcmCache) {
     @Volatile
     var clips: List<AudioClip> = emptyList()
 
+    /** Equalizer memory of each clip, touched only by the thread that mixes (every mixer has its own). */
+    private class EqState(val bands: List<dev.kinesis.core.model.EqBand>, val eq: dev.kinesis.core.audio.StereoEq, var nextTime: Double)
+
+    private val eqStates = HashMap<String, EqState>()
+    private val eqScratch = FloatArray(256 * 2)
+
+    /** The equalizer of [clip] ready for a block starting at [start], or null when the clip has none. */
+    private fun eqFor(clip: AudioClip, start: Double): dev.kinesis.core.audio.StereoEq? {
+        if (clip.eq.isEmpty()) { eqStates.remove(clip.layerId); return null }
+        var st = eqStates[clip.layerId]
+        if (st == null || st.bands != clip.eq) {
+            st = EqState(clip.eq, dev.kinesis.core.audio.StereoEq(clip.eq, MIX_RATE), start)
+            eqStates[clip.layerId] = st
+        } else if (kotlin.math.abs(start - st.nextTime) > 2.0 / MIX_RATE) {
+            st.eq.reset() // a seek or a loop: the old samples must not ring into the new position
+        }
+        return st.eq.takeIf { it.isActive }
+    }
+
     fun setProject(project: KnsProject) {
         clips = AudioPlan.clips(project)
     }
@@ -230,6 +249,7 @@ class AudioMixer(private val pcm: PcmCache) {
             val data = pcm.get(clip.assetId) ?: continue
             val total = data.limit() / 2
             val block = 256
+            val eq = eqFor(clip, start)
             var f = 0
             while (f < frames) {
                 val n = minOf(block, frames - f)
@@ -238,6 +258,10 @@ class AudioMixer(private val pcm: PcmCache) {
                 val g0 = clip.gainAt(t0)
                 val g1 = clip.gainAt(minOf(t1, clip.compEnd - 1e-6))
                 if (g0 > 0f || g1 > 0f) {
+                    // With an equalizer the clip's block goes to a scratch buffer first, is filtered, then added.
+                    val dst = if (eq != null) eqScratch else out
+                    val base = if (eq != null) 0 else f
+                    if (eq != null) java.util.Arrays.fill(eqScratch, 0, n * 2, 0f)
                     for (k in 0 until n) {
                         val t = t0 + k.toDouble() / MIX_RATE
                         if (t < clip.compStart || t >= clip.compEnd) continue
@@ -248,12 +272,17 @@ class AudioMixer(private val pcm: PcmCache) {
                         val g = g0 + (g1 - g0) * (k.toFloat() / n)
                         val l = (data.get(i0 * 2) + (data.get(i0 * 2 + 2) - data.get(i0 * 2)) * frac) / 32768f
                         val r = (data.get(i0 * 2 + 1) + (data.get(i0 * 2 + 3) - data.get(i0 * 2 + 1)) * frac) / 32768f
-                        out[(f + k) * 2] += l * g
-                        out[(f + k) * 2 + 1] += r * g
+                        dst[(base + k) * 2] += l * g
+                        dst[(base + k) * 2 + 1] += r * g
+                    }
+                    if (eq != null) {
+                        eq.process(eqScratch, 0, n)
+                        for (i in 0 until n * 2) out[f * 2 + i] += eqScratch[i]
                     }
                 }
                 f += n
             }
+            eqStates[clip.layerId]?.nextTime = end
         }
         // Soft limiter: transparent below ~-3 dBFS, smooth above.
         for (i in 0 until frames * 2) {

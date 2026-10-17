@@ -92,6 +92,7 @@ import dev.kinesis.core.edit.keyframeTimes
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.FillSpec
+import dev.kinesis.core.edit.Markers
 import dev.kinesis.core.model.LayerTree
 import dev.kinesis.core.model.PathPoint
 import dev.kinesis.core.model.PathSpec
@@ -141,6 +142,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var propsFocus by remember { mutableStateOf<String?>(null) }
     var showExport by remember { mutableStateOf(false) }
     var showCaptions by remember { mutableStateOf(false) }
+    var showAudio by remember { mutableStateOf(false) }
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
     var showGraph by remember { mutableStateOf(false) }
     var renderError by remember { mutableStateOf<String?>(null) }
@@ -308,22 +310,23 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 canUndo = canUndo,
                 canRedo = canRedo,
                 hasSelection = selectedLayer != null,
+                hasKeyframeHere = vm.hasKeyframeAtPlayhead(project, time),
+                canNavigate = selectedLayer != null || project.markers.isNotEmpty(),
+                // Previous / next go to the nearest marker or keyframe of the selected layer, whichever comes first.
                 onPrevKeyframe = {
                     val l = selectedLayer
-                    if (l == null) vm.seek(0.0) else {
-                        val offset = LayerTree.containerOffset(project, l.id) + l.start
-                        l.keyframeTimes().map { it + offset }.lastOrNull { it < time - 1e-4 }?.let { vm.seek(it) } ?: vm.seek(0.0)
-                    }
+                    val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
+                    val own = l?.keyframeTimes()?.map { it + offset }.orEmpty()
+                    vm.seek(Markers.previous(project, time, own) ?: 0.0)
                 },
                 onNextKeyframe = {
                     val l = selectedLayer
-                    if (l != null) {
-                        val offset = LayerTree.containerOffset(project, l.id) + l.start
-                        l.keyframeTimes().map { it + offset }.firstOrNull { it > time + 1e-4 }?.let { vm.seek(it) }
-                    }
+                    val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
+                    val own = l?.keyframeTimes()?.map { it + offset }.orEmpty()
+                    Markers.next(project, time, own)?.let { vm.seek(it) }
                 },
                 onPlay = { vm.togglePlay() },
-                onAddKeyframe = { vm.addKeyframeAtPlayhead() },
+                onAddKeyframe = { vm.toggleKeyframeAtPlayhead() },
                 onUndo = { vm.undo() },
                 onRedo = { vm.redo() },
             )
@@ -337,6 +340,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     onDelete = { vm.deleteSelection() },
                     loop = loop,
                     onLoop = { vm.loopPlayback.value = !loop },
+                    onAudio = if (selectedLayer.media != null) ({ showAudio = true }) else null,
+                    onExtractAudio = if (vm.canExtractAudio(selectedLayer)) ({ vm.extractAudio(selectedLayer.id) }) else null,
                 )
             }
             EditorToolBar(
@@ -443,6 +448,10 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 showProps = true
             },
         )
+    }
+    if (showAudio) {
+        val target = selection?.let { LayerTree.find(project, it) }
+        if (target?.media != null) AudioSheet(vm, project, target, onDismiss = { showAudio = false }) else showAudio = false
     }
     if (showCaptions) CaptionsSheet(vm, project, onDismiss = { showCaptions = false })
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })

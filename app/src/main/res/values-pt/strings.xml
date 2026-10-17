@@ -160,7 +160,7 @@
     <string name="nav_projects">Projetos</string>
     <string name="nav_settings">Ajustes</string>
     <string name="new_project">Novo projeto</string>
-    <string name="next_keyframe">Próximo keyframe</string>
+    <string name="next_keyframe">Próximo keyframe ou marcador</string>
     <string name="no_layers_hint">Nenhuma camada ainda. Toque em + para adicionar texto, formas, mídia ou objetos 3D.</string>
     <string name="no_projects">Nenhum projeto ainda</string>
     <string name="no_projects_hint">Crie um projeto ou importe um arquivo .knsproj.</string>
@@ -194,7 +194,7 @@
     <string name="point_corner">Canto</string>
     <string name="point_smooth">Suave</string>
     <string name="presets_hint">Comece um projeto com um formato pronto.</string>
-    <string name="prev_keyframe">Keyframe anterior</string>
+    <string name="prev_keyframe">Keyframe ou marcador anterior</string>
     <string name="prim_cone">Cone</string>
     <string name="prim_cube">Cubo</string>
     <string name="prim_cylinder">Cilindro</string>
@@ -466,4 +466,25 @@
     <string name="captions_weight_medium">Médio</string>
     <string name="captions_weight_bold">Negrito</string>
     <string name="captions_weight_black">Preto</string>
+
+    <!-- 0.1.4 hotfix: markers, audio panel -->
+    <string name="audio_panel">Áudio</string>
+    <string name="extract_audio">Extrair áudio</string>
+    <string name="audio_level">Nível</string>
+    <string name="audio_volume_animated">O volume está animado: edite os keyframes em Propriedades.</string>
+    <string name="equalizer">Equalizador</string>
+    <string name="eq_flat">Flat</string>
+    <string name="eq_bass_boost">Bass Boost</string>
+    <string name="eq_treble_boost">Treble Boost</string>
+    <string name="eq_vocal">Vocal</string>
+    <string name="eq_reset">Restaurar padrão</string>
+    <string name="add_marker">Adicionar marcador no cursor</string>
+    <string name="marker">Marcador</string>
+    <string name="marker_name">Nome</string>
+    <string name="marker_move_here">Mover para o cursor</string>
+    <string name="audio_none_in_video">Este vídeo não tem faixa de áudio.</string>
+    <string name="audio_unsupported_format">Este formato de áudio (%1$s) não pode ser extraído sem recodificar.</string>
+    <string name="audio_layer_name">%1$s (áudio)</string>
+    <string name="audio_extracted">Áudio extraído para uma camada própria; a camada de vídeo foi silenciada.</string>
+    <string name="audio_extract_failed">Não foi possível extrair o áudio.</string>
 </resources>

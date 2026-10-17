@@ -2,6 +2,30 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.1.4-hotfix — 2026-10-17
+
+Formato `.knsproj` **v8** (abre v1 a v7; só campos novos, projetos antigos ficam idênticos).
+
+### Adicionado
+- **Marcadores de tempo.** Botão na régua (ao lado de "ajustar") adiciona um marcador no cursor; toque longo na régua
+  também. Tocar num marcador leva o cursor até ele; toque longo edita (nome, cor, mover para o cursor, excluir).
+  Os botões anterior/próximo ao lado do Play agora vão ao marcador ou keyframe mais próximo. Marcadores são pontos de
+  ímã ao arrastar clipes e ficam salvos no `.knsproj`.
+- **Extrair áudio** de uma camada de vídeo: o som vira uma camada de áudio própria (mesmo lugar e corte), copiado sem
+  recodificar para um `.m4a` do projeto. O vídeo original não é alterado e sua camada é silenciada para não soar em
+  dobro. Vídeos sem áudio e codecs que não cabem no MP4 (só AAC e AMR) são avisados.
+- **Painel de áudio** (botão "Áudio" para camadas com som): waveform, volume, fade in/out, silenciar e **equalizador
+  paramétrico** (até 8 bandas: pico, shelf grave/agudo; frequência, ganho e Q) com presets Flat, Bass Boost, Treble
+  Boost e Vocal, curva de resposta e restaurar padrão. Não destrutivo, ouvido no preview e aplicado na exportação.
+- O botão **+ ◆** agora é contextual: adiciona o keyframe no cursor ou, se já houver um, remove (vira "− ◆"
+  preenchido). Um único passo de desfazer; o gerenciamento de keyframes do painel de propriedades continua.
+
+### Corrigido
+- **Zoom da timeline.** Com zoom alto, um clipe mais largo que a tela era espremido (a largura do clipe era limitada
+  pela largura da trilha e depois deslocada pela rolagem, então ele parecia encolher). Agora toda conversão
+  tempo↔pixel passa por `TimelineScale`: o clipe mantém o tamanho real (duração × pixels por segundo), só a parte
+  visível é desenhada, e régua, waveform, keyframes, marcadores e cursor usam a mesma escala.
+
 ## 0.1.4 — 2026-10-17
 
 Formato `.knsproj` **v7** (abre v1 a v6; projetos antigos ficam idênticos).
