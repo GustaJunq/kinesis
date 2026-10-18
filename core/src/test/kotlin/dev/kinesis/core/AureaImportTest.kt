@@ -52,6 +52,36 @@ class AureaImportTest {
         AureaImport.read(zip)
     }
 
+    private fun textCamera() = javaClass.getResourceAsStream("/aurea/texto3d-camera.aureaproj")!!.readBytes()
+
+    @Test
+    fun text3dBecomesTextLayersAndCameraIsImported() {
+        val r = AureaImport.read(textCamera())
+        val p = r.project
+        val texts = p.layers.filter { it.type == LayerType.OBJECT3D }
+        assertEquals(listOf("Kinesis", "Teste"), texts.map { it.object3d!!.text!!.content }.sorted())
+        assertTrue(texts.all { it.object3d!!.primitive == Primitive.TEXT })
+        val cam = p.layers.single { it.type == LayerType.CAMERA }
+        val pos = cam.camera!!.position!!.value
+        assertEquals(0f, pos.x, 1e-3f); assertEquals(0f, pos.y, 1e-3f); assertEquals(-2304f, pos.z, 1f)
+        val report = ProjectValidator.validate(KnsprojJson.decode(KnsprojJson.encode(p)))
+        assertTrue(report.errors.joinToString(), report.isValid)
+    }
+
+    @Test
+    fun cameraRotationAndKeyframesAreImported() {
+        val cam = AureaImport.read(textCamera()).project.layers.single { it.type == LayerType.CAMERA }.camera!!
+        // Rotation: 0.6° and 0.955° fixed, z turns 0 → 360° in 3 s (90 frames at 30 fps).
+        val r0 = cam.rotation.sample(0.0) { a, b, u -> a + (b - a) * u }
+        assertEquals(0.6f, r0.x, 1e-3f); assertEquals(0.955f, r0.y, 1e-3f); assertEquals(0f, r0.z, 1e-3f)
+        val rEnd = cam.rotation.sample(5.0) { a, b, u -> a + (b - a) * u }
+        assertEquals(360f, rEnd.z, 1e-3f)
+        assertEquals(3.0, cam.rotation.keyframes.last().time, 1e-9)
+        // Position goes from (0, 0, -2304) to Aurea (516.2, -8.6, 995.8) → centred (-23.8, -968.6, 995.8).
+        val pEnd = cam.position!!.sample(5.0) { a, b, u -> a + (b - a) * u }
+        assertEquals(-23.8f, pEnd.x, 0.2f); assertEquals(-968.6f, pEnd.y, 0.2f); assertEquals(995.8f, pEnd.z, 0.2f)
+    }
+
     @Test
     fun recognisesAureaEntries() {
         assertTrue(AureaImport.isAureaEntry("project.aurea"))

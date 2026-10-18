@@ -1,11 +1,18 @@
 package dev.kinesis.core.format
 
+import dev.kinesis.core.anim.Animatable
+import dev.kinesis.core.anim.Easing
+import dev.kinesis.core.anim.Keyframe
 import dev.kinesis.core.anim.anim
 import dev.kinesis.core.edit.Factory
 import dev.kinesis.core.edit.Ids
 import dev.kinesis.core.edit.TimelineOps
 import dev.kinesis.core.math.Color
 import dev.kinesis.core.math.Vec3
+import dev.kinesis.core.model.CameraAim
+import dev.kinesis.core.model.CameraContent
+import dev.kinesis.core.model.Text3D
+import dev.kinesis.core.model.TextAlign
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerType
@@ -44,8 +51,17 @@ object AureaImport {
     const val SECTION_COMPOSITIONS = 2
     const val SECTION_MODELS = 4
 
-    /** Layer kind byte of a 3D shape (cube, ...). */
+    /** Layer kind byte of a 3D object: a shape (cube, ...) or a 3D text; section 4 tells which. */
     private const val KIND_SHAPE_3D = 0x0a
+
+    /** Layer kind byte of a camera. */
+    private const val KIND_CAMERA = 0x08
+
+    /**
+     * Font size in Kinesis pixels for each unit of the text size stored by Aurea (100 for a new text). Measured on a
+     * project opened in both apps, so the size is approximate.
+     */
+    private const val TEXT_UNIT = 3.45f
 
     class Result(val project: KnsProject, val warnings: List<String>)
 
@@ -123,14 +139,68 @@ object AureaImport {
         )
         project = project.copy(meta = project.meta.copy(createdAt = meta?.createdAt ?: now, modifiedAt = meta?.modifiedAt ?: now))
 
-        val shapes = section(SECTION_MODELS)?.let { readShapeSpecs(it.body) }.orEmpty()
+        val models = section(SECTION_MODELS)?.body
+        val shapes = models?.let { readShapeSpecs(it) }.orEmpty()
+        val texts = models?.let { readTextSpecs(it) }.orEmpty()
         val layers = mutableListOf<Layer>()
+        var approximateText = false
         for (rec in findLayers(comps.body, comp.layersStart)) {
+            val taken = (layers.map { it.id } + project.layers.map { it.id }).toSet()
+            val start = rec.startFrame / comp.fps
+            val duration = ((rec.endFrame - rec.startFrame).coerceAtLeast(1)) / comp.fps
+            // Aurea: pixels from the top-left corner. Kinesis: pixels from the centre.
+            val centred = Vec3(rec.position.x - comp.width / 2f, rec.position.y - comp.height / 2f, rec.position.z)
+            if (rec.kind == KIND_CAMERA) {
+                // Aimed straight ahead; the field of view makes the plane z = 0 map one to one, as in the Aurea view.
+                val distance = kotlin.math.abs(rec.position.z).coerceAtLeast(1f)
+                val fov = Math.toDegrees(2 * kotlin.math.atan((comp.height / 2f) / distance.toDouble())).toFloat().coerceIn(10f, 120f)
+                val ch = rec.channels
+                fun animated(c: Channel, offset: Float): Animatable<Float> =
+                    if (c.v0 == c.v1) anim(c.v0 + offset) else
+                        Animatable(c.v0 + offset, listOf(Keyframe(0.0, c.v0 + offset, c.ease), Keyframe(c.frame1 / comp.fps, c.v1 + offset)))
+                fun vec(a: Animatable<Float>, b: Animatable<Float>, c: Animatable<Float>): Animatable<Vec3> {
+                    val times = (a.keyframes + b.keyframes + c.keyframes).map { it.time }.distinct().sorted()
+                    if (times.isEmpty()) return anim(Vec3(a.value, b.value, c.value))
+                    val easing = (a.keyframes + b.keyframes + c.keyframes).firstOrNull()?.easing ?: Easing.LINEAR
+                    fun at(t: Double) = Vec3(a.sample(t) { x, y, u -> x + (y - x) * u }, b.sample(t) { x, y, u -> x + (y - x) * u }, c.sample(t) { x, y, u -> x + (y - x) * u })
+                    return Animatable(at(times.first()), times.mapIndexed { i, t -> Keyframe(t, at(t), if (i == 0) easing else Easing.LINEAR) })
+                }
+                val (rotation, position) = if (ch == null) anim(Vec3.ZERO) to anim(centred) else
+                    vec(animated(ch[0], 0f), animated(ch[1], 0f), animated(ch[2], 0f)) to
+                        vec(animated(ch[3], -comp.width / 2f), animated(ch[4], -comp.height / 2f), animated(ch[5], 0f))
+                layers += Layer(
+                    id = Ids.newId(TimelineOps.prefixFor(LayerType.CAMERA), taken),
+                    type = LayerType.CAMERA, name = rec.name, start = start, duration = duration,
+                    camera = CameraContent(position = position, aim = CameraAim.ROTATION, rotation = rotation, fov = anim(fov)),
+                )
+                continue
+            }
             if (rec.kind != KIND_SHAPE_3D) {
                 warnings += "camada \"${rec.name}\" (tipo ${rec.kind}) ainda não é suportada e foi ignorada"
                 continue
             }
             val spec = shapes[rec.name]
+            val text = if (spec == null) texts.firstOrNull { it.content == rec.content } else null
+            if (text != null) {
+                val fontSize = (rec.textSize?.takeIf { it in 1f..10_000f } ?: 100f) * TEXT_UNIT
+                approximateText = true
+                layers += Layer(
+                    id = Ids.newId(TimelineOps.prefixFor(LayerType.OBJECT3D), taken),
+                    type = LayerType.OBJECT3D, name = rec.name, start = start, duration = duration,
+                    transform3d = Transform3D(position = anim(centred), scale = anim(rec.scale)),
+                    object3d = Object3DContent(
+                        primitive = Primitive.TEXT,
+                        material = Material(color = anim(text.color), metallic = anim(text.metallic), roughness = anim(text.roughness), emissive = anim(text.emissive)),
+                        text = Text3D(
+                            content = text.content, fontSize = fontSize,
+                            depth = (fontSize * text.depth).coerceIn(1f, 2000f),
+                            bevel = (fontSize * text.bevel).coerceAtLeast(0f),
+                            align = text.align,
+                        ),
+                    ),
+                )
+                continue
+            }
             val primitive = when (spec?.primitive) {
                 null, "cube" -> Primitive.CUBE
                 "sphere" -> Primitive.SPHERE
@@ -140,23 +210,17 @@ object AureaImport {
                 "plane" -> Primitive.PLANE
                 else -> { warnings += "forma 3D \"${spec.primitive}\" virou cubo"; Primitive.CUBE }
             }
+            if (spec == null) warnings += "\"${rec.name}\": objeto 3D não reconhecido, importado como cubo"
             if (spec != null && spec.faceColors.distinct().size > 1) {
                 warnings += "\"${rec.name}\": o Kinesis usa uma cor por objeto; foi usada a da primeira face"
             }
-            val taken = (layers.map { it.id } + project.layers.map { it.id }).toSet()
-            val start = rec.startFrame / comp.fps
-            val duration = ((rec.endFrame - rec.startFrame).coerceAtLeast(1)) / comp.fps
             layers += Layer(
                 id = Ids.newId(TimelineOps.prefixFor(LayerType.OBJECT3D), taken),
                 type = LayerType.OBJECT3D,
                 name = rec.name,
                 start = start,
                 duration = duration,
-                transform3d = Transform3D(
-                    // Aurea: pixels from the top-left corner. Kinesis: pixels from the centre.
-                    position = anim(Vec3(rec.position.x - comp.width / 2f, rec.position.y - comp.height / 2f, rec.position.z)),
-                    scale = anim(rec.scale),
-                ),
+                transform3d = Transform3D(position = anim(centred), scale = anim(rec.scale)),
                 object3d = Object3DContent(
                     primitive = primitive,
                     size = anim(min(comp.width, comp.height) * 0.35f),
@@ -164,8 +228,9 @@ object AureaImport {
                 ),
             )
         }
+        if (approximateText) warnings += "texto 3D: o tamanho, a fonte e o chanfro são aproximados (a fonte do Kinesis é a padrão)"
         if (layers.isEmpty()) warnings += "nenhuma camada pôde ser convertida"
-        warnings += "rotação, keyframes, efeitos e câmera do Aurea ainda não são importados"
+        warnings += "rotação e keyframes dos objetos, efeitos e o campo de visão da câmera do Aurea ainda não são importados"
         return Result(project.copy(layers = layers), warnings)
     }
 
@@ -200,11 +265,21 @@ object AureaImport {
         throw AureaFormatException("cabeçalho da composição não encontrado")
     }
 
-    private class LayerRecord(val kind: Int, val name: String, val startFrame: Int, val endFrame: Int, val position: Vec3, val scale: Vec3)
+    private class LayerRecord(
+        val kind: Int, val name: String, val startFrame: Int, val endFrame: Int, val position: Vec3, val scale: Vec3,
+        /** The text a 3D object carries (a new cube carries the default "Texto"), and the text size that follows it. */
+        val content: String? = null, val textSize: Float? = null,
+        /** Camera only: the six animated channels (rotation x, y, z, then position x, y, z), when they could be read. */
+        val channels: List<Channel>? = null,
+    )
+
+    /** Two keyframes of an Aurea channel: value at the start, value at [frame1], and the Bézier of the first segment. */
+    private class Channel(val v0: Float, val v1: Float, val frame1: Int, val ease: Easing.CubicBezier)
 
     /**
      * Layer records start with id (u32, > 0), kind (u8) and the name. Relative to the end of the name:
-     * start frame (u32) at +4, end frame (u32) at +8, position xyz (f32) at +78, scale xyz (f32) at +90.
+     * start frame (u32) at +4, end frame (u32) at +8, position xyz (f32) at +78, scale xyz (f32) at +90. Kind 0x0a is a
+     * 3D object (shape or text) and 0x08 a camera.
      */
     private fun findLayers(s: ByteArray, from: Int): List<LayerRecord> {
         val b = le(s)
@@ -220,10 +295,44 @@ object AureaImport {
             val scale = Vec3(f(90), f(94), f(98))
             val sane = listOf(f(78), f(82), f(86), scale.x, scale.y, scale.z).all { it.isFinite() && kotlin.math.abs(it) < 1e7f }
             if (!sane) { at++; continue }
-            out += LayerRecord(kind, str.first, b.getInt(end + 4), b.getInt(end + 8), Vec3(f(78), f(82), f(86)), scale)
+            // 3D objects: u32-length text at +155, then its colour (4 bytes) and, 8 bytes after the text, the size (f32).
+            val content = readString(s, end + 155)
+            val sizeAt = content?.let { end + 159 + it.second.size + 8 }
+            val textSize = if (sizeAt != null && sizeAt + 4 <= s.size) b.getFloat(sizeAt).takeIf { it.isFinite() } else null
+            out += LayerRecord(
+                kind, str.first, b.getInt(end + 4), b.getInt(end + 8), Vec3(f(78), f(82), f(86)), scale, content?.first, textSize,
+                channels = if (kind == KIND_CAMERA) readCameraChannels(s, end + 102) else null,
+            )
             at = end + 102
         }
         return out
+    }
+
+    /**
+     * A camera carries, after its scale, one block per channel (rotation x, y, z, position x, y, z): the value at the
+     * first keyframe, a tag (02) and the Bézier of the segment (x1 y1 x2 y2 as f32), then the frame of the second
+     * keyframe (a u8 after `01`, 90 here) and its value followed by a tag (01) and another Bézier. Located by those
+     * tag + Bézier patterns, since the blocks are not aligned. Only two-keyframe channels were seen.
+     */
+    private fun readCameraChannels(s: ByteArray, from: Int): List<Channel>? {
+        val b = le(s)
+        val limit = min(s.size, from + 900)
+        fun floatAt(i: Int) = b.getFloat(i)
+        fun isBezier(i: Int, tag: Int) = i + 17 <= limit && (s[i].toInt() and 0xff) == tag &&
+            (1..4).all { floatAt(i + 4 * it - 3).let { v -> v.isFinite() && v in -1f..2f } } && floatAt(i + 13) == 1f
+        val first = (from + 4 until limit - 17).filter { isBezier(it, 2) }
+        val channels = mutableListOf<Channel>()
+        var at = from
+        for (i in first) {
+            if (i < at) continue
+            val second = (i + 17 until minOf(i + 60, limit - 17)).firstOrNull { isBezier(it, 1) } ?: continue
+            val frameAt = (i + 17 until second).firstOrNull { (s[it].toInt() and 0xff) == 1 && it + 1 < second } ?: continue
+            val v0 = floatAt(i - 4); val v1 = floatAt(second - 4)
+            if (!v0.isFinite() || !v1.isFinite()) continue
+            channels += Channel(v0, v1, s[frameAt + 1].toInt() and 0xff, Easing.CubicBezier(floatAt(i + 1), floatAt(i + 5), floatAt(i + 9), floatAt(i + 13)))
+            at = second + 17
+        }
+        return channels.takeIf { it.size == 6 }
     }
 
     private class ShapeSpec(val primitive: String?, val faceColors: List<Color>)
@@ -249,6 +358,48 @@ object AureaImport {
             }
             out.putIfAbsent(name.first, ShapeSpec(primitive, colors))
             at = tail
+        }
+        return out
+    }
+
+    private class TextSpec(
+        val content: String, val depth: Float, val bevel: Float, val align: TextAlign,
+        val color: Color, val metallic: Float, val roughness: Float, val emissive: Color,
+    )
+
+    /**
+     * 3D texts: `aurea-text3d:v2;d=<depth>;a=<align>;c=<RRGGBBAA>;bv=<style><size>/…;m0=<RRGGBB>/<metallic>/<roughness>/…;
+     * m0e=<RRGGBB>/<strength>;…;t=<text>`. Depth and bevel are fractions of the font size. A text appears once for each
+     * time it was edited, so the same text may be listed more than once (the first one is used).
+     */
+    private fun readTextSpecs(s: ByteArray): List<TextSpec> {
+        val out = mutableListOf<TextSpec>()
+        var at = 0
+        while (at + 4 < s.size) {
+            val str = readString(s, at)
+            if (str == null || !str.first.startsWith("aurea-text3d:")) { at++; continue }
+            val body = str.first.removePrefix("aurea-text3d:")
+            // `t=` is the last field and the text may hold anything, so it is taken from its first appearance after the others.
+            val tAt = body.indexOf(";t=")
+            val content = if (tAt >= 0) body.substring(tAt + 3) else ""
+            val fields = (if (tAt >= 0) body.substring(0, tAt) else body).split(';').mapNotNull {
+                val i = it.indexOf('='); if (i > 0) it.substring(0, i) to it.substring(i + 1) else null
+            }.toMap()
+            fun num(v: String?, default: Float) = v?.toFloatOrNull() ?: default
+            val material = fields["m0"]?.split('/').orEmpty()
+            val color = (fields["c"]?.let(::rgba)) ?: material.getOrNull(0)?.let { rgba(it + "ff") } ?: Color.WHITE
+            val emissive = fields["m0e"]?.split('/')?.firstOrNull()?.let { rgba(it + "ff") } ?: Color.BLACK
+            // bv = <style digit><size>/<size>/…: the digit glued to the first number is the style.
+            val bevel = fields["bv"]?.split('/')?.firstOrNull()?.drop(1)?.toFloatOrNull() ?: 0f
+            out += TextSpec(
+                content = content, depth = num(fields["d"], 0.25f), bevel = bevel,
+                align = when (fields["a"]) { "0" -> TextAlign.LEFT; "2" -> TextAlign.RIGHT; else -> TextAlign.CENTER },
+                color = material.getOrNull(0)?.let { rgba(it + "ff") } ?: color,
+                metallic = num(material.getOrNull(1), 0f).coerceIn(0f, 1f),
+                roughness = num(material.getOrNull(2), 0.5f).coerceIn(0f, 1f),
+                emissive = emissive,
+            )
+            at += 4 + str.second.size
         }
         return out
     }

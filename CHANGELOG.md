@@ -2,6 +2,13 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.1.6-hotfix — 2026-10-18
+
+### Corrigido
+- **Importação de `.aureaproj`:** texto 3D do Aurea virava cubos; agora vira texto 3D de verdade (conteúdo, alinhamento,
+  profundidade, chanfro, cor e material). A câmera do Aurea, antes ignorada, é importada com posição, rotação e keyframes (curvas Bézier incluídas) e campo de visão fixo.
+  Tamanho da fonte e chanfro são aproximados; rotação/keyframes dos objetos ainda não são lidos (o aviso da importação diz isso).
+
 ## 0.1.6 — 2026-10-18
 
 Formato `.knsproj` **v9** (abre v1 a v8; só campos novos — `editorView`, `video.roto` e o efeito `timeSlice` — projetos antigos ficam idênticos).
