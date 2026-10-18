@@ -1,7 +1,8 @@
 """Builds .claude/skills/knsproj/knsproj-skill.zip, a self-contained, installable copy of the /knsproj skill.
 
-The zip holds the skill folder (SKILL.md and examples/) plus the CLI (tools/knsproj), the JSON Schema and the format
-specification, laid out so that `python3 tools/knsproj ...` from SKILL.md works after unzipping into ~/.claude/skills/.
+The zip holds SKILL.md and examples/ at its root, plus the CLI (tools/knsproj), the JSON Schema and the format
+specification (schema/, docs/), laid out so that `python3 tools/knsproj ...` from SKILL.md works after unzipping into
+a folder named knsproj (for example ~/.claude/skills/knsproj/).
 The archive is deterministic (fixed timestamps, sorted entries), so the test suite can check that it is up to date.
 
 Usage: python3 tools/pack_skill.py [--check]
@@ -14,7 +15,7 @@ import zipfile
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SKILL_DIR = os.path.join(ROOT, ".claude", "skills", "knsproj")
 ZIP_PATH = os.path.join(SKILL_DIR, "knsproj-skill.zip")
-PREFIX = "knsproj/"
+PREFIX = ""     # SKILL.md and the folders sit at the root of the zip, not inside a knsproj/ folder
 FIXED_DATE = (1980, 1, 1, 0, 0, 0)
 SKIP_DIRS = {"__pycache__"}
 STORED_EXT = {".mp4", ".m4a", ".mp3", ".png", ".jpg", ".glb", ".zip"}

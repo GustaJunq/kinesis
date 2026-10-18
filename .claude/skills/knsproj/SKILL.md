@@ -62,7 +62,7 @@ Para usar um exemplo como ponto de partida: copie a pasta para `generated/<slug>
 mídias, e valide. Os exemplos de `basicos/`, `receitas/` e `efeitos/` validam com 0 erros e 0 avisos; os de `erros/` falham de propósito.
 
 **Instalação por .zip:** `knsproj-skill.zip` (nesta pasta) é uma cópia autônoma da skill — traz `SKILL.md`, os exemplos,
-a CLI (`tools/knsproj`), o schema e a especificação. Descompacte em `~/.claude/skills/` (resultado: `~/.claude/skills/knsproj/`)
+a CLI (`tools/knsproj`), o schema e a especificação. Crie a pasta `~/.claude/skills/knsproj/` e descompacte o zip dentro dela (o `SKILL.md` e as pastas ficam na raiz do zip; resultado: `~/.claude/skills/knsproj/SKILL.md`)
 e rode a CLI de dentro dessa pasta (`python3 tools/knsproj validate …`). Regere-o com `python3 tools/pack_skill.py`.
 
 ## Fluxo

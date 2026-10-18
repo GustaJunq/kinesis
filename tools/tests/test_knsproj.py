@@ -528,11 +528,12 @@ class ExampleTests(unittest.TestCase):
         self.assertTrue(pack_skill.is_up_to_date(), "run: python3 tools/pack_skill.py")
         with zipfile.ZipFile(pack_skill.ZIP_PATH) as z:
             names = z.namelist()
-        self.assertIn("knsproj/SKILL.md", names)
-        self.assertIn("knsproj/tools/knsproj/__main__.py", names)
-        self.assertIn("knsproj/schema/knsproj-v1.schema.json", names)
-        self.assertIn("knsproj/schema/knsproj-v3.schema.json", names)
-        self.assertIn("knsproj/docs/expressoes.md", names)
+        self.assertIn("SKILL.md", names)
+        self.assertIn("tools/knsproj/__main__.py", names)
+        self.assertIn("schema/knsproj-v1.schema.json", names)
+        self.assertIn("schema/knsproj-v3.schema.json", names)
+        self.assertIn("docs/expressoes.md", names)
+        self.assertFalse([n for n in names if n.startswith("knsproj/")], "the zip must not wrap everything in a knsproj/ folder")
         self.assertFalse([n for n in names if "__pycache__" in n or n.endswith(".pyc")])
 
 
