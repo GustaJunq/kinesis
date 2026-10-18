@@ -2,6 +2,35 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.1.6 — 2026-10-18
+
+Formato `.knsproj` **v9** (abre v1 a v8; só campos novos — `editorView`, `video.roto` e o efeito `timeSlice` — projetos antigos ficam idênticos).
+
+### Adicionado
+- **FPS personalizável.** Um controle deslizante de 12 a 60 fps (números inteiros) no painel da composição e na criação de
+  projeto, no lugar das predefinições. Sem mudança de formato (`composition.fps` já aceitava qualquer valor).
+- **TimeSlice** (efeito, categoria Tempo): cada faixa da imagem mostra um momento diferente do vídeo. Parâmetros animáveis:
+  faixas (2–24), direção, deslocamento em quadros entre faixas (0–30), ordem (para frente, para trás, do centro) e
+  interpolação (degraus ↔ mistura suave). Usa um cache de quadros limitado (LRU) para não decodificar o vídeo de novo e,
+  em aparelho fraco, a prévia usa menos faixas, guarda só alguns quadros e refina quando para; a exportação é exata.
+- **Visualizador de câmera.** Na prévia: *Câmera* (a imagem exportada), *Vista do editor* (câmera livre: um dedo orbita, dois
+  dedos deslizam e dão zoom; a câmera da cena aparece como uma pirâmide, com o quadro da composição e os eixos) e *Entrar
+  na câmera* (os gestos movem a câmera de verdade; com *Auto keyframe* ligado gravam keyframes). *Sair da câmera* volta à
+  vista do editor sem mexer nela. A vista fica salva no projeto (`editorView`), fora do que é renderizado e sem passos de
+  desfazer.
+- **Real Camera.** A câmera 3D segue o movimento do celular: vetor de rotação do jogo (ou vetor de rotação, ou giroscópio
+  integrado), contagem 3-2-1 e gravação enquanto a timeline toca. A pose ao tocar em *Gravar* vira a rotação atual da
+  câmera; intensidade, travar eixos X/Y/Z, suavização, simplificar curva (menos keyframes, mesma forma) e regravar só um
+  trecho (os keyframes de fora ficam). Posição opcional e experimental. Escondido em aparelhos sem sensor.
+- **Roto Brush.** Recorta qualquer objeto pintando sobre o vídeo: pincel adicionar/remover, tamanho, desfazer pincelada,
+  visões Final / Sobreposição / Máscara, tira de quadros com recorte, progresso e cancelamento. O objeto é seguido para
+  frente e para trás a partir dos quadros pintados; pintar de novo corrige dali em diante. O resultado é uma camada com
+  alfa (`alphaPacked`) acima da original, que fica oculta; as pinceladas ficam em `video.roto` para reabrir.
+
+### Notas técnicas
+- Modelo do Roto Brush: Interactive Segmenter do MediaPipe com o modelo Magic Touch (Apache-2.0). Ele recebe **um ponto**
+  por pergunta; as pinceladas são aplicadas sobre a resposta do modelo e vários pontos são perguntados um a um.
+
 ## 0.1.5 — 2026-10-18
 
 Formato `.knsproj` **v8**, sem mudança: tudo o que a versão gera usa campos que já existiam (imagens PNG, `video.alphaPacked`).

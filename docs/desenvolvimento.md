@@ -119,6 +119,27 @@ vídeo, um MP4 com alfa empacotado (cor à esquerda, alfa em cinza à direita; `
 lê/escreve quadros YUV (`YuvVideoReader`/`YuvVideoWriter`, MediaCodec) e chama `NativeCore.Stabilizer`. `MediaSwap` (core)
 põe o resultado como nova camada acima da original, que fica oculta (um passo de desfazer).
 
+### Novidades da 0.1.6 (app)
+
+- **TimeSlice** (`core/scene/TimeSlice.kt`, `render/SliceCache.kt`, `fx/timeSliceStrip.frag`): a conta (faixas, deslocamentos, pesos
+  das bordas, qual quadro cada faixa mostra) fica no core e é testada; o compositor guarda a imagem da camada de cada quadro numa
+  cache LRU limitada por memória, e uma faixa que olha para o passado lê dela. Quadro que falta é renderizado na hora (o decodificador
+  procura o instante), no máximo N por quadro na prévia; sem orçamento, usa o quadro guardado mais próximo e a prévia pede outra
+  passada ao parar. Em aparelho com pouca memória a prévia usa até 12 faixas e guarda só alguns quadros (`stride`); a exportação
+  nunca descarta nada.
+- **Vista do editor** (`core/scene/EditorCamera.kt`): câmera orbital (alvo, yaw, pitch, distância, fov) que substitui a câmera da cena só
+  na prévia; a pirâmide da câmera, o quadro da composição e os eixos são desenhados no overlay. `editorView` é salvo no projeto, mas
+  mudar a vista não entra no histórico (desfazer/refazer preservam a vista atual).
+- **Real Camera** (`core/edit/RealCamera.kt`, `sensors/RealCameraSensor.kt`, `ui/editor/RealCameraController.kt`): a orientação do celular
+  (matriz dispositivo→mundo) vira a rotação da câmera Kinesis por `C·(R0ᵀ·R)·C` com `C = diag(1,−1,−1)`; intensidade escala o ângulo
+  do eixo-ângulo; travas zeram componentes do Euler relativo. A pose ao vivo só alimenta a prévia; o projeto muda uma vez, ao parar.
+  Suavização gaussiana sem atraso e simplificação Ramer–Douglas–Peucker entram antes dos keyframes (`splice` troca só o trecho gravado).
+- **Roto Brush** (`core/video/RotoOps.kt`, `RotoPropagator.kt`, `media/RotoBrushSession.kt`, `ui/editor/RotoBrushUi.kt`): os quadros do
+  trecho são decodificados uma vez (pequenos, em pé) para um arquivo, e as máscaras ficam em outro, para o app não encher a memória; o
+  `RotoPropagator` (testado no core com um segmentador de mentira) pergunta ao modelo no ponto mais interno da máscara anterior,
+  limita a resposta ao lugar onde o objeto pode ter ido e mantém a máscara anterior (marcando o quadro) quando a resposta não parece
+  o mesmo objeto. O vídeo final usa o mesmo `PackedAlpha` da remoção de fundo.
+
 ### Escala da timeline e áudio (Kotlin, no core)
 
 `TimelineScale` (core) é a única conversão entre segundos e pixels da trilha: régua, clipes, waveform, keyframes,
