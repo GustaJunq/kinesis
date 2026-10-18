@@ -1,6 +1,10 @@
 package dev.kinesis.editor.ui.editor
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,33 +12,39 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.kinesis.core.audio.EqPresets
 import dev.kinesis.core.audio.StereoEq
 import dev.kinesis.core.model.EqBand
-import dev.kinesis.core.model.EqBandType
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.editor.R
@@ -42,19 +52,30 @@ import dev.kinesis.editor.media.MIX_RATE
 import dev.kinesis.editor.ui.common.LabeledSlider
 import dev.kinesis.editor.ui.common.OverlineLabel
 import dev.kinesis.editor.ui.common.PillChip
-import dev.kinesis.editor.ui.common.ScrubNumber
 import dev.kinesis.editor.ui.common.SecondaryButton
 import dev.kinesis.editor.ui.theme.KColors
 import dev.kinesis.editor.ui.theme.KDims
 import dev.kinesis.editor.ui.theme.KShapes
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.pow
 
+/** Range of the equalizer graph, in dB (the model allows more; the graph keeps points easy to reach). */
+private const val GRAPH_DB = 18f
+private const val MIN_HZ = EqBand.MIN_FREQUENCY
+private const val MAX_HZ = EqBand.MAX_FREQUENCY
+
+private fun xOfFrequency(f: Float, width: Float) = width * (ln(f / MIN_HZ) / ln(MAX_HZ / MIN_HZ))
+private fun frequencyOfX(x: Float, width: Float) = (MIN_HZ * (MAX_HZ / MIN_HZ).pow((x / width).coerceIn(0f, 1f))).coerceIn(MIN_HZ, MAX_HZ)
+private fun yOfGain(db: Float, height: Float) = height / 2 - db / GRAPH_DB * (height / 2)
+private fun gainOfY(y: Float, height: Float) = ((height / 2 - y) / (height / 2) * GRAPH_DB).coerceIn(-GRAPH_DB, GRAPH_DB)
+
 /**
- * Audio panel of a video or audio layer: waveform, volume, fades and a parametric equalizer. Everything is stored
- * in the clip (non-destructive) and heard in the preview while the project plays, and in the exported video.
+ * Audio panel of a video or audio layer: waveform, volume, fades and a graphical equalizer. Everything is stored in
+ * the clip (non-destructive); the play button auditions this clip alone with the equalizer applied as the points
+ * are moved, and the exported video has the same sound.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,11 +84,16 @@ fun AudioSheet(vm: EditorViewModel, project: KnsProject, layer: Layer, onDismiss
     val playing by vm.playing.collectAsState()
     val audioRevision by vm.audioRevision.collectAsState()
     val pcm = remember(media.asset, audioRevision) { vm.pcmOf(media.asset) }
-    val bands = EqPresets.editable(media.eq)
     val key = "audio:${layer.id}"
 
-    fun setBands(new: List<EqBand>, coalesce: Boolean) =
-        vm.updateMedia(layer.id, if (coalesce) "$key:eq" else null) { it.copy(eq = EqPresets.normalize(new)) }
+    // The preview plays this clip alone while the sheet is open.
+    DisposableEffect(layer.id) {
+        vm.setAudioSolo(layer.id)
+        onDispose {
+            vm.setAudioSolo(null)
+            vm.pause()
+        }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = KColors.Sheet, shape = KShapes.Sheet) {
         LazyColumn(
@@ -75,11 +101,10 @@ fun AudioSheet(vm: EditorViewModel, project: KnsProject, layer: Layer, onDismiss
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(layerDisplayName(layer), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    // Play from here to hear the changes while the sheet is open.
                     SecondaryButton(
-                        stringResource(if (playing) R.string.pause else R.string.play), { vm.togglePlay() },
+                        stringResource(if (playing) R.string.pause else R.string.play), { vm.previewClip(layer.id) },
                         icon = if (playing) Icons.Outlined.Pause else Icons.Outlined.PlayArrow, pill = true,
                     )
                 }
@@ -133,63 +158,136 @@ fun AudioSheet(vm: EditorViewModel, project: KnsProject, layer: Layer, onDismiss
                 PillChip(stringResource(R.string.mute), media.muted, { vm.updateMedia(layer.id) { it.copy(muted = !it.muted) } })
             }
 
-            // ---- equalizer
+            // ---- equalizer: drag the points
             item { OverlineLabel(stringResource(R.string.equalizer)) }
             item {
-                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val presets = listOf(
-                        R.string.eq_flat to EqPresets.flat(), R.string.eq_bass_boost to EqPresets.bassBoost(),
-                        R.string.eq_treble_boost to EqPresets.trebleBoost(), R.string.eq_vocal to EqPresets.vocal(),
-                    )
-                    items(presets.size) { i ->
-                        val (label, preset) = presets[i]
-                        PillChip(stringResource(label), media.eq == EqPresets.normalize(preset), { setBands(preset, false) })
-                    }
-                }
-            }
-            item { EqCurve(bands) }
-            itemsIndexed(bands, key = { i, _ -> "eq$i" }) { i, b ->
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        when (b.type) { EqBandType.LOW_SHELF -> "⌊"; EqBandType.HIGH_SHELF -> "⌉"; else -> "◠" },
-                        color = KColors.TextSecondary, modifier = Modifier.width(18.dp),
-                    )
-                    ScrubNumber(b.frequency, { v -> setBands(bands.toMutableList().also { it[i] = b.copy(frequency = v.coerceIn(EqBand.MIN_FREQUENCY, EqBand.MAX_FREQUENCY)) }, true) }, { vm.endGesture() },
-                        Modifier.weight(1f), step = max(b.frequency / 40f, 1f), min = EqBand.MIN_FREQUENCY, max = EqBand.MAX_FREQUENCY, suffix = " Hz")
-                    ScrubNumber(b.gain, { v -> setBands(bands.toMutableList().also { it[i] = b.copy(gain = v.coerceIn(-EqBand.MAX_GAIN, EqBand.MAX_GAIN)) }, true) }, { vm.endGesture() },
-                        Modifier.weight(1f), step = 0.5f, min = -EqBand.MAX_GAIN, max = EqBand.MAX_GAIN, suffix = " dB")
-                    ScrubNumber(b.q, { v -> setBands(bands.toMutableList().also { it[i] = b.copy(q = v.coerceIn(EqBand.MIN_Q, EqBand.MAX_Q)) }, true) }, { vm.endGesture() },
-                        Modifier.weight(0.8f), step = 0.1f, min = EqBand.MIN_Q, max = EqBand.MAX_Q, suffix = " Q")
-                }
+                EqEditor(
+                    stored = media.eq,
+                    onChange = { bands -> vm.updateMedia(layer.id, "$key:eq") { it.copy(eq = EqPresets.normalize(bands)) } },
+                    onFinished = { vm.endGesture() },
+                )
             }
             item {
-                TextButton(onClick = { setBands(EqPresets.flat(), false) }, enabled = media.eq.isNotEmpty()) { Text(stringResource(R.string.eq_reset)) }
+                TextButton(onClick = { vm.updateMedia(layer.id) { it.copy(eq = emptyList()) } }, enabled = media.eq.isNotEmpty()) { Text(stringResource(R.string.eq_reset)) }
             }
             item { androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 24.dp)) }
         }
     }
 }
 
-/** Frequency response of the bands, 20 Hz–20 kHz (log) by ±18 dB. */
+/**
+ * The equalizer as a graph: each band is a point (x = frequency on a log scale, 20 Hz–20 kHz; y = gain in dB), the
+ * line is the combined response, redrawn while a point moves. Tap a point to select it and set its Q (bandwidth)
+ * below the graph; dragging starting away from every point scrolls the sheet as usual.
+ */
 @Composable
-private fun EqCurve(bands: List<EqBand>) {
-    Canvas(Modifier.fillMaxWidth().height(110.dp).clip(KShapes.Tile).background(KColors.Background)) {
-        val w = size.width; val h = size.height
-        fun y(db: Float) = h / 2 - db / 18f * (h / 2)
-        for (db in listOf(-12f, -6f, 0f, 6f, 12f)) {
-            drawLine(if (db == 0f) KColors.LineStrong else KColors.Line, Offset(0f, y(db)), Offset(w, y(db)), strokeWidth = 1f)
+private fun EqEditor(stored: List<EqBand>, onChange: (List<EqBand>) -> Unit, onFinished: () -> Unit) {
+    // Local copy so the curve follows the finger at once; the project catches up through [onChange].
+    var bands by remember { mutableStateOf(EqPresets.editable(stored)) }
+    // Follow outside changes (restore defaults, undo) but not our own pushes, whose stored form equals ours.
+    androidx.compose.runtime.LaunchedEffect(stored) {
+        if (EqPresets.normalize(bands) != stored) bands = EqPresets.editable(stored)
+    }
+    var selected by remember { mutableStateOf(1) }
+    val current by rememberUpdatedState(bands)
+    val push by rememberUpdatedState(onChange)
+    val done by rememberUpdatedState(onFinished)
+    val colors = listOf(KColors.Accent, KColors.Keyframe, KColors.Teal, KColors.Danger, KColors.Selection)
+    val labelPaint = remember { android.graphics.Paint().apply { isAntiAlias = true } }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(190.dp)
+                .clip(KShapes.Tile)
+                .background(KColors.Background)
+                .pointerInput(Unit) {
+                    val grab = 28.dp.toPx()
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val w = size.width.toFloat(); val h = size.height.toFloat()
+                        val hit = current.indices.minByOrNull { i ->
+                            val b = current[i]
+                            hypot(down.position.x - xOfFrequency(b.frequency, w), down.position.y - yOfGain(b.gain.coerceIn(-GRAPH_DB, GRAPH_DB), h))
+                        }?.takeIf { i ->
+                            val b = current[i]
+                            hypot(down.position.x - xOfFrequency(b.frequency, w), down.position.y - yOfGain(b.gain.coerceIn(-GRAPH_DB, GRAPH_DB), h)) <= grab
+                        } ?: return@awaitEachGesture      // not on a point: leave the gesture to the list (scrolling)
+                        down.consume()
+                        selected = hit
+                        var moved = false
+                        drag(down.id) { change ->
+                            change.consume()
+                            moved = true
+                            val next = current.toMutableList()
+                            next[hit] = next[hit].copy(
+                                frequency = frequencyOfX(change.position.x, w),
+                                gain = gainOfY(change.position.y, h),
+                            )
+                            bands = next
+                            push(next)
+                        }
+                        if (moved) done()
+                    }
+                },
+        ) {
+            val w = size.width; val h = size.height
+            for (db in listOf(-12f, -6f, 0f, 6f, 12f)) {
+                drawLine(if (db == 0f) KColors.LineStrong else KColors.Line, Offset(0f, yOfGain(db, h)), Offset(w, yOfGain(db, h)), strokeWidth = 1f)
+            }
+            labelPaint.color = KColors.TextSecondary.toArgb()
+            labelPaint.textSize = 10.sp.toPx()
+            for ((f, label) in listOf(100f to "100", 1000f to "1k", 10000f to "10k")) {
+                val x = xOfFrequency(f, w)
+                drawLine(KColors.Line, Offset(x, 0f), Offset(x, h), strokeWidth = 1f)
+                drawContext.canvas.nativeCanvas.drawText(label, x + 3.dp.toPx(), h - 4.dp.toPx(), labelPaint)
+            }
+            for (db in listOf(-12f, 12f)) {
+                drawContext.canvas.nativeCanvas.drawText("%+d".format(db.toInt()), 4.dp.toPx(), yOfGain(db, h) - 3.dp.toPx(), labelPaint)
+            }
+            // Combined response, live.
+            val path = Path()
+            val n = 160
+            for (i in 0..n) {
+                val f = MIN_HZ * (MAX_HZ / MIN_HZ).pow(i / n.toFloat())
+                val db = StereoEq.responseDb(bands, f, MIX_RATE).coerceIn(-GRAPH_DB, GRAPH_DB)
+                if (i == 0) path.moveTo(0f, yOfGain(db, h)) else path.lineTo(w * i / n, yOfGain(db, h))
+            }
+            drawPath(path, KColors.Accent, style = Stroke(2.5.dp.toPx()))
+            // The points.
+            for ((i, b) in bands.withIndex()) {
+                val c = Offset(xOfFrequency(b.frequency, w), yOfGain(b.gain.coerceIn(-GRAPH_DB, GRAPH_DB), h))
+                val col = colors[i % colors.size]
+                if (i == selected) drawCircle(col.copy(alpha = 0.25f), 20.dp.toPx(), c)
+                drawCircle(col, 11.dp.toPx(), c)
+                drawCircle(KColors.Background, 4.dp.toPx(), c)
+            }
         }
-        for (f in listOf(100f, 1000f, 10000f)) {
-            val x = w * (ln(f / 20f) / ln(1000f))
-            drawLine(KColors.Line, Offset(x, 0f), Offset(x, h), strokeWidth = 1f)
+        // Selected band: its numbers and Q (bandwidth), a slider on a log scale (0.1 .. 10).
+        val i = selected.coerceIn(0, bands.lastIndex)
+        val b = bands[i]
+        Text(
+            "${i + 1} · ${formatHz(b.frequency)} · ${"%+.1f".format(b.gain)} dB",
+            style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Q", style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
+            val lo = ln(EqBand.MIN_Q); val hi = ln(EqBand.MAX_Q)
+            Slider(
+                value = ((ln(b.q) - lo) / (hi - lo)).coerceIn(0f, 1f),
+                onValueChange = { v ->
+                    val next = current.toMutableList()
+                    next[i] = next[i].copy(q = kotlin.math.exp(lo + v * (hi - lo)))
+                    bands = next
+                    push(next)
+                },
+                onValueChangeFinished = { done() },
+                modifier = Modifier.weight(1f),
+            )
+            Text("%.1f".format(b.q), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(end = 4.dp))
         }
-        val path = Path()
-        val n = 120
-        for (i in 0..n) {
-            val f = 20f * 1000f.pow(i / n.toFloat())
-            val db = StereoEq.responseDb(bands, f, MIX_RATE).coerceIn(-18f, 18f)
-            if (i == 0) path.moveTo(0f, y(db)) else path.lineTo(w * i / n, y(db))
-        }
-        drawPath(path, KColors.Accent, style = Stroke(2.5.dp.toPx()))
     }
 }
+
+private fun formatHz(f: Float): String = if (f >= 1000f) "%.2f kHz".format(f / 1000f) else "%d Hz".format(f.toInt())

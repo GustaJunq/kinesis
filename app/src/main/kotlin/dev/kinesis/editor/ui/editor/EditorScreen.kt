@@ -92,6 +92,7 @@ import dev.kinesis.core.edit.keyframeTimes
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.FillSpec
+import dev.kinesis.core.edit.KeyframeNav
 import dev.kinesis.core.edit.Markers
 import dev.kinesis.core.model.LayerTree
 import dev.kinesis.core.model.PathPoint
@@ -316,13 +317,13 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 onPrevKeyframe = {
                     val l = selectedLayer
                     val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
-                    val own = l?.keyframeTimes()?.map { it + offset }.orEmpty()
+                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
                     vm.seek(Markers.previous(project, time, own) ?: 0.0)
                 },
                 onNextKeyframe = {
                     val l = selectedLayer
                     val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
-                    val own = l?.keyframeTimes()?.map { it + offset }.orEmpty()
+                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
                     Markers.next(project, time, own)?.let { vm.seek(it) }
                 },
                 onPlay = { vm.togglePlay() },

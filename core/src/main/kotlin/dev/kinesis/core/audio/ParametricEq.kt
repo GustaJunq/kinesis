@@ -78,16 +78,29 @@ class BiquadCoefficients(val b0: Float, val b1: Float, val b2: Float, val a1: Fl
 
 /**
  * A cascade of biquads for interleaved stereo audio. Bands with (almost) no gain are skipped, so a flat equalizer
- * costs nothing. One instance per clip: it holds the filter memory between blocks.
+ * costs nothing. One instance per clip: it holds the filter memory between blocks, and [update] changes the bands
+ * while keeping it (dragging a point in the editor must not click).
  */
 class StereoEq(bands: List<EqBand>, private val sampleRate: Int) {
-    private val sections = bands.filter { abs(it.gain) >= 0.05f }.map { BiquadCoefficients.of(it, sampleRate) }
-    private val x1 = FloatArray(sections.size * 2)
-    private val x2 = FloatArray(sections.size * 2)
-    private val y1 = FloatArray(sections.size * 2)
-    private val y2 = FloatArray(sections.size * 2)
+    private var coeffs: Array<BiquadCoefficients> = Array(bands.size) { BiquadCoefficients.of(bands[it], sampleRate) }
+    private var on: BooleanArray = BooleanArray(bands.size) { abs(bands[it].gain) >= MIN_GAIN }
+    private var x1 = FloatArray(bands.size * 2)
+    private var x2 = FloatArray(bands.size * 2)
+    private var y1 = FloatArray(bands.size * 2)
+    private var y2 = FloatArray(bands.size * 2)
 
-    val isActive: Boolean get() = sections.isNotEmpty()
+    val isActive: Boolean get() = on.any { it }
+
+    /** Number of bands this filter was built for. */
+    val bandCount: Int get() = coeffs.size
+
+    /** New settings for the same number of bands; the filter memory is kept. Returns false (nothing changed) otherwise. */
+    fun update(bands: List<EqBand>): Boolean {
+        if (bands.size != coeffs.size) return false
+        coeffs = Array(bands.size) { BiquadCoefficients.of(bands[it], sampleRate) }
+        on = BooleanArray(bands.size) { abs(bands[it].gain) >= MIN_GAIN }
+        return true
+    }
 
     /** Forget the past (after a seek the old samples must not ring into the new position). */
     fun reset() {
@@ -96,8 +109,9 @@ class StereoEq(bands: List<EqBand>, private val sampleRate: Int) {
 
     /** Filters [frames] interleaved stereo frames of [buf] starting at frame [offset], in place. */
     fun process(buf: FloatArray, offset: Int, frames: Int) {
-        for (s in sections.indices) {
-            val c = sections[s]
+        for (s in coeffs.indices) {
+            if (!on[s]) continue
+            val c = coeffs[s]
             for (ch in 0..1) {
                 val k = s * 2 + ch
                 var px1 = x1[k]; var px2 = x2[k]; var py1 = y1[k]; var py2 = y2[k]
@@ -114,10 +128,13 @@ class StereoEq(bands: List<EqBand>, private val sampleRate: Int) {
         }
     }
 
-    /** Combined response at [frequency] Hz, in dB (what the panel draws). */
-    fun responseDb(frequency: Float): Float = sections.sumOf { it.magnitudeDb(frequency, sampleRate).toDouble() }.toFloat()
+    /** Combined response at [frequency] Hz, in dB. */
+    fun responseDb(frequency: Float): Float = coeffs.indices.filter { on[it] }.sumOf { coeffs[it].magnitudeDb(frequency, sampleRate).toDouble() }.toFloat()
 
     companion object {
+        /** Bands with less gain than this (dB) are not filtered. */
+        const val MIN_GAIN = 0.05f
+
         /** The combined response of [bands] without building a filter. */
         fun responseDb(bands: List<EqBand>, frequency: Float, sampleRate: Int): Float =
             bands.sumOf { BiquadCoefficients.of(it, sampleRate).magnitudeDb(frequency, sampleRate).toDouble() }.toFloat()
