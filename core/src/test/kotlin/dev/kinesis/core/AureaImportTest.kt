@@ -52,6 +52,22 @@ class AureaImportTest {
         AureaImport.read(zip)
     }
 
+    private fun textCamera() = javaClass.getResourceAsStream("/aurea/texto3d-camera.aureaproj")!!.readBytes()
+
+    @Test
+    fun text3dBecomesTextLayersAndCameraIsImported() {
+        val r = AureaImport.read(textCamera())
+        val p = r.project
+        val texts = p.layers.filter { it.type == LayerType.OBJECT3D }
+        assertEquals(listOf("Kinesis", "Teste"), texts.map { it.object3d!!.text!!.content }.sorted())
+        assertTrue(texts.all { it.object3d!!.primitive == Primitive.TEXT })
+        val cam = p.layers.single { it.type == LayerType.CAMERA }
+        val pos = cam.camera!!.position!!.value
+        assertEquals(0f, pos.x, 1e-3f); assertEquals(0f, pos.y, 1e-3f); assertEquals(-2304f, pos.z, 1f)
+        val report = ProjectValidator.validate(KnsprojJson.decode(KnsprojJson.encode(p)))
+        assertTrue(report.errors.joinToString(), report.isValid)
+    }
+
     @Test
     fun recognisesAureaEntries() {
         assertTrue(AureaImport.isAureaEntry("project.aurea"))

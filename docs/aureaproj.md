@@ -61,12 +61,20 @@ Camada: id (u32, > 0), tipo (u8), nome. A partir do fim do nome:
 | +78 | f32 × 3 | posição x, y, z (pixels, origem no canto superior esquerdo) |
 | +90 | f32 × 3 | escala x, y, z |
 
-Tipo conhecido: `0x0a` = forma 3D. Os demais tipos ainda são ignorados.
+Tipos conhecidos: `0x0a` = objeto 3D (forma **ou** texto) e `0x08` = câmera. Os demais são ignorados. A seção 2 foi
+testada nas versões 46 e 48.
+
+Para objetos 3D, a partir do fim do nome: u32 + texto em +155 (`Texto` nas formas; o conteúdo nos textos), cor (4 bytes)
+e o tamanho (f32, 100 por padrão) em 8 bytes depois do fim da cor. A câmera usa os mesmos offsets de posição
+(por padrão em `(largura/2, altura/2, −1,2 × altura)`).
 
 ### Seção 4: modelos 3D (versão 1)
 
 Por objeto: nome da camada e uma string `aurea-shape3d:v1;k=…;m=…;c0=…;…;c5=…;` (`c0`…`c5`: cor RGBA de cada face,
 em hexadecimal), seguida mais adiante do nome do primitivo (`cube`, …). Cada objeto aparece duas vezes.
+
+Textos 3D: `aurea-text3d:v2;d=<profundidade>;a=<0|1|2>;c=<rgba>;bv=<…>;m0=<cor>/<metal>/<rugosidade>/…;m0e=<emissivo>/…;font=;anim=…;t=<texto>`.
+Todos os textos se chamam `Texto 3D`, então a correspondência é feita pelo **conteúdo**, não pelo nome.
 
 ## Conversão
 
@@ -75,6 +83,8 @@ em hexadecimal), seguida mais adiante do nome do primitivo (`cube`, …). Cada o
 | título, criação, modificação | `meta` |
 | composição (tamanho, fps, quadros) | `composition` (duração em segundos) |
 | forma 3D | camada `object3d`; posição convertida para origem no centro; cor da primeira face |
+| texto 3D | camada `object3d` com `Primitive.TEXT`: conteúdo, alinhamento, profundidade, chanfro, cor e material; tamanho da fonte = tamanho Aurea × 3,45 (aproximado) |
+| câmera | camada `camera` na posição convertida; campo de visão derivado da distância (`2·atan((altura/2)/|z|)`), sem rotação |
 
-Ainda não importados (avisados): rotação, keyframes, efeitos, câmera, texto, mídia e demais tipos de camada.
+Ainda não importados (avisados): rotação, keyframes, efeitos, rotação/keyframes da câmera, fonte e chanfro exatos do texto, mídia e demais tipos de camada.
 Para mapear mais campos, compare projetos que diferem em uma única coisa (um keyframe, uma rotação, um texto).
