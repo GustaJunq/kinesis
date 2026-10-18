@@ -1,5 +1,6 @@
 package dev.kinesis.editor.ui.editor
 
+import dev.kinesis.core.edit.FrameRate
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -1033,8 +1034,11 @@ private fun CompositionSettings(vm: EditorViewModel, project: KnsProject, onPick
             SmallLabel(stringResource(R.string.height))
             ScrubNumber(comp.height.toFloat(), { v -> upd("h") { it.copy(height = ((v / 2).toInt() * 2).coerceIn(16, 8192)) } }, { vm.endGesture() }, Modifier.weight(1f), step = 8f, min = 16f, max = 8192f)
         }
-        SmallLabel(stringResource(R.string.frame_rate))
-        ChoiceChips(listOf(24.0 to "24", 25.0 to "25", 30.0 to "30", 50.0 to "50", 60.0 to "60"), comp.fps, { f -> upd { it.copy(fps = f) } })
+        LabeledSlider(
+            stringResource(R.string.frame_rate), comp.fps.toFloat().coerceIn(FrameRate.MIN.toFloat(), FrameRate.MAX.toFloat()),
+            FrameRate.MIN.toFloat()..FrameRate.MAX.toFloat(), { v -> upd("fps") { it.copy(fps = FrameRate.clamp(v.toDouble())) } }, { vm.endGesture() },
+            suffix = " fps", min = FrameRate.MIN.toFloat(), max = FrameRate.MAX.toFloat(),
+        )
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
             SmallLabel(stringResource(R.string.duration), Modifier.weight(1f))
             ScrubNumber(comp.duration.toFloat(), { v -> upd("dur") { it.copy(duration = v.toDouble().coerceIn(0.1, 3600.0)) } }, { vm.endGesture() }, Modifier.width(110.dp), step = 0.5f, min = 0.1f, max = 3600f, suffix = " s")
