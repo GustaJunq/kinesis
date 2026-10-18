@@ -512,7 +512,7 @@
     <string name="third_party_intro">Componentes de código aberto incluídos no Kinesis, com suas licenças.</string>
     <string name="license_vidstab">vid.stab (estabilização de vídeo) — GPL-2.0+</string>
     <string name="license_gpl3">GNU General Public License 3.0</string>
-    <string name="license_mediapipe">MediaPipe e modelo Selfie Segmentation — Apache-2.0</string>
+    <string name="license_mediapipe">MediaPipe e seus modelos Selfie Segmentation e Magic Touch — Apache-2.0</string>
     <string name="license_apache">Apache License 2.0</string>
     <string name="license_others">Outros componentes</string>
     <string name="license_manrope">Manrope — OFL 1.1</string>
@@ -550,4 +550,26 @@
     <string name="real_camera_discard">Descartar</string>
     <string name="real_camera_again">Gravar de novo</string>
     <string name="real_camera_keep">Manter</string>
+    <!-- 0.1.6: Roto Brush -->
+    <string name="roto_brush">Roto Brush</string>
+    <string name="roto_apply">Aplicar</string>
+    <string name="roto_preparing">Preparando os quadros…</string>
+    <string name="roto_propagating">Seguindo o objeto…</string>
+    <string name="roto_rendering">Gerando o vídeo com transparência…</string>
+    <string name="roto_painting">Recortando…</string>
+    <string name="roto_hint">Roda neste aparelho. Mantenha o app aberto; você pode cancelar a qualquer momento.</string>
+    <string name="roto_open_failed">Não foi possível abrir este vídeo no Roto Brush.</string>
+    <string name="roto_nothing">Ainda não há recorte. Pinte sobre o objeto primeiro.</string>
+    <string name="roto_failed">O Roto Brush falhou: %1$s</string>
+    <string name="roto_done">Recorte pronto. A camada original ficou oculta, com o recorte logo acima.</string>
+    <string name="roto_view_final">Final</string>
+    <string name="roto_view_overlay">Sobreposição</string>
+    <string name="roto_view_mask">Máscara</string>
+    <string name="roto_frame_info">Quadro %1$d de %2$d · %3$d com recorte</string>
+    <string name="roto_add">Adicionar</string>
+    <string name="roto_remove">Remover</string>
+    <string name="roto_brush_size">Pincel</string>
+    <string name="roto_undo_stroke">Desfazer pincelada</string>
+    <string name="roto_clear_frame">Limpar quadro</string>
+    <string name="roto_follow">Seguir adiante</string>
 </resources>

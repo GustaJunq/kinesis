@@ -440,6 +440,22 @@ class Format9Tests(unittest.TestCase):
         layer["effects"][0]["order"] = "sideways"
         self.assertIn("schema", self.codes(minimal(layers=[layer])))
 
+    def roto_project(self, roto):
+        assets = [{"id": "src", "type": "video", "path": "assets/a.mp4"}, {"id": "cut", "type": "video", "path": "assets/b.mp4"}]
+        layer = {"id": "v", "type": "video", "video": {"asset": "cut", "alphaPacked": True, "roto": roto}}
+        return minimal(assets=assets, layers=[layer])
+
+    def test_roto_brush(self):
+        good = {"source": "src", "sourceStart": 0.5, "duration": 3, "frames": [
+            {"time": 0, "strokes": [{"mode": "add", "size": 0.05, "points": [[0.4, 0.5], [0.5, 0.55]]}]}]}
+        self.assertEqual([], self.codes(self.roto_project(good)))
+        self.assertEqual(["roto.source"], self.codes(self.roto_project({**good, "source": "cut2"})))
+        self.assertEqual(["roto.time"], self.codes(self.roto_project({**good, "frames": [{"time": 9, "strokes": []}]})))
+        # The schema bounds the ranges and reports first; Kotlin reports roto.stroke / roto.range for the same input.
+        self.assertIn("schema", self.codes(self.roto_project({**good, "frames": [{"time": 0, "strokes": [{"points": [[2, 0.5]]}]}]})))
+        self.assertIn("schema", self.codes(self.roto_project({**good, "frames": [{"time": 0, "strokes": [{"mode": "paint", "points": [[0.5, 0.5]]}]}]})))
+        self.assertIn("schema", self.codes(self.roto_project({**good, "duration": 0.5, "sourceStart": -1})))
+
     def test_version_8_documents_migrate_to_9(self):
         migrated = kns_migrate.migrate(minimal(formatVersion=8), 9)
         self.assertEqual(9, migrated["formatVersion"])
@@ -454,7 +470,7 @@ class ExampleTests(unittest.TestCase):
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
     def test_expected_examples_exist(self):
-        self.assertEqual(22, len(example_dirs("basicos")))
+        self.assertEqual(23, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
         self.assertGreaterEqual(len(example_dirs("erros")), 5)
         self.assertEqual(12, len(example_dirs("efeitos")))

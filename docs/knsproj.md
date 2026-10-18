@@ -315,6 +315,13 @@ A semântica completa e o exemplo "Bounce Text" estão em [`expressoes.md`](expr
 `type` (`peak`, `lowShelf` ou `highShelf`; padrão `peak`), `frequency` (20 a 20000 Hz, padrão 1000), `gain` (−24 a 24 dB, padrão 0) e `q` (0,1 a 10, padrão 1;
 maior = mais estreito). Ausente ou vazio = desligado. É não destrutivo (o arquivo de mídia não muda) e vale no preview e na exportação.
 
+`roto` (formato v9, em `video` com `alphaPacked`): a receita de um recorte feito com o Roto Brush, para poder editá-lo de novo.
+`{ "source": "<id do vídeo de origem>", "sourceStart": 0, "duration": 4, "frames": [ { "time": 0, "strokes": [ { "mode": "add", "size": 0.06, "points": [[0.45, 0.5], [0.5, 0.55]] } ] } ] }`.
+`source` é um asset de vídeo do projeto; `sourceStart` e `duration` (s) dizem que trecho dele foi recortado; cada item de `frames`
+é um quadro pintado (`time` em segundos depois de `sourceStart`, de 0 a `duration`; no máximo 240) com até 64 pinceladas. Uma pincelada
+tem `mode` (`add` = parte do objeto, padrão; `remove` = fora dele), `size` (diâmetro do pincel como fração do menor lado do quadro, 0,005 a 0,5; padrão 0,06) e `points` (1 a 2000 pontos
+`[x, y]` normalizados de 0 a 1 no quadro em pé). O vídeo do próprio recorte (`asset`) é o resultado; o app o refaz a partir desta receita.
+
 - Imagens e vídeos são exibidos no tamanho nativo (pixels), centrados; use `transform.scale` para ajustar.
 - `sourceStart`: ponto de entrada na mídia (s). O instante local `t` mostra a mídia em `sourceStart + t·speed`.
 - `volume` é animável (ganho linear). `speed` diferente de 1 altera também o tom do áudio.

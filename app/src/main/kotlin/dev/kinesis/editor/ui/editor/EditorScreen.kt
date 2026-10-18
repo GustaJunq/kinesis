@@ -147,6 +147,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var showAudio by remember { mutableStateOf(false) }
     var stabilizeTarget by remember { mutableStateOf<String?>(null) }
     var showRealCamera by remember { mutableStateOf(false) }
+    var rotoRequest by remember { mutableStateOf<RotoRequest?>(null) }
     val mediaJob by vm.mediaJob.collectAsState()
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
     var showGraph by remember { mutableStateOf(false) }
@@ -350,6 +351,10 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     onExtractAudio = if (vm.canExtractAudio(selectedLayer)) ({ vm.extractAudio(selectedLayer.id) }) else null,
                     onRemoveBackground = if (vm.canRemoveBackground(selectedLayer)) ({ vm.removeBackground(selectedLayer.id) }) else null,
                     onStabilize = if (vm.canStabilize(selectedLayer)) ({ stabilizeTarget = selectedLayer.id }) else null,
+                    onRotoBrush = if (vm.canRotoBrush(selectedLayer)) ({
+                        vm.pause()
+                        rotoRequest = vm.rotoRequest(selectedLayer.id) ?: run { vm.notifyUser(context.getString(R.string.roto_open_failed), true); null }
+                    }) else null,
                     onRealCamera = if (selectedLayer.type == LayerType.CAMERA && vm.realCamera.available) ({ vm.pause(); showRealCamera = true }) else null,
                 )
             }
@@ -465,6 +470,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     stabilizeTarget?.let { id ->
         StabilizeDialog(onStart = { settings -> stabilizeTarget = null; vm.stabilize(id, settings) }, onDismiss = { stabilizeTarget = null })
     }
+    rotoRequest?.let { RotoBrushScreen(vm, it, onClose = { rotoRequest = null }) }
     if (showRealCamera) RealCameraSheet(vm, project, onDismiss = { showRealCamera = false })
     mediaJob?.let { MediaJobDialog(it, onCancel = { vm.cancelMediaJob() }) }
     if (showCaptions) CaptionsSheet(vm, project, onDismiss = { showCaptions = false })

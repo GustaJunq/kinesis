@@ -2470,6 +2470,9 @@
             "$ref": "#/$defs/eqBand"
           },
           "description": "Parametric equalizer applied after the volume of the clip; omitted or empty = off."
+        },
+        "roto": {
+          "$ref": "#/$defs/rotoBrush"
         }
       },
       "additionalProperties": false,
@@ -3050,6 +3053,92 @@
           "description": "Vertical field of view in degrees."
         }
       },
+      "additionalProperties": false
+    },
+    "rotoStroke": {
+      "description": "A brush stroke of the Roto Brush.",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": ["add", "remove"],
+          "description": "add = part of the object (default); remove = not part of it."
+        },
+        "size": {
+          "type": "number",
+          "minimum": 0.005,
+          "maximum": 0.5,
+          "description": "Brush diameter as a fraction of the frame's shorter side (default 0.06)."
+        },
+        "points": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2000,
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Points [x, y] of the stroke, normalised 0..1 in the upright frame."
+        }
+      },
+      "required": ["points"],
+      "additionalProperties": false
+    },
+    "rotoFrame": {
+      "description": "The strokes painted on one frame.",
+      "type": "object",
+      "properties": {
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Seconds after roto.sourceStart."
+        },
+        "strokes": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/rotoStroke"
+          }
+        }
+      },
+      "required": ["time"],
+      "additionalProperties": false
+    },
+    "rotoBrush": {
+      "description": "How a packed-alpha video was cut out with the Roto Brush: the source video and the strokes, so it can be edited again.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Asset id of the source video."
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Seconds into the source where the cut-out starts (default 0)."
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 3600,
+          "description": "Seconds of the source that the cut-out covers."
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 240,
+          "items": {
+            "$ref": "#/$defs/rotoFrame"
+          }
+        }
+      },
+      "required": ["source", "duration"],
       "additionalProperties": false
     }
   }

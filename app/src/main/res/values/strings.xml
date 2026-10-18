@@ -512,7 +512,7 @@
     <string name="third_party_intro">Open-source components included in Kinesis, with their licenses.</string>
     <string name="license_vidstab">vid.stab (video stabilization) — GPL-2.0+</string>
     <string name="license_gpl3">GNU General Public License 3.0</string>
-    <string name="license_mediapipe">MediaPipe and the Selfie Segmentation model — Apache-2.0</string>
+    <string name="license_mediapipe">MediaPipe and its Selfie Segmentation and Magic Touch models — Apache-2.0</string>
     <string name="license_apache">Apache License 2.0</string>
     <string name="license_others">Other components</string>
     <string name="license_manrope">Manrope — OFL 1.1</string>
@@ -550,4 +550,26 @@
     <string name="real_camera_discard">Discard</string>
     <string name="real_camera_again">Record again</string>
     <string name="real_camera_keep">Keep</string>
+    <!-- 0.1.6: Roto Brush -->
+    <string name="roto_brush">Roto Brush</string>
+    <string name="roto_apply">Apply</string>
+    <string name="roto_preparing">Preparing frames…</string>
+    <string name="roto_propagating">Following the object…</string>
+    <string name="roto_rendering">Making the video with transparency…</string>
+    <string name="roto_painting">Cutting out…</string>
+    <string name="roto_hint">Runs on this device. Keep the app open; you can cancel at any time.</string>
+    <string name="roto_open_failed">This video could not be opened for the Roto Brush.</string>
+    <string name="roto_nothing">Nothing is cut out yet. Paint over the object first.</string>
+    <string name="roto_failed">The Roto Brush failed: %1$s</string>
+    <string name="roto_done">Cut-out done. The original layer is hidden, with the cut-out right above it.</string>
+    <string name="roto_view_final">Final</string>
+    <string name="roto_view_overlay">Overlay</string>
+    <string name="roto_view_mask">Mask</string>
+    <string name="roto_frame_info">Frame %1$d of %2$d · %3$d with a cut-out</string>
+    <string name="roto_add">Add</string>
+    <string name="roto_remove">Remove</string>
+    <string name="roto_brush_size">Brush</string>
+    <string name="roto_undo_stroke">Undo stroke</string>
+    <string name="roto_clear_frame">Clear frame</string>
+    <string name="roto_follow">Follow forward</string>
 </resources>

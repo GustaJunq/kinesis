@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Brush
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.PersonOff
@@ -240,6 +241,8 @@ fun SelectionActions(
     onStabilize: (() -> Unit)? = null,
     /** Shown for camera layers on phones with a motion sensor: the phone drives the camera. */
     onRealCamera: (() -> Unit)? = null,
+    /** Shown for video layers: cut out any object by painting over it. */
+    onRotoBrush: (() -> Unit)? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().background(KColors.Bar).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp),
@@ -253,6 +256,7 @@ fun SelectionActions(
         if (onAudio != null) ActionChip(Icons.Outlined.GraphicEq, R.string.audio_panel, onAudio)
         if (onExtractAudio != null) ActionChip(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
         if (onRemoveBackground != null) ActionChip(Icons.Outlined.PersonOff, R.string.remove_background, onRemoveBackground)
+        if (onRotoBrush != null) ActionChip(Icons.Outlined.Brush, R.string.roto_brush, onRotoBrush)
         if (onStabilize != null) ActionChip(Icons.Outlined.CenterFocusStrong, R.string.stabilize, onStabilize)
         if (onRealCamera != null) ActionChip(Icons.Outlined.CameraAlt, R.string.real_camera, onRealCamera)
         ActionChip(Icons.Outlined.Delete, R.string.delete, onDelete, danger = true)

@@ -411,6 +411,35 @@ def validate(project, available_files=None):
                 f, g, q = band.get("frequency", 1000), band.get("gain", 0), band.get("q", 1)
                 if not (20 <= f <= 20000 and -24 <= g <= 24 and 0.1 <= q <= 10):
                     err("audio.eq", f"{p}.eq[{bi}]", "frequency 20-20000 Hz, gain ±24 dB and q 0.1-10 are required")
+            roto = (layer.get("video") or {}).get("roto")
+            if isinstance(roto, dict):
+                rp = f"{p}.video.roto"
+                if ltype != "video" or not (layer.get("video") or {}).get("alphaPacked"):
+                    warn("roto.layer", rp, "roto only describes packed-alpha video layers")
+                if assets_by_id.get(roto.get("source")) != "video":
+                    err("roto.source", f"{rp}.source", f"source '{roto.get('source')}' is not a video asset of the project")
+                dur, start = roto.get("duration", 0), roto.get("sourceStart", 0)
+                if not (isinstance(dur, (int, float)) and 0 < dur <= 3600) or not (isinstance(start, (int, float)) and start >= 0):
+                    err("roto.range", rp, "sourceStart must be >= 0 and duration between 0 and 3600 seconds")
+                frames = roto.get("frames") or []
+                if len(frames) > 240:
+                    err("roto.frames", f"{rp}.frames", "at most 240 painted frames")
+                for fi, fr in enumerate(frames):
+                    fp = f"{rp}.frames[{fi}]"
+                    if not (isinstance(fr.get("time"), (int, float)) and 0 <= fr["time"] <= (dur if isinstance(dur, (int, float)) else 0)):
+                        err("roto.time", f"{fp}.time", "frame time must be inside the cut-out (0..duration)")
+                    strokes = fr.get("strokes") or []
+                    if len(strokes) > 64:
+                        err("roto.stroke", f"{fp}.strokes", "at most 64 strokes per frame")
+                    for si, st in enumerate(strokes):
+                        sp = f"{fp}.strokes[{si}]"
+                        pts = st.get("points") or []
+                        if not (1 <= len(pts) <= 2000):
+                            err("roto.stroke", f"{sp}.points", "a stroke needs 1 to 2000 points")
+                        elif any(not (0 <= c <= 1) for pt in pts for c in pt):
+                            err("roto.stroke", f"{sp}.points", "stroke points are normalised: 0..1")
+                        if not (0.005 <= st.get("size", 0.06) <= 0.5):
+                            err("roto.stroke", f"{sp}.size", "brush size must be between 0.005 and 0.5")
             if (layer.get("video") or {}).get("alphaPacked") and ltype != "video":
                 warn("media.alphaPacked", p, "alphaPacked only applies to video layers")
             if layer.get("null") is not None and ltype != "null":

@@ -1,4 +1,4 @@
-MediaPipe Tasks Vision 0.10.14 and the MediaPipe Selfie Segmentation model
+MediaPipe Tasks Vision 0.10.14 and the MediaPipe Selfie Segmentation and Magic Touch models
 Copyright The MediaPipe Authors / Google LLC. Licensed under the Apache License, Version 2.0 (full text: "Apache License 2.0"
 in this list).
 
@@ -7,3 +7,8 @@ Used for background removal, which runs entirely on the device. The model (asset
 https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite
 and its model card states the Apache 2.0 license. It separates people from the background; other subjects are not cut out.
 https://ai.google.dev/edge/mediapipe/solutions/vision/image_segmenter
+
+The Roto Brush uses the Interactive Segmenter with the Magic Touch model (assets/models/magic_touch.tflite, 512x512, float32), from
+https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite
+Its model card (MagicTouch, Valentin Bazarevsky and Ben Hahn, Google, 2023) states: "Licensed under Apache License, Version 2.0".
+It finds the object under one point of the picture, whatever the object is.

@@ -427,6 +427,44 @@ class RegistryArtifactsTest {
             ),
             "additionalProperties" to JsonPrimitive(false),
         )
+        defs["rotoStroke"] = obj(
+            "description" to str("A brush stroke of the Roto Brush."),
+            "type" to str("object"),
+            "properties" to obj(
+                "mode" to obj("enum" to JsonArray(listOf(str("add"), str("remove"))), "description" to str("add = part of the object (default); remove = not part of it.")),
+                "size" to num(0.005, 0.5, "Brush diameter as a fraction of the frame\'s shorter side (default 0.06)."),
+                "points" to obj(
+                    "type" to str("array"), "minItems" to JsonPrimitive(1), "maxItems" to JsonPrimitive(2000),
+                    "items" to obj("type" to str("array"), "items" to obj("type" to str("number"), "minimum" to JsonPrimitive(0), "maximum" to JsonPrimitive(1)), "minItems" to JsonPrimitive(2), "maxItems" to JsonPrimitive(2)),
+                    "description" to str("Points [x, y] of the stroke, normalised 0..1 in the upright frame."),
+                ),
+            ),
+            "required" to JsonArray(listOf(str("points"))),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        defs["rotoFrame"] = obj(
+            "description" to str("The strokes painted on one frame."),
+            "type" to str("object"),
+            "properties" to obj(
+                "time" to num(0, 3600, "Seconds after roto.sourceStart."),
+                "strokes" to obj("type" to str("array"), "maxItems" to JsonPrimitive(64), "items" to ref("rotoStroke")),
+            ),
+            "required" to JsonArray(listOf(str("time"))),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        defs["rotoBrush"] = obj(
+            "description" to str("How a packed-alpha video was cut out with the Roto Brush: the source video and the strokes, so it can be edited again."),
+            "type" to str("object"),
+            "properties" to obj(
+                "source" to obj("type" to str("string"), "description" to str("Asset id of the source video.")),
+                "sourceStart" to num(0, 3600, "Seconds into the source where the cut-out starts (default 0)."),
+                "duration" to num(0.001, 3600, "Seconds of the source that the cut-out covers."),
+                "frames" to obj("type" to str("array"), "maxItems" to JsonPrimitive(240), "items" to ref("rotoFrame")),
+            ),
+            "required" to JsonArray(listOf(str("source"), str("duration"))),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        withProps(defs, "mediaContent", "roto" to ref("rotoBrush"))
         val props = LinkedHashMap<String, JsonElement>()
         for ((k, v) in v8.getValue("properties").jsonObject) {
             props[k] = if (k == "formatVersion") obj("const" to JsonPrimitive(9)) else v
