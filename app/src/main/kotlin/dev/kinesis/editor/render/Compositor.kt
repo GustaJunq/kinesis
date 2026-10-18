@@ -33,6 +33,7 @@ import dev.kinesis.core.scene.Node3D
 import dev.kinesis.core.scene.NullNode
 import dev.kinesis.core.scene.RenderNode
 import dev.kinesis.core.scene.ResolvedEffect
+import dev.kinesis.core.scene.TimeSlice
 import dev.kinesis.core.scene.ResolvedMask
 import dev.kinesis.core.scene.SceneEvaluator
 import dev.kinesis.core.scene.WipeState
@@ -53,6 +54,10 @@ class RenderResources(assets: AssetManager, val files: AssetFiles, proxies: (Str
     val images = ImageTextures(files, min(4096, Gl.maxTextureSize()))
     val videos = VideoFrames(files, proxies)
     val meshes = MeshCache(files, typefaces)
+    /** Frames kept for TimeSlice, and what the last rendered frame needed from it (see [Compositor.timeSlice]). */
+    val slices = SliceCache()
+    @Volatile var sliceDegraded = false
+    @Volatile var sliceProgress = false
     val environments = EnvironmentMaps(files, min(4096, Gl.maxTextureSize()))
     private var shadowMap: ShadowMap? = null
     private var noShadow: ShadowMap? = null
@@ -75,6 +80,7 @@ class RenderResources(assets: AssetManager, val files: AssetFiles, proxies: (Str
         images.release()
         videos.release()
         meshes.release()
+        slices.clear()
         quad.release()
         shaders.release()
     }
@@ -93,6 +99,10 @@ data class RenderSettings(
     val dofSamples: Int = 32,
     /** Leave the background transparent (pre-rendering a layer) instead of filling it. */
     val transparentBackground: Boolean = false,
+    /** TimeSlice: strips, cached frames and on-the-spot decodes allowed (the export drops nothing). */
+    val timeSliceBudget: TimeSlice.Budget = TimeSlice.EXACT,
+    /** GPU memory for the frames TimeSlice keeps. */
+    val timeSliceCacheBytes: Long = SliceCache.DEFAULT_BYTES,
 ) {
     companion object {
         /** 3D quality presets: low, medium, high. */
@@ -155,6 +165,9 @@ class Compositor(private val res: RenderResources) {
         res.pool.resize(outWidth, outHeight)
         res.content.beginFrame()
         res.videos.beginFrame()
+        res.sliceDegraded = false
+        res.sliceProgress = false
+        res.slices.budget = settings.timeSliceCacheBytes
         val ctx = Ctx(
             project, scene, settings,
             scale = outWidth.toFloat() / scene.width,
@@ -843,6 +856,7 @@ class Compositor(private val res: RenderResources) {
      */
     private fun applyEffects(effects: List<ResolvedEffect>, transitionBlur: Float, input: RenderTarget, ctx: Ctx, below: RenderTarget): RenderTarget {
         var cur = input
+        var slices = 0
         for (e in effects) {
             val spec = EffectRegistry.get(e.type) ?: continue
             cur = when {
@@ -859,6 +873,7 @@ class Compositor(private val res: RenderResources) {
                     "deepGlow" -> deepGlow(cur, e, ctx)
                     "glass" -> glass(cur, e, ctx, ctx.backdrop ?: below)
                     "echo" -> echo(cur, e, ctx)
+                    "timeSlice" -> timeSlice(cur, e, slices++, ctx)
                     "posterizeTime", "depthMap" -> cur // handled by scene evaluation / 3D drawing
                     else -> generic(spec, e, cur, ctx)
                 }
@@ -996,6 +1011,78 @@ class Compositor(private val res: RenderResources) {
         res.pool.release(backdrop)
         res.pool.release(height)
         return r
+    }
+
+    /**
+     * TimeSlice: strip k of the picture shows the layer [TimeSlice.Plan.shifts] frames in the past. Past pictures come
+     * from [SliceCache] (every rendered frame is stored there, so playing forward costs nothing extra); a missing one is
+     * rendered on the spot from the layer at that time (the decoder seeks), at most [TimeSlice.Budget.maxMissesPerFrame]
+     * per frame in the preview, which shows the nearest stored frame instead and asks for another pass.
+     */
+    private fun timeSlice(cur: RenderTarget, e: ResolvedEffect, occurrence: Int, ctx: Ctx): RenderTarget {
+        val source = e.slices ?: return cur
+        val budget = ctx.settings.timeSliceBudget
+        val plan = TimeSlice.plan(e.i("slices"), TimeSlice.Order.of(e.choice("order")), e.i("offset"), budget)
+        val owner = "${source.layerId}#$occurrence"
+        val cache = res.slices
+        cache.beginPass()
+        val w = cur.width
+        val h = cur.height
+        val frame = source.frame
+        if (TimeSlice.isStored(frame, plan.stride)) cache.put(owner, frame, cur)
+
+        // One picture per distinct frame, found or made before drawing (making one uses the same targets).
+        val pictures = HashMap<Int, RenderTarget?>()
+        val temporary = ArrayList<RenderTarget>()
+        var misses = 0
+        for (shift in plan.shifts.distinct()) {
+            val g = TimeSlice.frameFor(frame, shift, plan.stride)
+            if (g == frame || g in pictures) continue
+            var picture = cache.get(owner, g, w, h)
+            if (picture == null) {
+                if (misses < budget.maxMissesPerFrame) {
+                    misses++
+                    res.sliceProgress = true
+                    val node = source.nodeAt(frame - g)
+                    if (node != null) {
+                        val t = res.pool.acquire()
+                        drawNodeAt(node, t, ctx, 1f, BlendMode.NORMAL)
+                        if (TimeSlice.isStored(g, plan.stride)) cache.put(owner, g, t)
+                        temporary += t
+                        picture = t
+                    }
+                    // else: the layer did not exist then; the strip stays empty (null)
+                } else {
+                    res.sliceDegraded = true
+                    picture = cache.nearest(owner, g, w, h, within = 2 * plan.stride + 4) ?: cur
+                }
+            }
+            pictures[g] = picture
+        }
+
+        val acc = res.pool.acquire()
+        acc.bind()
+        GLES30.glEnable(GLES30.GL_BLEND)
+        GLES30.glBlendFunc(GLES30.GL_ONE, GLES30.GL_ONE)
+        val p = res.shaders.get("fullscreen.vert", "timeSliceStrip.frag")
+        p.use()
+        val a = Math.toRadians(e.f("angle").toDouble())
+        p.set2f("u_size", ctx.width.toFloat(), ctx.height.toFloat())
+        p.set2f("u_dir", kotlin.math.cos(a).toFloat(), kotlin.math.sin(a).toFloat())
+        p.set1i("u_strips", plan.strips)
+        p.set1f("u_smooth", e.f("smooth"))
+        p.set1i("u_texture", 0)
+        for (k in 0 until plan.strips) {
+            val g = TimeSlice.frameFor(frame, plan.shifts[k], plan.stride)
+            val picture = if (g == frame) cur else pictures[g] ?: continue
+            bindTexture2D(0, picture.texture)
+            p.set1i("u_index", k)
+            res.quad.draw()
+        }
+        GLES30.glDisable(GLES30.GL_BLEND)
+        temporary.forEach(res.pool::release)
+        res.pool.release(cur)
+        return acc
     }
 
     /** Echo: earlier copies of the layer (oldest first) under the current image. */

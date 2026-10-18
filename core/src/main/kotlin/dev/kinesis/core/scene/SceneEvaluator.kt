@@ -99,7 +99,13 @@ object SceneEvaluator {
         val layer = ExpressionResolver.resolve(layer0, siblings, containerTime, comp)
         val t = layer.localTime(containerTime)
         val transition = Transitions.evaluate(layer, t, comp)
-        fun effects(toComp: Affine2D) = resolveEffects(layer.effects, t, toComp) { index, delay, count, decay ->
+        fun effects(toComp: Affine2D) = resolveEffects(layer.effects, t, toComp, timeSlice = { index ->
+            val base = layer.copy(effects = layer.effects.take(index))
+            TimeSliceSource(layer.id, Math.round(containerTime * comp.fps).toInt()) { back ->
+                val ct = containerTime - back * comp.frameDuration
+                if (back < 0 || !layer.isActiveAt(ct)) null else evaluateLayer(base, siblings, ct, containerMatrix, camera, comp, null)
+            }
+        }) { index, delay, count, decay ->
             // Echo copies: the layer at earlier times, with only the effects placed before the echo.
             val base = layer.copy(effects = layer.effects.take(index))
             (1..count).mapNotNull { k ->
@@ -326,6 +332,7 @@ object SceneEvaluator {
         effects: List<Effect>,
         t: Double,
         toComp: Affine2D = Affine2D.IDENTITY,
+        timeSlice: (index: Int) -> TimeSliceSource? = { null },
         echoes: (index: Int, delay: Double, count: Int, decay: Float) -> List<EchoSample> = { _, _, _, _ -> emptyList() },
     ): List<ResolvedEffect> {
         val origin = toComp.apply(Vec2.ZERO)
@@ -348,6 +355,7 @@ object SceneEvaluator {
             var r = ResolvedEffect(e.type, values, t, origin)
             when (e.type) {
                 "echo" -> r = ResolvedEffect(e.type, values, t, origin, echoes = echoes(index, r.f("delay").toDouble(), r.i("count"), r.f("decay")))
+                "timeSlice" -> r = ResolvedEffect(e.type, values, t, origin, slices = timeSlice(index))
                 else -> EffectMotion.transform(r)?.let { m -> r = ResolvedEffect(e.type, values, t, origin, transform = m) }
             }
             out += r

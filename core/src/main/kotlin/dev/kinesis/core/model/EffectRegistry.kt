@@ -633,6 +633,20 @@ object EffectRegistry {
             color("color", "Cor", "Color", Color.WHITE, visibleWhen = "mode" to "flash"),
         ),
 
+        spec(
+            "timeSlice", EffectCategory.TIME, "Fatias de tempo", "TimeSlice",
+            "Cada faixa da imagem mostra um momento diferente do vídeo (deslocamento no tempo).",
+            "Each strip of the picture shows a different moment of the video (time displacement).",
+            int("slices", "Faixas", "Strips", 8, 2, 24),
+            angle(pt = "Direção", en = "Direction"),
+            int("offset", "Deslocamento (quadros)", "Offset (frames)", 3, 0, 30),
+            choice(
+                "order", "Ordem", "Order", "forward",
+                c("forward", "Para frente", "Forward"), c("backward", "Para trás", "Backward"), c("center", "Do centro", "From the centre"),
+            ),
+            num("smooth", "Interpolação", "Interpolation", 0f, 0f, 1f, unit = ParamUnit.PERCENT),
+        ),
+
         // Utilitário e expressão
         spec(
             "depthMap", EffectCategory.UTILITY, "Mapa de profundidade", "Depth Map",

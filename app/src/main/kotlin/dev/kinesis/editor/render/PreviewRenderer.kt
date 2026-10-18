@@ -7,6 +7,7 @@ import android.opengl.GLSurfaceView
 import android.util.Log
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.scene.SceneEvaluator
+import dev.kinesis.core.scene.TimeSlice
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.min
@@ -48,8 +49,14 @@ class PreviewRenderer(
     private val files: AssetFiles,
     private val padding: Float,
     private val proxies: (String) -> VideoProxy? = { null },
+    /** Low-memory phones keep fewer TimeSlice frames and strips. */
+    private val lowMemory: Boolean = false,
     private val onError: (String) -> Unit,
 ) : GLSurfaceView.Renderer {
+
+    /** Asks for another pass while TimeSlice still has frames to fetch (set from the UI thread). */
+    @Volatile
+    var onRefine: () -> Unit = {}
 
     @Volatile
     var state: PreviewState? = null
@@ -125,8 +132,20 @@ class PreviewRenderer(
                 val scene = SceneEvaluator.evaluate(p, s.time)
                 val samples = if (s.playing) min(3, p.composition.motionBlur.samples) else p.composition.motionBlur.samples
                 val (shadowSize, dofSamples) = RenderSettings.quality3D(s.quality3D)
-                val target = comp.render(p, scene, outW, outH, RenderSettings(motionBlurSamples = samples, preview = s.playing, shadowMapSize = shadowSize, dofSamples = dofSamples))
-                remember(key, target)
+                val cacheBytes = if (lowMemory) SLICE_CACHE_LOW else SLICE_CACHE
+                val budget = TimeSlice.previewBudget(lowMemory, s.playing, outW.toLong() * outH * 4, cacheBytes)
+                val settings = RenderSettings(
+                    motionBlurSamples = samples, preview = s.playing, shadowMapSize = shadowSize, dofSamples = dofSamples,
+                    timeSliceBudget = budget, timeSliceCacheBytes = cacheBytes,
+                )
+                val target = comp.render(p, scene, outW, outH, settings)
+                if (res.sliceDegraded) {
+                    // TimeSlice used stand-ins for frames it has not fetched yet: show it, do not keep it, and finish when idle.
+                    if (!s.playing && res.sliceProgress) onRefine()
+                    target
+                } else {
+                    remember(key, target)
+                }
             }
             GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
             comp.present(shown, vp.left.roundToInt(), (viewH - vp.top - vp.height).roundToInt(), vp.width.roundToInt(), vp.height.roundToInt())
@@ -173,6 +192,7 @@ class PreviewRenderer(
     }
 
     private fun clearCache() {
+        resources?.slices?.clear()
         frameCache.values.forEach { it.release() }
         frameCache.clear()
         cacheBytes = 0
@@ -196,6 +216,9 @@ class PreviewRenderer(
     companion object {
         /** GPU memory for cached preview frames. */
         private const val MAX_CACHE_BYTES = 96L * 1024 * 1024
+        /** GPU memory for the frames of TimeSlice (less on low-memory phones). */
+        private const val SLICE_CACHE = 64L * 1024 * 1024
+        private const val SLICE_CACHE_LOW = 24L * 1024 * 1024
         const val BG_R = 0.055f
         const val BG_G = 0.059f
         const val BG_B = 0.075f

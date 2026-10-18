@@ -99,6 +99,8 @@ class ResolvedEffect(
     val transform: Affine2D? = null,
     /** Echo: the layer at earlier times, oldest last, with their opacity. */
     val echoes: List<EchoSample> = emptyList(),
+    /** TimeSlice: access to the layer at earlier frames. */
+    val slices: TimeSliceSource? = null,
 ) {
     fun f(name: String): Float = values[name] as Float
     fun i(name: String): Int = Math.round(values[name] as Float)
@@ -115,6 +117,13 @@ class ResolvedEffect(
 }
 
 class EchoSample(val node: RenderNode, val opacity: Float)
+
+/**
+ * TimeSlice: [frame] is the composition frame being rendered (in the layer's container); [nodeAt] evaluates the
+ * layer, with only the effects placed before the TimeSlice, [framesBack] frames earlier (null when the layer is not
+ * active then). It is lazy: the compositor asks only for frames its cache does not hold.
+ */
+class TimeSliceSource(val layerId: String, val frame: Int, val nodeAt: (framesBack: Int) -> RenderNode?)
 
 data class ResolvedMask(
     val shape: MaskShape,

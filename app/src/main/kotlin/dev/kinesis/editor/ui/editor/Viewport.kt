@@ -92,7 +92,8 @@ fun Viewport(
     val paddingPx = with(density) { 12f * this.density }
     val errorCallback by rememberUpdatedState(onRenderError)
     val renderer = remember {
-        PreviewRenderer(context.assets, vm.files, paddingPx, proxies = { id -> if (AppSettings.useProxies) vm.proxies.get(id) else null }) { msg -> errorCallback(msg) }
+        val lowMemory = (context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.isLowRamDevice == true
+        PreviewRenderer(context.assets, vm.files, paddingPx, proxies = { id -> if (AppSettings.useProxies) vm.proxies.get(id) else null }, lowMemory = lowMemory) { msg -> errorCallback(msg) }
     }
     val glView = remember {
         GLSurfaceView(context).apply {
@@ -103,6 +104,7 @@ fun Viewport(
             renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
         }
     }
+    SideEffect { renderer.onRefine = { glView.requestRender() } }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, e ->

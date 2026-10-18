@@ -197,7 +197,7 @@ Valores possíveis (o schema é a fonte da verdade):
   - movimento sem keyframes: `autoShake`, `spin`, `oscillate`, `float`, `pulse`;
   - estilo/glitch: `pixelate`, `dropShadow`, `vignette`, `halftone`, `posterize`, `filmGrain`, `scanlines`, `blockGlitch`, `lineGlitch`, `vhs`, `chromaticAberration`, `rgbSplit`, `staticNoise`;
   - borda: `outline`, `findEdges`, `emboss`, `sketch`; geradores: `fractalNoise`, `gradientRamp`, `checkerboard`, `grid` (`mode` + `mix`);
-  - chave: `chromaKey`, `lumaKey`, `spillSuppressor`, `matteChoker`; tempo: `echo`, `posterizeTime`, `strobe`;
+  - chave: `chromaKey`, `lumaKey`, `spillSuppressor`, `matteChoker`; tempo: `echo`, `posterizeTime`, `strobe`, `timeSlice`;
   - utilitário: `depthMap` (só `object3d`/`model3d`), `channelShuffle`, `alphaFromLuma`.
   O antigo `colorAdjust` (v1) não existe mais: use `brightnessContrast`, `saturation` e `hueShift`.
 - Transições: `fade`, `slideLeft`, `slideRight`, `slideUp`, `slideDown`, `zoomIn`, `zoomOut`, `spin`, `blur`, `wipeLeft`, `wipeRight`.

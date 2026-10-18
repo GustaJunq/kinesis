@@ -738,6 +738,11 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `duty` | `0.5` | 0..1 % |
 |  |  | `mode` | `"flash"` | `flash`, `hide` (estático) |
 |  |  | `color` | `#FFFFFF` | cor — com `mode: "flash"` |
+| `timeSlice` (Fatias de tempo) | Tempo e transição | `slices` | `8` | inteiro 2..24 |
+|  |  | `angle` | `0` | -3600..3600 ° |
+|  |  | `offset` | `3` | inteiro 0..30 |
+|  |  | `order` | `"forward"` | `forward`, `backward`, `center` (estático) |
+|  |  | `smooth` | `0` | 0..1 % |
 | `depthMap` (Mapa de profundidade) | Utilitário e expressão | `near` | `500` | 0..200000 px |
 |  |  | `far` | `5000` | 0..200000 px |
 |  |  | `gamma` | `1` | 0.1..5 |
