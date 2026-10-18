@@ -12,8 +12,8 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
-- Schema oficial: `schema/knsproj-v8.schema.json` (formato versão 8; arquivos v1 a v7 ainda abrem e são migrados). Escreva sempre `"formatVersion": 8`.
-  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`; v7 `cyclic.offset` = assimetria (skew) de cada ciclo, `phase` = deslocamento; v8 `markers` (marcadores da timeline) e `eq` (equalizador) em clipes de áudio/vídeo;
+- Schema oficial: `schema/knsproj-v9.schema.json` (formato versão 9; arquivos v1 a v8 ainda abrem e são migrados). Escreva sempre `"formatVersion": 9`.
+  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`; v7 `cyclic.offset` = assimetria (skew) de cada ciclo, `phase` = deslocamento; v8 `markers` (marcadores da timeline) e `eq` (equalizador) em clipes de áudio/vídeo; v9 `editorView` (câmera livre da prévia, não renderizada: exemplo `basicos/vista-do-editor`) o efeito `timeSlice` (exemplo `basicos/fatias-de-tempo`) e `video.roto` (receita do Roto Brush: vídeo de origem e pinceladas; exemplo `basicos/recorte-roto-brush`);
   v6 texto 3D (`primitive: "text"`), `material.shading`, sombras (`light.castShadows`), profundidade de campo (`camera.dof`),
   ambiente HDRI (`composition.environment`) e vídeo com transparência (`video.alphaPacked`).
 - Expressões (APIs, unidades, matriz de compatibilidade): `docs/expressoes.md`
@@ -62,7 +62,7 @@ Para usar um exemplo como ponto de partida: copie a pasta para `generated/<slug>
 mídias, e valide. Os exemplos de `basicos/`, `receitas/` e `efeitos/` validam com 0 erros e 0 avisos; os de `erros/` falham de propósito.
 
 **Instalação por .zip:** `knsproj-skill.zip` (nesta pasta) é uma cópia autônoma da skill — traz `SKILL.md`, os exemplos,
-a CLI (`tools/knsproj`), o schema e a especificação. Descompacte em `~/.claude/skills/` (resultado: `~/.claude/skills/knsproj/`)
+a CLI (`tools/knsproj`), o schema e a especificação. Crie a pasta `~/.claude/skills/knsproj/` e descompacte o zip dentro dela (o `SKILL.md` e as pastas ficam na raiz do zip; resultado: `~/.claude/skills/knsproj/SKILL.md`)
 e rode a CLI de dentro dessa pasta (`python3 tools/knsproj validate …`). Regere-o com `python3 tools/pack_skill.py`.
 
 ## Fluxo
@@ -197,7 +197,7 @@ Valores possíveis (o schema é a fonte da verdade):
   - movimento sem keyframes: `autoShake`, `spin`, `oscillate`, `float`, `pulse`;
   - estilo/glitch: `pixelate`, `dropShadow`, `vignette`, `halftone`, `posterize`, `filmGrain`, `scanlines`, `blockGlitch`, `lineGlitch`, `vhs`, `chromaticAberration`, `rgbSplit`, `staticNoise`;
   - borda: `outline`, `findEdges`, `emboss`, `sketch`; geradores: `fractalNoise`, `gradientRamp`, `checkerboard`, `grid` (`mode` + `mix`);
-  - chave: `chromaKey`, `lumaKey`, `spillSuppressor`, `matteChoker`; tempo: `echo`, `posterizeTime`, `strobe`;
+  - chave: `chromaKey`, `lumaKey`, `spillSuppressor`, `matteChoker`; tempo: `echo`, `posterizeTime`, `strobe`, `timeSlice`;
   - utilitário: `depthMap` (só `object3d`/`model3d`), `channelShuffle`, `alphaFromLuma`.
   O antigo `colorAdjust` (v1) não existe mais: use `brightnessContrast`, `saturation` e `hueShift`.
 - Transições: `fade`, `slideLeft`, `slideRight`, `slideUp`, `slideDown`, `zoomIn`, `zoomOut`, `spin`, `blur`, `wipeLeft`, `wipeRight`.

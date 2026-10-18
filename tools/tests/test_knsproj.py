@@ -417,6 +417,51 @@ class Format8Tests(unittest.TestCase):
         self.assertEqual(8, kns_migrate.migrate(minimal(formatVersion=7), 8)["formatVersion"])
 
 
+class Format9Tests(unittest.TestCase):
+    """Format v9: the editor view of the viewport and the TimeSlice effect."""
+
+    def codes(self, doc):
+        return [i["code"] for i in cli.validate_project(doc, None).issues]
+
+    def test_editor_view_is_valid(self):
+        view = {"mode": "editor", "target": [0, 0, 0], "yaw": 28, "pitch": 18, "distance": 2600, "fov": 40}
+        self.assertEqual([], self.codes(minimal(editorView=view)))
+        self.assertEqual([], self.codes(minimal(editorView={})))
+
+    def test_invalid_editor_view(self):
+        self.assertIn("schema", self.codes(minimal(editorView={"mode": "orbit"})))
+        self.assertIn("schema", self.codes(minimal(editorView={"distance": 5})))
+        self.assertIn("schema", self.codes(minimal(editorView={"pitch": 120})))
+
+    def test_time_slice_effect(self):
+        layer = {"id": "s", "type": "shape", "shape": {"kind": "rectangle"}, "effects": [
+            {"type": "timeSlice", "slices": 8, "angle": 0, "offset": 3, "order": "center", "smooth": 0.5}]}
+        self.assertEqual([], self.codes(minimal(layers=[layer])))
+        layer["effects"][0]["order"] = "sideways"
+        self.assertIn("schema", self.codes(minimal(layers=[layer])))
+
+    def roto_project(self, roto):
+        assets = [{"id": "src", "type": "video", "path": "assets/a.mp4"}, {"id": "cut", "type": "video", "path": "assets/b.mp4"}]
+        layer = {"id": "v", "type": "video", "video": {"asset": "cut", "alphaPacked": True, "roto": roto}}
+        return minimal(assets=assets, layers=[layer])
+
+    def test_roto_brush(self):
+        good = {"source": "src", "sourceStart": 0.5, "duration": 3, "frames": [
+            {"time": 0, "strokes": [{"mode": "add", "size": 0.05, "points": [[0.4, 0.5], [0.5, 0.55]]}]}]}
+        self.assertEqual([], self.codes(self.roto_project(good)))
+        self.assertEqual(["roto.source"], self.codes(self.roto_project({**good, "source": "cut2"})))
+        self.assertEqual(["roto.time"], self.codes(self.roto_project({**good, "frames": [{"time": 9, "strokes": []}]})))
+        # The schema bounds the ranges and reports first; Kotlin reports roto.stroke / roto.range for the same input.
+        self.assertIn("schema", self.codes(self.roto_project({**good, "frames": [{"time": 0, "strokes": [{"points": [[2, 0.5]]}]}]})))
+        self.assertIn("schema", self.codes(self.roto_project({**good, "frames": [{"time": 0, "strokes": [{"mode": "paint", "points": [[0.5, 0.5]]}]}]})))
+        self.assertIn("schema", self.codes(self.roto_project({**good, "duration": 0.5, "sourceStart": -1})))
+
+    def test_version_8_documents_migrate_to_9(self):
+        migrated = kns_migrate.migrate(minimal(formatVersion=8), 9)
+        self.assertEqual(9, migrated["formatVersion"])
+        self.assertNotIn("editorView", migrated)
+
+
 class ExampleTests(unittest.TestCase):
     """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
 
@@ -425,7 +470,7 @@ class ExampleTests(unittest.TestCase):
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
     def test_expected_examples_exist(self):
-        self.assertEqual(20, len(example_dirs("basicos")))
+        self.assertEqual(23, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
         self.assertGreaterEqual(len(example_dirs("erros")), 5)
         self.assertEqual(12, len(example_dirs("efeitos")))
@@ -483,11 +528,12 @@ class ExampleTests(unittest.TestCase):
         self.assertTrue(pack_skill.is_up_to_date(), "run: python3 tools/pack_skill.py")
         with zipfile.ZipFile(pack_skill.ZIP_PATH) as z:
             names = z.namelist()
-        self.assertIn("knsproj/SKILL.md", names)
-        self.assertIn("knsproj/tools/knsproj/__main__.py", names)
-        self.assertIn("knsproj/schema/knsproj-v1.schema.json", names)
-        self.assertIn("knsproj/schema/knsproj-v3.schema.json", names)
-        self.assertIn("knsproj/docs/expressoes.md", names)
+        self.assertIn("SKILL.md", names)
+        self.assertIn("tools/knsproj/__main__.py", names)
+        self.assertIn("schema/knsproj-v1.schema.json", names)
+        self.assertIn("schema/knsproj-v3.schema.json", names)
+        self.assertIn("docs/expressoes.md", names)
+        self.assertFalse([n for n in names if n.startswith("knsproj/")], "the zip must not wrap everything in a knsproj/ folder")
         self.assertFalse([n for n in names if "__pycache__" in n or n.endswith(".pyc")])
 
 

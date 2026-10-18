@@ -1,0 +1,30 @@
+{
+  "format": "knsproj",
+  "formatVersion": 9,
+  "generator": "knsproj skill examples",
+  "meta": { "title": "Vista do editor" },
+  "composition": { "width": 1080, "height": 1920, "fps": 30, "duration": 4, "background": "#101522" },
+  "editorView": { "mode": "editor", "target": [0, 0, 0], "yaw": 35, "pitch": 20, "distance": 3600, "fov": 40 },
+  "layers": [
+    {
+      "id": "cena-camera",
+      "type": "camera",
+      "start": 0,
+      "duration": 4,
+      "camera": {
+        "aim": "rotation",
+        "position": { "keyframes": [ { "time": 0, "value": [0, 0, -3200] }, { "time": 4, "value": [0, 0, -2000] } ] },
+        "rotation": [0, 0, 0],
+        "fov": 40
+      }
+    },
+    {
+      "id": "cubo-central",
+      "type": "object3d",
+      "start": 0,
+      "duration": 4,
+      "transform3d": { "rotation": { "keyframes": [ { "time": 0, "value": [-20, 0, 0] }, { "time": 4, "value": [-20, 360, 0] } ] } },
+      "object3d": { "primitive": "cube", "size": 500, "material": { "color": "#FFC857" } }
+    }
+  ]
+}

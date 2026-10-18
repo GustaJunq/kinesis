@@ -1,0 +1,47 @@
+{
+  "format": "knsproj",
+  "formatVersion": 9,
+  "generator": "knsproj skill examples",
+  "meta": { "title": "Recorte com Roto Brush" },
+  "composition": { "width": 480, "height": 270, "fps": 30, "duration": 4, "background": "#101522" },
+  "assets": [
+    { "id": "origem", "type": "video", "path": "assets/origem.mp4", "name": "origem.mp4", "mimeType": "video/mp4", "width": 480, "height": 270, "duration": 4, "hasAudio": true },
+    { "id": "recorte", "type": "video", "path": "assets/recorte.mp4", "name": "recorte.mp4", "mimeType": "video/mp4", "width": 960, "height": 270, "duration": 4, "hasAudio": true }
+  ],
+  "layers": [
+    {
+      "id": "fundo-colorido",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "shape": { "kind": "rectangle", "size": [480, 270], "fill": { "color": "#2B6CB0" } }
+    },
+    {
+      "id": "origem-oculta",
+      "type": "video",
+      "start": 0,
+      "duration": 4,
+      "visible": false,
+      "video": { "asset": "origem" }
+    },
+    {
+      "id": "recorte-do-objeto",
+      "type": "video",
+      "start": 0,
+      "duration": 4,
+      "video": {
+        "asset": "recorte",
+        "alphaPacked": true,
+        "roto": {
+          "source": "origem",
+          "sourceStart": 0,
+          "duration": 4,
+          "frames": [
+            { "time": 0, "strokes": [ { "mode": "add", "size": 0.08, "points": [[0.45, 0.5], [0.5, 0.55], [0.55, 0.5]] }, { "mode": "remove", "size": 0.05, "points": [[0.7, 0.3], [0.75, 0.35]] } ] },
+            { "time": 2, "strokes": [ { "mode": "add", "size": 0.06, "points": [[0.6, 0.5]] } ] }
+          ]
+        }
+      }
+    }
+  ]
+}

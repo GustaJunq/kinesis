@@ -8,6 +8,7 @@ import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerTree
 import dev.kinesis.core.model.LayerType
+import dev.kinesis.core.model.RotoBrush
 import dev.kinesis.core.math.Vec2
 
 /**
@@ -24,11 +25,13 @@ object MediaSwap {
      * @param scale factor for the layer's scale when the new file has fewer pixels than the original.
      * @param alphaPacked the new video holds colour and alpha side by side.
      * @param muted whether the new copy is silent (the new file has no sound).
+     * @param roto the Roto Brush recipe of the new video, when it is a cut-out made by hand.
      * @return the project and the id of the new layer.
      */
     fun replace(
         project: KnsProject, layerId: String, asset: Asset, name: String,
         sourceStart: Double? = null, scale: Float = 1f, alphaPacked: Boolean? = null, muted: Boolean? = null,
+        roto: RotoBrush? = null,
     ): Pair<KnsProject, String> {
         val layer = LayerTree.find(project, layerId) ?: error("No layer $layerId")
         require(canSwap(layer)) { "Layer $layerId is not an image or a video" }
@@ -50,6 +53,7 @@ object MediaSwap {
                     sourceStart = sourceStart ?: v.sourceStart,
                     alphaPacked = alphaPacked ?: v.alphaPacked,
                     muted = muted ?: v.muted,
+                    roto = roto ?: v.roto,
                 )
             },
         )

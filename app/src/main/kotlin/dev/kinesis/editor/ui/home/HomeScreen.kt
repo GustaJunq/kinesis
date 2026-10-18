@@ -1,5 +1,7 @@
 package dev.kinesis.editor.ui.home
 
+import dev.kinesis.core.edit.FrameRate
+import androidx.compose.material3.Slider
 import android.app.Application
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -98,6 +100,7 @@ import dev.kinesis.editor.data.ProjectImportException
 import dev.kinesis.editor.data.ProjectStore
 import dev.kinesis.editor.data.ProjectSummary
 import dev.kinesis.editor.ui.common.OverlineLabel
+import dev.kinesis.editor.ui.common.kSliderColors
 import dev.kinesis.editor.ui.common.PillChip
 import dev.kinesis.editor.ui.onboarding.LanguageChoices
 import dev.kinesis.editor.ui.onboarding.ThemeChoices
@@ -708,14 +711,11 @@ private fun NewProjectDialog(onDismiss: () -> Unit, onCreate: (String, Int, Int,
             }
 
             SectionLabel(stringResource(R.string.fps_label))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                listOf(24.0, 30.0, 60.0).forEach { f ->
-                    OptionTile(f == fps, { fps = f }, Modifier.weight(1f)) {
-                        Text("${f.roundToInt()}", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                        Text("fps", style = KType.MonoSmall, color = KColors.TextSecondary)
-                    }
-                }
-            }
+            Slider(
+                value = fps.toFloat(), onValueChange = { fps = FrameRate.clamp(it.toDouble()) }, valueRange = FrameRate.MIN.toFloat()..FrameRate.MAX.toFloat(),
+                modifier = Modifier.fillMaxWidth(), colors = kSliderColors(),
+            )
+            Text("${fps.roundToInt()} fps", style = KType.MonoSmall, color = KColors.TextSecondary)
 
             Spacer(Modifier.height(22.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

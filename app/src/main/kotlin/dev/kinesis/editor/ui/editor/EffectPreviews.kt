@@ -1,5 +1,7 @@
 package dev.kinesis.editor.ui.editor
 
+import dev.kinesis.core.anim.Animatable
+import dev.kinesis.core.anim.Keyframe
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -130,6 +132,12 @@ class EffectPreviews private constructor(private val context: Context) {
                     effects = listOf(effect),
                     transform3d = cube.transform3d.copy(rotation = anim(Vec3(-25f, 35f, 0f)), scale = anim(Vec3(0.45f, 0.45f, 0.45f))),
                 ))
+            }
+            key == "timeSlice" -> {
+                // Something that moves, so the strips show different moments.
+                val star = Factory.shape(p, 0.0, ShapeKind.STAR, "star")
+                val spin = Animatable(0f, listOf(Keyframe(0.0, 0f), Keyframe(4.0, 1440f)))
+                listOf(image, star.copy(effects = listOf(effect), transform = star.transform.copy(scale = anim(Vec2(0.9f, 0.9f)), rotation = spin)))
             }
             key in SHAPE_SUBJECT -> {
                 val star = Factory.shape(p, 0.0, ShapeKind.STAR, "star")

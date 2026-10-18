@@ -47,6 +47,22 @@ import dev.kinesis.core.math.Mat4
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.model.CameraAim
+import dev.kinesis.core.model.EditorView
+import dev.kinesis.core.model.EditorViewMode
+import dev.kinesis.core.scene.EditorCamera
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import dev.kinesis.editor.R
 import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerTree
@@ -92,7 +108,8 @@ fun Viewport(
     val paddingPx = with(density) { 12f * this.density }
     val errorCallback by rememberUpdatedState(onRenderError)
     val renderer = remember {
-        PreviewRenderer(context.assets, vm.files, paddingPx, proxies = { id -> if (AppSettings.useProxies) vm.proxies.get(id) else null }) { msg -> errorCallback(msg) }
+        val lowMemory = (context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.isLowRamDevice == true
+        PreviewRenderer(context.assets, vm.files, paddingPx, proxies = { id -> if (AppSettings.useProxies) vm.proxies.get(id) else null }, lowMemory = lowMemory) { msg -> errorCallback(msg) }
     }
     val glView = remember {
         GLSurfaceView(context).apply {
@@ -103,6 +120,7 @@ fun Viewport(
             renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
         }
     }
+    SideEffect { renderer.onRefine = { glView.requestRender() } }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, e ->
@@ -119,9 +137,16 @@ fun Viewport(
         }
     }
 
+    val view by vm.editorView.collectAsState()
+    val editorCamera = remember(view.mode, view.target, view.yaw, view.pitch, view.distance, view.fov, project.composition.width, project.composition.height) {
+        if (view.mode == EditorViewMode.EDITOR) EditorCamera.state(view, project.composition) else null
+    }
+
+    val livePose by vm.realCamera.pose.collectAsState()
+
     // Push state to the GL thread after every successful composition.
     SideEffect {
-        renderer.state = PreviewState(project, time, playing, mediaRevision, AppSettings.previewQuality3D, AppSettings.previewScale)
+        renderer.state = PreviewState(project, time, playing, mediaRevision, AppSettings.previewQuality3D, AppSettings.previewScale, editorCamera, livePose)
         glView.requestRender()
     }
 
@@ -135,7 +160,9 @@ fun Viewport(
 
     val typefaces = remember { TypefaceProvider { vm.files.file(it) } }
     val geometry = remember { SceneGeometry(typefaces) { vm.current } }
-    val scene = remember(project, time) { SceneEvaluator.evaluate(project, time) }
+    val sceneOfCamera = remember(project, time) { SceneEvaluator.evaluate(project, time) }
+    // In the editor view everything (outlines, handles, taps) follows the free camera.
+    val scene = remember(sceneOfCamera, editorCamera) { editorCamera?.let(sceneOfCamera::withCamera) ?: sceneOfCamera }
 
     var sizeW by remember { mutableIntStateOf(1) }
     var sizeH by remember { mutableIntStateOf(1) }
@@ -145,6 +172,7 @@ fun Viewport(
     fun toView(p: Vec2) = Offset(vp.left + (p.x + project.composition.width / 2f) * scale, vp.top + (p.y + project.composition.height / 2f) * scale)
 
     val currentScene by rememberUpdatedState(scene)
+    val currentMode by rememberUpdatedState(view.mode)
     val currentVp by rememberUpdatedState(vp)
     val currentTool by rememberUpdatedState(tool3D)
     val touchSlop = LocalViewConfiguration.current.touchSlop
@@ -170,6 +198,7 @@ fun Viewport(
                             ?.takeIf { (_, o) -> hypot(o.x - down.position.x, o.y - down.position.y) <= handleRadius }
                             ?.first
                         var gesture: Gesture? = null
+                        var nav: NavGesture? = null
                         var moved = false
                         var pan = Offset.Zero
                         var zoom = 1f
@@ -182,20 +211,27 @@ fun Viewport(
                             rotation += event.calculateRotation()
                             if (!moved && (pan.getDistance() > touchSlop || abs(zoom - 1f) > 0.02f || abs(rotation) > 2f || event.changes.size > 1)) {
                                 moved = true
-                                if (lightHit != null) {
-                                    vm.select(lightHit.layerId)
-                                } else if (vm.selection.value == null) {
-                                    geometry.hitTest(currentScene, toComp(down.position), null)?.let { vm.select(it) }
+                                when (currentMode) {
+                                    EditorViewMode.EDITOR -> nav = NavGesture(vm, s, p0.composition.height)
+                                    EditorViewMode.INSIDE -> gesture = startGesture(vm, currentScene, toComp(down.position), s, handleRadius, currentTool, geometry, inside = true)
+                                    EditorViewMode.CAMERA -> {
+                                        if (lightHit != null) {
+                                            vm.select(lightHit.layerId)
+                                        } else if (vm.selection.value == null) {
+                                            geometry.hitTest(currentScene, toComp(down.position), null)?.let { vm.select(it) }
+                                        }
+                                        gesture = startGesture(vm, currentScene, toComp(down.position), s, handleRadius, currentTool, geometry)
+                                    }
                                 }
-                                gesture = startGesture(vm, currentScene, toComp(down.position), s, handleRadius, currentTool, geometry)
                             }
                             if (moved) {
+                                nav?.update(pan, zoom, event.changes.count { it.pressed })
                                 gesture?.update(Vec2(pan.x / s, pan.y / s), zoom, rotation)
                                 event.changes.forEach { if (it.positionChanged()) it.consume() }
                             }
                         }
                         if (moved) {
-                            vm.endGesture()
+                            if (gesture != null) vm.endGesture()
                         } else {
                             vm.select(lightHit?.layerId ?: geometry.hitTest(currentScene, toComp(down.position), vm.selection.value))
                         }
@@ -209,6 +245,7 @@ fun Viewport(
                 size = androidx.compose.ui.geometry.Size(vp.width, vp.height),
                 style = Stroke(1f),
             )
+            if (view.mode == EditorViewMode.EDITOR) drawEditorGizmos(scene, sceneOfCamera, project, ::toView, density.density)
             // Null objects are not in the video: show them as outlines so they can be seen and tapped.
             geometry.topDown(scene).forEach { n ->
                 if (n !is NullNode || n.layerId == selection) return@forEach
@@ -281,7 +318,73 @@ fun Viewport(
                 null -> Unit
             }
         }
+        ViewControls(vm, view, Modifier.align(Alignment.TopStart).padding(8.dp))
     }
+}
+
+/** The camera pyramid, the composition frame and the world axes, seen from the editor camera (the scene's own is [of]). */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawEditorGizmos(
+    seen: FrameScene, of: FrameScene, project: KnsProject, toView: (Vec2) -> Offset, density: Float,
+) {
+    val cam = seen.camera
+    fun at(w: Vec3): Offset? = cam.project(w)?.let(toView)
+    fun line(a: Vec3, b: Vec3, color: Color, width: Float, dash: Boolean = false) {
+        val p = at(a) ?: return
+        val q = at(b) ?: return
+        drawLine(color, p, q, strokeWidth = width * density, pathEffect = if (dash) PathEffect.dashPathEffect(floatArrayOf(14f, 10f)) else null)
+    }
+    // Composition frame on z = 0
+    val frame = EditorCamera.compositionFrame(project.composition)
+    for (i in 0 until 4) line(frame[i], frame[(i + 1) % 4], Color.White.copy(alpha = 0.55f), 1.5f, dash = true)
+    // World axes at the origin
+    val len = project.composition.height * 0.12f
+    line(Vec3.ZERO, Vec3(len, 0f, 0f), KColors.AxisX, 2.5f)
+    line(Vec3.ZERO, Vec3(0f, -len, 0f), KColors.AxisY, 2.5f)
+    line(Vec3.ZERO, Vec3(0f, 0f, -len), KColors.AxisZ, 2.5f)
+    // The scene camera as a pyramid: apex = the camera, base = the picture it frames
+    val f = EditorCamera.frustum(of.camera, project.composition.aspect, EditorCamera.gizmoDepth(of.camera, project.composition))
+    val color = KColors.Accent
+    for (c in f.corners) line(f.apex, c, color.copy(alpha = 0.8f), 1.5f)
+    for (i in 0 until 4) line(f.corners[i], f.corners[(i + 1) % 4], color, 2.5f)
+    line(f.corners[0], f.upTip, color, 2f)
+    line(f.corners[1], f.upTip, color, 2f)
+    at(f.apex)?.let { drawCircle(color, 5f * density, it) }
+}
+
+/** Switch between the editor view and the active camera, enter the camera to move it, auto-keyframe. */
+@Composable
+private fun ViewControls(vm: EditorViewModel, view: EditorView, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    Column(modifier, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+            ViewChip(stringResource(R.string.view_camera), view.mode != EditorViewMode.EDITOR) { vm.setViewMode(EditorViewMode.CAMERA) }
+            ViewChip(stringResource(R.string.view_editor), view.mode == EditorViewMode.EDITOR) { vm.setViewMode(EditorViewMode.EDITOR) }
+        }
+        Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+            when (view.mode) {
+                EditorViewMode.CAMERA, EditorViewMode.EDITOR -> ViewChip(stringResource(R.string.enter_camera), false) { vm.enterCamera() }
+                EditorViewMode.INSIDE -> {
+                    ViewChip(stringResource(R.string.exit_camera), true) { vm.exitCamera() }
+                    ViewChip("◆ " + stringResource(R.string.auto_keyframe), AppSettings.autoKeyframe) { AppSettings.setAutoKeyframe(context, !AppSettings.autoKeyframe) }
+                }
+            }
+            if (view.mode == EditorViewMode.EDITOR) ViewChip(stringResource(R.string.reset_view), false) { vm.resetEditorView() }
+        }
+    }
+}
+
+@Composable
+private fun ViewChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        color = if (selected) KColors.Background else KColors.TextPrimary,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .background(if (selected) KColors.Accent else KColors.Bar.copy(alpha = 0.85f), RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+    )
 }
 
 /** Distance a camera moves along its view direction for a pinch that doubles the zoom. */
@@ -338,6 +441,40 @@ private fun axisHandles(project: KnsProject, id: String, scene: FrameScene): Lis
     return axes.mapIndexedNotNull { i, a -> scene.camera.project(parent.transformPoint(pos + a))?.let { Triple(i, origin, it) } }
 }
 
+/**
+ * Navigation of the editor view: one finger orbits, two fingers slide and pinch. Works on the increments of the
+ * accumulated pan/zoom the pointer loop reports, so lifting or adding a finger never makes the view jump.
+ */
+private class NavGesture(private val vm: EditorViewModel, private val viewScale: Float, private val compHeight: Int) {
+    private var lastPan = Offset.Zero
+    private var lastZoom = 1f
+    private var lastPointers = 1
+
+    fun update(pan: Offset, zoom: Float, pointers: Int) {
+        if (pointers != lastPointers) {
+            lastPointers = pointers
+            lastPan = pan
+            lastZoom = zoom
+            return
+        }
+        val d = pan - lastPan
+        val z = if (lastZoom > 1e-4f) zoom / lastZoom else 1f
+        lastPan = pan
+        lastZoom = zoom
+        var v = vm.editorView.value
+        v = if (pointers >= 2) {
+            EditorCamera.zoom(EditorCamera.pan(v, d.x / viewScale, d.y / viewScale, compHeight), z)
+        } else {
+            EditorCamera.orbit(v, d.x, d.y)
+        }
+        vm.updateEditorView(v)
+    }
+}
+
+/** Writes a camera value, as a keyframe when [keyed] (auto-keyframe while inside the camera). */
+private fun <T> dev.kinesis.core.edit.AnimProp<T>.put(layer: Layer, local: Double, value: T, keyed: Boolean): Layer =
+    if (keyed) setKeyed(layer, local, value) else setValue(layer, local, value)
+
 private fun startGesture(
     vm: EditorViewModel,
     scene: FrameScene,
@@ -346,8 +483,11 @@ private fun startGesture(
     handleRadiusPx: Float,
     tool: Tool3D,
     geometry: SceneGeometry,
+    /** Inside the camera: the drag moves the active camera whatever is selected, recording keyframes with auto-keyframe on. */
+    inside: Boolean = false,
 ): Gesture? {
-    val id = vm.selection.value ?: return null
+    val id = (if (inside) vm.activeCameraId() else null) ?: vm.selection.value ?: return null
+    val keyed = inside && AppSettings.autoKeyframe
     val project = vm.current
     var layer = LayerTree.find(project, id) ?: return null
     if (layer.locked) return null
@@ -369,8 +509,8 @@ private fun startGesture(
                 val forward = Mat4.rotationXYZ(rot0).transformVector(Vec3(0f, 0f, 1f))
                 return Gesture { pan, zoom, rotation ->
                     vm.updateLayer(id, key) { l ->
-                        var x = rotProp.setValue(l, local, Vec3(rot0.x + pan.y * 0.2f, rot0.y - pan.x * 0.2f, rot0.z + rotation))
-                        if (abs(zoom - 1f) > 0.001f) x = prop.setValue(x, local, pos0 + forward * ((zoom - 1f) * CAMERA_DOLLY))
+                        var x = rotProp.put(l, local, Vec3(rot0.x + pan.y * 0.2f, rot0.y - pan.x * 0.2f, rot0.z + rotation), keyed)
+                        if (abs(zoom - 1f) > 0.001f) x = prop.put(x, local, pos0 + forward * ((zoom - 1f) * CAMERA_DOLLY), keyed)
                         x
                     }
                 }
@@ -385,7 +525,7 @@ private fun startGesture(
                 val pitch = (pitch0 + Math.toRadians(pan.y * 0.3).toFloat()).coerceIn(-1.48f, 1.48f)
                 val r = r0 / zoom.coerceAtLeast(0.05f)
                 val offset = Vec3(r * cos(pitch) * sin(yaw), -r * sin(pitch), -r * cos(pitch) * cos(yaw))
-                vm.setProperty(id, prop, target + offset, key)
+                vm.updateLayer(id, key) { l -> prop.put(l, local, target + offset, keyed) }
             }
         }
         layer.type == LayerType.LIGHT -> {

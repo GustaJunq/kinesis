@@ -45,6 +45,7 @@ object AppSettings {
     private const val PREVIEW_QUALITY_3D = "preview_quality_3d"
     private const val MIRROR_DOCUMENTS = "mirror_documents"
     private const val USE_PROXIES = "use_proxies"
+    private const val AUTO_KEYFRAME = "auto_keyframe"
 
     var themeMode by mutableStateOf(ThemeMode.DARK)
         private set
@@ -73,6 +74,10 @@ object AppSettings {
     var useProxies by mutableStateOf(true)
         private set
 
+    /** Moving the camera from inside it (viewport gestures) records keyframes. */
+    var autoKeyframe by mutableStateOf(false)
+        private set
+
     private var loaded = false
 
     fun init(context: Context) {
@@ -87,6 +92,12 @@ object AppSettings {
         previewQuality3D = p.getInt(PREVIEW_QUALITY_3D, 1).coerceIn(0, 2)
         mirrorToDocuments = p.getBoolean(MIRROR_DOCUMENTS, true)
         useProxies = p.getBoolean(USE_PROXIES, true)
+        autoKeyframe = p.getBoolean(AUTO_KEYFRAME, false)
+    }
+
+    fun setAutoKeyframe(context: Context, on: Boolean) {
+        autoKeyframe = on
+        prefs(context).edit().putBoolean(AUTO_KEYFRAME, on).apply()
     }
 
     fun saveEasing(context: Context, easing: Easing) {

@@ -270,6 +270,48 @@ data class EqBand(
 
 /** Video or audio clip. */
 @Serializable
+enum class RotoMode {
+    @SerialName("add") ADD,
+    @SerialName("remove") REMOVE,
+}
+
+/** One brush stroke of the Roto Brush: [points] are normalised (0..1) in the upright frame, [size] is the brush diameter as a fraction of the frame's shorter side. */
+@Serializable
+data class RotoStroke(
+    val mode: RotoMode = RotoMode.ADD,
+    val size: Float = 0.06f,
+    val points: List<Vec2> = emptyList(),
+)
+
+/** The strokes painted on one frame, [time] seconds after [RotoBrush.sourceStart]. */
+@Serializable
+data class RotoFrame(val time: Double, val strokes: List<RotoStroke> = emptyList())
+
+/**
+ * The recipe of a Roto Brush cut-out: the video it was made from and the strokes the person painted. The object is
+ * followed from each painted frame to the next; painting a frame again corrects the following ones. The packed-alpha
+ * video of the layer is the result; this is what is needed to make it again.
+ */
+@Serializable
+data class RotoBrush(
+    /** Asset id of the source video. */
+    val source: String,
+    /** Seconds into the source where the cut-out starts. */
+    val sourceStart: Double = 0.0,
+    /** Seconds of the source that the cut-out covers. */
+    val duration: Double,
+    val frames: List<RotoFrame> = emptyList(),
+) {
+    companion object {
+        const val MAX_FRAMES = 240
+        const val MAX_STROKES = 64
+        const val MAX_POINTS = 2000
+        const val MIN_SIZE = 0.005f
+        const val MAX_SIZE = 0.5f
+    }
+}
+
+@Serializable
 data class MediaContent(
     val asset: String,
     /** Seconds into the media file where the clip starts (trim in-point). */
@@ -289,6 +331,8 @@ data class MediaContent(
     val alphaPacked: Boolean = false,
     /** Parametric equalizer (format v8), applied after the volume of the clip; empty = off. */
     val eq: List<EqBand> = emptyList(),
+    /** Roto Brush (format v9): how this packed-alpha video was cut out, so it can be edited again. */
+    val roto: RotoBrush? = null,
 ) {
     /** Media time (seconds) shown at layer-local time [local]. */
     fun sourceTime(local: Double): Double = sourceStart + local * speed

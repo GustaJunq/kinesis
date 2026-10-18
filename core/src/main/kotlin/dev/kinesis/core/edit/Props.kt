@@ -82,6 +82,9 @@ class AnimProp<T>(
     /** Sets the value at [localTime]: updates/creates a keyframe if the property is animated, else the static value. */
     fun setValue(layer: Layer, localTime: Double, value: T): Layer = set(layer, KeyframeOps.setValue(get(layer), localTime, value))
 
+    /** Sets the value at [localTime] as a keyframe, even if the property was static (auto-keyframe). */
+    fun setKeyed(layer: Layer, localTime: Double, value: T): Layer = set(layer, KeyframeOps.upsert(get(layer), localTime, value))
+
     /** Adds a keyframe with the current value at [localTime], or removes the existing one. */
     fun toggleKeyframe(layer: Layer, localTime: Double): Layer = set(layer, KeyframeOps.toggle(get(layer), localTime, interpolate))
 

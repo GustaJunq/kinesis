@@ -41,7 +41,10 @@ class FrameScene(
     val nodes: List<RenderNode>,
     /** Panorama and strength of reflections/ambient light of 3D layers. */
     val environment: Environment = Environment(),
-)
+) {
+    /** The same frame seen from another camera (the editor view). */
+    fun withCamera(camera: CameraState) = FrameScene(time, width, height, background, camera, ambient, lights, nodes, environment)
+}
 
 class CameraState(
     val position: Vec3,
@@ -53,6 +56,8 @@ class CameraState(
     val height: Int,
     /** Depth of field, when the active camera has it enabled. */
     val dof: ResolvedDof? = null,
+    /** World direction that points up on screen. */
+    val up: Vec3 = Vec3(0f, -1f, 0f),
 ) {
     val viewProjection: Mat4 = projection * view
 
@@ -99,6 +104,8 @@ class ResolvedEffect(
     val transform: Affine2D? = null,
     /** Echo: the layer at earlier times, oldest last, with their opacity. */
     val echoes: List<EchoSample> = emptyList(),
+    /** TimeSlice: access to the layer at earlier frames. */
+    val slices: TimeSliceSource? = null,
 ) {
     fun f(name: String): Float = values[name] as Float
     fun i(name: String): Int = Math.round(values[name] as Float)
@@ -115,6 +122,13 @@ class ResolvedEffect(
 }
 
 class EchoSample(val node: RenderNode, val opacity: Float)
+
+/**
+ * TimeSlice: [frame] is the composition frame being rendered (in the layer's container); [nodeAt] evaluates the
+ * layer, with only the effects placed before the TimeSlice, [framesBack] frames earlier (null when the layer is not
+ * active then). It is lazy: the compositor asks only for frames its cache does not hold.
+ */
+class TimeSliceSource(val layerId: String, val frame: Int, val nodeAt: (framesBack: Int) -> RenderNode?)
 
 data class ResolvedMask(
     val shape: MaskShape,

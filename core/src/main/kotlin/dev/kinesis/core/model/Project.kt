@@ -3,6 +3,7 @@
 package dev.kinesis.core.model
 
 import dev.kinesis.core.math.Color
+import dev.kinesis.core.math.Vec3
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -12,7 +13,7 @@ import kotlin.math.roundToInt
 const val FORMAT_ID = "knsproj"
 
 /** Format version written by this build. Older versions are migrated on load; newer ones are rejected. */
-const val FORMAT_VERSION = 8
+const val FORMAT_VERSION = 9
 
 /** Root of a `.knsproj` document (`project.json`). */
 @Serializable
@@ -25,6 +26,8 @@ data class KnsProject(
     val assets: List<Asset> = emptyList(),
     /** Time references on the timeline, independent of the layers. Order is not significant. */
     val markers: List<Marker> = emptyList(),
+    /** The viewport's own camera and view mode (format v9). Editor state only: never rendered into the video. */
+    val editorView: EditorView? = null,
     /** Top-level layers in painter's order: index 0 is drawn first (bottom), the last layer is on top. */
     @EncodeDefault val layers: List<Layer> = emptyList(),
 ) {
@@ -41,6 +44,44 @@ data class Marker(
     /** `#RRGGBB`; null uses the default colour. */
     val color: String? = null,
 )
+
+/** What the editor viewport shows. */
+@Serializable
+enum class EditorViewMode {
+    /** The picture the active camera renders (what is exported); gestures move the selected layer. */
+    @SerialName("camera") CAMERA,
+
+    /** A free work camera looking at the scene, drawn with a gizmo of the scene's camera; gestures navigate. */
+    @SerialName("editor") EDITOR,
+
+    /** Seen through the active camera, but gestures move that camera (keyframes when auto-keyframe is on). */
+    @SerialName("inside") INSIDE,
+}
+
+/**
+ * The free "editor view" of the viewport (format v9): a camera that orbits [target] at [distance], looking from the
+ * direction given by [yaw] and [pitch]. It is saved with the project so the view is the same when it is reopened, but
+ * it is not part of what is rendered, and changing it is not an undo step.
+ */
+@Serializable
+data class EditorView(
+    val mode: EditorViewMode = EditorViewMode.CAMERA,
+    /** Point the editor camera looks at, in composition pixels (origin at the centre, +y down). */
+    val target: Vec3 = Vec3.ZERO,
+    /** Degrees: 0 looks along +z; positive turns the camera towards +x. */
+    val yaw: Float = DEFAULT_YAW,
+    /** Degrees: positive looks down from above. */
+    val pitch: Float = DEFAULT_PITCH,
+    /** Pixels from [target]. */
+    val distance: Float = 2600f,
+    /** Vertical field of view in degrees. */
+    val fov: Float = 40f,
+) {
+    companion object {
+        const val DEFAULT_YAW = 28f
+        const val DEFAULT_PITCH = 18f
+    }
+}
 
 @Serializable
 data class ProjectMeta(

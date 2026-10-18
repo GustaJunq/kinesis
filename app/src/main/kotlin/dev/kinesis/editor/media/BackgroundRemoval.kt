@@ -10,13 +10,10 @@ import com.google.mediapipe.framework.image.ByteBufferExtractor
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.imagesegmenter.ImageSegmenter
-import dev.kinesis.core.video.I420Frame
 import dev.kinesis.core.video.MaskTools
-import dev.kinesis.core.video.Yuv
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import kotlin.math.ceil
 import kotlin.math.max
 
 /**
@@ -124,63 +121,26 @@ object BackgroundRemoval {
         context: Context, source: File, target: File, startUs: Long, endUs: Long,
         progress: (Float) -> Unit, cancelled: () -> Boolean,
     ): Result? {
-        val reader = YuvVideoReader(source)
         val segmenter = PersonSegmenter(context)
+        var bitmap: Bitmap? = null
+        var previous: FloatArray? = null
         try {
-            val info = reader.info
-            val step = ceil(max(info.width, info.height) / MAX_VIDEO_SIDE.toDouble()).toInt().coerceAtLeast(1)
-            val pw = info.width / step
-            val ph = (info.height / step) and 1.inv()
-            val (rw, rh0) = MaskTools.rotatedSize(pw, ph, info.rotation)
-            val rh = rh0 and 1.inv()
-            if (rw < 16 || rh < 16) throw IOException("video too small")
-
-            val src = I420Frame(info.width, info.height)
-            val raw = IntArray(pw * ph)
-            val upright = IntArray(pw * ph)
-            val packed = IntArray(2 * rw * rh)
-            val outFrame = I420Frame(2 * rw, rh)
-            val outDirect = DirectI420(2 * rw, rh)
-            val bitmap = Bitmap.createBitmap(rw, rh, Bitmap.Config.ARGB_8888)
-            var previous: FloatArray? = null
-            var smoothed = FloatArray(rw * rh)
-            val writer = YuvVideoWriter(
-                target, 2 * rw, rh, info.frameRate, rotation = 0, audioSource = source,
-                audioStartUs = startUs, audioEndUs = endUs, bitsPerPixel = 0.14,
+            val packed = PackedAlpha.render(
+                source, target, startUs, endUs,
+                { _, frame, w, h ->
+                    val bmp = bitmap?.takeIf { it.width == w && it.height == h } ?: Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also { bitmap = it }
+                    bmp.setPixels(frame, 0, w, 0, 0, w, h)
+                    val mask = MaskTools.refine(segmenter.segment(bmp))
+                    val smoothed = MaskTools.smoothInTime(previous, mask, 0.65f)
+                    previous = smoothed
+                    smoothed
+                },
+                progress, cancelled, MAX_VIDEO_SIDE,
             )
-            var ok = false
-            try {
-                val span = (endUs - startUs).coerceAtLeast(1L)
-                reader.read(startUs, endUs) { frame, pts ->
-                    if (cancelled()) return@read false
-                    frame.toArrays(src)
-                    Yuv.i420ToArgb(src.y, info.width, src.u, src.chromaWidth, src.v, src.chromaWidth, pw * step, ph * step, step, raw)
-                    MaskTools.rotateArgb(raw, pw, ph, info.rotation, upright)
-                    // A crop to the even height (rh) is the same array: the extra last row of an odd rotation is dropped.
-                    bitmap.setPixels(upright, 0, rw, 0, 0, rw, rh)
-                    val mask = MaskTools.refine(segmenter.segment(bitmap))
-                    MaskTools.smoothInTime(previous, mask, 0.65f, smoothed)
-                    previous = smoothed.copyOf()
-                    MaskTools.packAlpha(upright, smoothed, rw, rh, packed)
-                    Yuv.argbToI420(packed, 2 * rw, rh, outFrame)
-                    outDirect.fromArrays(outFrame)
-                    writer.writeFrame(outDirect, pts - startUs)
-                    progress(((pts - startUs).toFloat() / span).coerceIn(0f, 1f))
-                    true
-                }
-                if (cancelled()) return null
-                writer.finish()
-                ok = true
-            } finally {
-                writer.close()
-                bitmap.recycle()
-                if (!ok) target.delete()
-            }
-            val shown = if (info.rotation % 180 == 90) info.height else info.width
-            return Result(scale = shown.toFloat() / rw, hasAudio = writer.hasAudio)
+            return packed?.let { Result(it.scale, it.hasAudio) }
         } finally {
+            bitmap?.recycle()
             segmenter.close()
-            reader.close()
         }
     }
 

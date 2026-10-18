@@ -28,6 +28,7 @@ import java.io.File
  * - `schema/knsproj-v6.schema.json` — the v5 schema plus shading, shadows, depth of field, environment, 3D text, packed alpha;
  * - `schema/knsproj-v7.schema.json` — the v6 schema with `cyclic.offset` as the skew of each cycle and the old shift as `cyclic.phase`;
  * - `schema/knsproj-v8.schema.json` — the v7 schema plus timeline `markers` and the `eq` of audio and video clips;
+ * - `schema/knsproj-v9.schema.json` — the v8 schema plus the `editorView` of the viewport (and the TimeSlice effect);
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -62,6 +63,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV8() = check(File(root, "schema/knsproj-v8.schema.json"), JsonPretty.print(buildSchemaV8()) + "\n")
+
+    @Test
+    fun schemaV9() = check(File(root, "schema/knsproj-v9.schema.json"), JsonPretty.print(buildSchemaV9()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -402,6 +406,73 @@ class RegistryArtifactsTest {
         val m = LinkedHashMap(v7)
         m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v8.schema.json")
         m["title"] = str("Kinesis project (.knsproj) — project.json, format version 8")
+        m["properties"] = JsonObject(props)
+        m["\$defs"] = JsonObject(defs)
+        return JsonObject(m)
+    }
+
+    private fun buildSchemaV9(): JsonObject {
+        val v8 = buildSchemaV8()
+        val defs = LinkedHashMap(v8.getValue("\$defs").jsonObject)
+        defs["editorView"] = obj(
+            "description" to str("The free camera of the editor viewport and which view it shows. Editor state: never rendered into the video."),
+            "type" to str("object"),
+            "properties" to obj(
+                "mode" to obj("enum" to JsonArray(listOf(str("camera"), str("editor"), str("inside"))), "description" to str("camera = the active camera's picture (default); editor = the free camera; inside = through the active camera, gestures move it.")),
+                "target" to obj("\$ref" to str("#/\$defs/vec3"), "description" to str("Point the editor camera looks at (composition pixels).")),
+                "yaw" to num(-360, 360, "Degrees; 0 looks along +z."),
+                "pitch" to num(-89, 89, "Degrees; positive looks down from above."),
+                "distance" to num(50, 200000, "Pixels from the target."),
+                "fov" to num(1, 170, "Vertical field of view in degrees."),
+            ),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        defs["rotoStroke"] = obj(
+            "description" to str("A brush stroke of the Roto Brush."),
+            "type" to str("object"),
+            "properties" to obj(
+                "mode" to obj("enum" to JsonArray(listOf(str("add"), str("remove"))), "description" to str("add = part of the object (default); remove = not part of it.")),
+                "size" to num(0.005, 0.5, "Brush diameter as a fraction of the frame\'s shorter side (default 0.06)."),
+                "points" to obj(
+                    "type" to str("array"), "minItems" to JsonPrimitive(1), "maxItems" to JsonPrimitive(2000),
+                    "items" to obj("type" to str("array"), "items" to obj("type" to str("number"), "minimum" to JsonPrimitive(0), "maximum" to JsonPrimitive(1)), "minItems" to JsonPrimitive(2), "maxItems" to JsonPrimitive(2)),
+                    "description" to str("Points [x, y] of the stroke, normalised 0..1 in the upright frame."),
+                ),
+            ),
+            "required" to JsonArray(listOf(str("points"))),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        defs["rotoFrame"] = obj(
+            "description" to str("The strokes painted on one frame."),
+            "type" to str("object"),
+            "properties" to obj(
+                "time" to num(0, 3600, "Seconds after roto.sourceStart."),
+                "strokes" to obj("type" to str("array"), "maxItems" to JsonPrimitive(64), "items" to ref("rotoStroke")),
+            ),
+            "required" to JsonArray(listOf(str("time"))),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        defs["rotoBrush"] = obj(
+            "description" to str("How a packed-alpha video was cut out with the Roto Brush: the source video and the strokes, so it can be edited again."),
+            "type" to str("object"),
+            "properties" to obj(
+                "source" to obj("type" to str("string"), "description" to str("Asset id of the source video.")),
+                "sourceStart" to num(0, 3600, "Seconds into the source where the cut-out starts (default 0)."),
+                "duration" to num(0.001, 3600, "Seconds of the source that the cut-out covers."),
+                "frames" to obj("type" to str("array"), "maxItems" to JsonPrimitive(240), "items" to ref("rotoFrame")),
+            ),
+            "required" to JsonArray(listOf(str("source"), str("duration"))),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        withProps(defs, "mediaContent", "roto" to ref("rotoBrush"))
+        val props = LinkedHashMap<String, JsonElement>()
+        for ((k, v) in v8.getValue("properties").jsonObject) {
+            props[k] = if (k == "formatVersion") obj("const" to JsonPrimitive(9)) else v
+            if (k == "markers") props["editorView"] = ref("editorView")
+        }
+        val m = LinkedHashMap(v8)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v9.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 9")
         m["properties"] = JsonObject(props)
         m["\$defs"] = JsonObject(defs)
         return JsonObject(m)

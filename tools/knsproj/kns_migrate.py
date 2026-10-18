@@ -98,7 +98,13 @@ def v7_to_v8(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7, 7: v7_to_v8}
+def v8_to_v9(doc):
+    """Version 9 only adds optional fields (editorView, the TimeSlice effect, Roto Brush strokes)."""
+    doc["formatVersion"] = 9
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7, 7: v7_to_v8, 8: v8_to_v9}
 
 
 def migrate(doc, to_version):
