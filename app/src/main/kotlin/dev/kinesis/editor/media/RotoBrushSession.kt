@@ -135,8 +135,6 @@ class RotoBrushSession(
     val status = ByteArray(frameCount)
     private val frames = RecordStore(File(workDir, "frames.bin"), width * height * 4, frameCount)
     private val masks = RecordStore(File(workDir, "masks.bin"), width * height, frameCount)
-    private val frameBytes = ByteArray(width * height * 4)
-    private val maskBytes = ByteArray(width * height)
     private var prepared = false
 
     fun timeOfFrame(i: Int): Double = i / fps
@@ -176,20 +174,22 @@ class RotoBrushSession(
 
     /** The picture of frame [i], upright ARGB, [width]×[height]. */
     fun frame(i: Int, into: IntArray) {
-        frames.read(i.coerceIn(0, frameCount - 1), frameBytes)
-        ByteBuffer.wrap(frameBytes).asIntBuffer().get(into)
+        val bytes = ByteArray(width * height * 4)       // local: the screen and a running step may both read
+        frames.read(i.coerceIn(0, frameCount - 1), bytes)
+        ByteBuffer.wrap(bytes).asIntBuffer().get(into)
     }
 
     /** The cut-out of frame [i] (0..1), or null when there is none yet. */
     fun mask(i: Int): FloatArray? {
         if (status[i].toInt() == 0) return null
-        masks.read(i, maskBytes)
-        return FloatArray(maskBytes.size) { (maskBytes[it].toInt() and 0xFF) / 255f }
+        val bytes = ByteArray(width * height)
+        masks.read(i, bytes)
+        return FloatArray(bytes.size) { (bytes[it].toInt() and 0xFF) / 255f }
     }
 
     private fun storeMask(i: Int, mask: FloatArray, state: Int) {
-        for (k in mask.indices) maskBytes[k] = (mask[k].coerceIn(0f, 1f) * 255f + 0.5f).toInt().toByte()
-        masks.write(i, maskBytes)
+        val bytes = ByteArray(mask.size) { (mask[it].coerceIn(0f, 1f) * 255f + 0.5f).toInt().toByte() }
+        masks.write(i, bytes)
         status[i] = state.toByte()
     }
 
