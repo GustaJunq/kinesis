@@ -1,5 +1,8 @@
 package dev.kinesis.core.format
 
+import dev.kinesis.core.anim.Animatable
+import dev.kinesis.core.anim.Easing
+import dev.kinesis.core.anim.Keyframe
 import dev.kinesis.core.anim.anim
 import dev.kinesis.core.edit.Factory
 import dev.kinesis.core.edit.Ids
@@ -151,10 +154,24 @@ object AureaImport {
                 // Aimed straight ahead; the field of view makes the plane z = 0 map one to one, as in the Aurea view.
                 val distance = kotlin.math.abs(rec.position.z).coerceAtLeast(1f)
                 val fov = Math.toDegrees(2 * kotlin.math.atan((comp.height / 2f) / distance.toDouble())).toFloat().coerceIn(10f, 120f)
+                val ch = rec.channels
+                fun animated(c: Channel, offset: Float): Animatable<Float> =
+                    if (c.v0 == c.v1) anim(c.v0 + offset) else
+                        Animatable(c.v0 + offset, listOf(Keyframe(0.0, c.v0 + offset, c.ease), Keyframe(c.frame1 / comp.fps, c.v1 + offset)))
+                fun vec(a: Animatable<Float>, b: Animatable<Float>, c: Animatable<Float>): Animatable<Vec3> {
+                    val times = (a.keyframes + b.keyframes + c.keyframes).map { it.time }.distinct().sorted()
+                    if (times.isEmpty()) return anim(Vec3(a.value, b.value, c.value))
+                    val easing = (a.keyframes + b.keyframes + c.keyframes).firstOrNull()?.easing ?: Easing.LINEAR
+                    fun at(t: Double) = Vec3(a.sample(t) { x, y, u -> x + (y - x) * u }, b.sample(t) { x, y, u -> x + (y - x) * u }, c.sample(t) { x, y, u -> x + (y - x) * u })
+                    return Animatable(at(times.first()), times.mapIndexed { i, t -> Keyframe(t, at(t), if (i == 0) easing else Easing.LINEAR) })
+                }
+                val (rotation, position) = if (ch == null) anim(Vec3.ZERO) to anim(centred) else
+                    vec(animated(ch[0], 0f), animated(ch[1], 0f), animated(ch[2], 0f)) to
+                        vec(animated(ch[3], -comp.width / 2f), animated(ch[4], -comp.height / 2f), animated(ch[5], 0f))
                 layers += Layer(
                     id = Ids.newId(TimelineOps.prefixFor(LayerType.CAMERA), taken),
                     type = LayerType.CAMERA, name = rec.name, start = start, duration = duration,
-                    camera = CameraContent(position = anim(centred), aim = CameraAim.ROTATION, rotation = anim(Vec3.ZERO), fov = anim(fov)),
+                    camera = CameraContent(position = position, aim = CameraAim.ROTATION, rotation = rotation, fov = anim(fov)),
                 )
                 continue
             }
@@ -213,7 +230,7 @@ object AureaImport {
         }
         if (approximateText) warnings += "texto 3D: o tamanho, a fonte e o chanfro são aproximados (a fonte do Kinesis é a padrão)"
         if (layers.isEmpty()) warnings += "nenhuma camada pôde ser convertida"
-        warnings += "rotação, keyframes, efeitos e o campo de visão da câmera do Aurea ainda não são importados"
+        warnings += "rotação e keyframes dos objetos, efeitos e o campo de visão da câmera do Aurea ainda não são importados"
         return Result(project.copy(layers = layers), warnings)
     }
 
@@ -252,7 +269,12 @@ object AureaImport {
         val kind: Int, val name: String, val startFrame: Int, val endFrame: Int, val position: Vec3, val scale: Vec3,
         /** The text a 3D object carries (a new cube carries the default "Texto"), and the text size that follows it. */
         val content: String? = null, val textSize: Float? = null,
+        /** Camera only: the six animated channels (rotation x, y, z, then position x, y, z), when they could be read. */
+        val channels: List<Channel>? = null,
     )
+
+    /** Two keyframes of an Aurea channel: value at the start, value at [frame1], and the Bézier of the first segment. */
+    private class Channel(val v0: Float, val v1: Float, val frame1: Int, val ease: Easing.CubicBezier)
 
     /**
      * Layer records start with id (u32, > 0), kind (u8) and the name. Relative to the end of the name:
@@ -277,10 +299,40 @@ object AureaImport {
             val content = readString(s, end + 155)
             val sizeAt = content?.let { end + 159 + it.second.size + 8 }
             val textSize = if (sizeAt != null && sizeAt + 4 <= s.size) b.getFloat(sizeAt).takeIf { it.isFinite() } else null
-            out += LayerRecord(kind, str.first, b.getInt(end + 4), b.getInt(end + 8), Vec3(f(78), f(82), f(86)), scale, content?.first, textSize)
+            out += LayerRecord(
+                kind, str.first, b.getInt(end + 4), b.getInt(end + 8), Vec3(f(78), f(82), f(86)), scale, content?.first, textSize,
+                channels = if (kind == KIND_CAMERA) readCameraChannels(s, end + 102) else null,
+            )
             at = end + 102
         }
         return out
+    }
+
+    /**
+     * A camera carries, after its scale, one block per channel (rotation x, y, z, position x, y, z): the value at the
+     * first keyframe, a tag (02) and the Bézier of the segment (x1 y1 x2 y2 as f32), then the frame of the second
+     * keyframe (a u8 after `01`, 90 here) and its value followed by a tag (01) and another Bézier. Located by those
+     * tag + Bézier patterns, since the blocks are not aligned. Only two-keyframe channels were seen.
+     */
+    private fun readCameraChannels(s: ByteArray, from: Int): List<Channel>? {
+        val b = le(s)
+        val limit = min(s.size, from + 900)
+        fun floatAt(i: Int) = b.getFloat(i)
+        fun isBezier(i: Int, tag: Int) = i + 17 <= limit && (s[i].toInt() and 0xff) == tag &&
+            (1..4).all { floatAt(i + 4 * it - 3).let { v -> v.isFinite() && v in -1f..2f } } && floatAt(i + 13) == 1f
+        val first = (from + 4 until limit - 17).filter { isBezier(it, 2) }
+        val channels = mutableListOf<Channel>()
+        var at = from
+        for (i in first) {
+            if (i < at) continue
+            val second = (i + 17 until minOf(i + 60, limit - 17)).firstOrNull { isBezier(it, 1) } ?: continue
+            val frameAt = (i + 17 until second).firstOrNull { (s[it].toInt() and 0xff) == 1 && it + 1 < second } ?: continue
+            val v0 = floatAt(i - 4); val v1 = floatAt(second - 4)
+            if (!v0.isFinite() || !v1.isFinite()) continue
+            channels += Channel(v0, v1, s[frameAt + 1].toInt() and 0xff, Easing.CubicBezier(floatAt(i + 1), floatAt(i + 5), floatAt(i + 9), floatAt(i + 13)))
+            at = second + 17
+        }
+        return channels.takeIf { it.size == 6 }
     }
 
     private class ShapeSpec(val primitive: String?, val faceColors: List<Color>)

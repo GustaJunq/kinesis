@@ -68,6 +68,11 @@ Para objetos 3D, a partir do fim do nome: u32 + texto em +155 (`Texto` nas forma
 e o tamanho (f32, 100 por padrão) em 8 bytes depois do fim da cor. A câmera usa os mesmos offsets de posição
 (por padrão em `(largura/2, altura/2, −1,2 × altura)`).
 
+Câmera, depois da escala: 6 canais (rotação x, y, z em graus; posição x, y, z). Cada bloco tem o valor no primeiro
+keyframe, o byte `02` e a Bézier da curva (x1 y1 x2 y2, f32), o quadro do segundo keyframe (u8 depois de `01`, 90 no
+exemplo), o valor nele e `01` + outra Bézier. Só canais com dois keyframes foram vistos; os blocos não são alinhados, então
+são achados por esses padrões.
+
 ### Seção 4: modelos 3D (versão 1)
 
 Por objeto: nome da camada e uma string `aurea-shape3d:v1;k=…;m=…;c0=…;…;c5=…;` (`c0`…`c5`: cor RGBA de cada face,
@@ -84,7 +89,7 @@ Todos os textos se chamam `Texto 3D`, então a correspondência é feita pelo **
 | composição (tamanho, fps, quadros) | `composition` (duração em segundos) |
 | forma 3D | camada `object3d`; posição convertida para origem no centro; cor da primeira face |
 | texto 3D | camada `object3d` com `Primitive.TEXT`: conteúdo, alinhamento, profundidade, chanfro, cor e material; tamanho da fonte = tamanho Aurea × 3,45 (aproximado) |
-| câmera | camada `camera` na posição convertida; campo de visão derivado da distância (`2·atan((altura/2)/|z|)`), sem rotação |
+| câmera | camada `camera`: posição e rotação (com keyframes e Bézier) convertidas; campo de visão derivado da distância inicial (`2·atan((altura/2)/|z|)`), fixo |
 
-Ainda não importados (avisados): rotação, keyframes, efeitos, rotação/keyframes da câmera, fonte e chanfro exatos do texto, mídia e demais tipos de camada.
+Ainda não importados (avisados): rotação, keyframes, efeitos, campo de visão animado da câmera, rotação/keyframes dos objetos, fonte e chanfro exatos do texto, mídia e demais tipos de camada.
 Para mapear mais campos, compare projetos que diferem em uma única coisa (um keyframe, uma rotação, um texto).
