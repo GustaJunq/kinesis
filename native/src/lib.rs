@@ -4,3 +4,5 @@ pub mod extrude;
 mod jni_api;
 #[cfg(feature = "whisper")]
 pub mod whisper;
+#[cfg(feature = "stabilize")]
+pub mod stab;

@@ -30,6 +30,10 @@ import dev.kinesis.editor.data.ProjectStore
 import dev.kinesis.editor.media.AudioMixer
 import dev.kinesis.editor.media.ExportCancelled
 import dev.kinesis.core.edit.PreRender
+import dev.kinesis.core.edit.MediaSwap
+import dev.kinesis.core.model.LayerType
+import dev.kinesis.editor.media.BackgroundRemoval
+import dev.kinesis.editor.media.VideoStabilizer
 import dev.kinesis.editor.media.ExportResolution
 import dev.kinesis.editor.media.ExportQuality
 import dev.kinesis.editor.media.ExportFailure
@@ -92,6 +96,11 @@ sealed class CaptionUiState {
     data class Downloading(val model: WhisperModel, val progress: Float?) : CaptionUiState()
     data class Transcribing(val progress: Float?) : CaptionUiState()
     data class Failed(val message: String) : CaptionUiState()
+}
+
+/** A long clip operation (background removal, stabilization). [progress] is 0..1. */
+data class MediaJobUi(val kind: Kind, val progress: Float, val cancelling: Boolean = false) {
+    enum class Kind { BACKGROUND, STABILIZE }
 }
 
 /** Short user-facing notices (shown in a snackbar). */
@@ -807,6 +816,113 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
 
     /** Whether [layerId] can be replaced by a pre-rendered video. */
     fun canPreRender(layerId: String): Boolean = PreRender.canPreRender(current, layerId)
+
+    // ------------------------------------------------------------------ background removal and stabilization
+
+    private val _mediaJob = MutableStateFlow<MediaJobUi?>(null)
+    val mediaJob: StateFlow<MediaJobUi?> = _mediaJob.asStateFlow()
+    @Volatile private var mediaJobCancelled = false
+    private var mediaJobTask: Job? = null
+
+    fun canRemoveBackground(layer: Layer?): Boolean = layer != null && MediaSwap.canSwap(layer)
+    fun canStabilize(layer: Layer?): Boolean = layer?.type == LayerType.VIDEO && layer.video != null && VideoStabilizer.supported
+
+    fun cancelMediaJob() {
+        if (_mediaJob.value != null) {
+            mediaJobCancelled = true
+            _mediaJob.value = _mediaJob.value?.copy(cancelling = true)
+        }
+    }
+
+    /**
+     * Cuts the person out of an image or video layer on the device. A copy with transparency is placed above the
+     * layer and the original is hidden (one undo step brings it back).
+     */
+    fun removeBackground(layerId: String) {
+        if (_mediaJob.value != null) return
+        val layer = LayerTree.find(current, layerId) ?: return
+        val isVideo = layer.type == LayerType.VIDEO
+        val media = layer.video
+        val assetId = layer.image?.asset ?: media?.asset ?: return
+        val asset = current.asset(assetId) ?: return
+        val source = files.file(asset.id)?.takeIf { it.isFile } ?: return
+        val app = getApplication<Application>()
+        pause()
+        mediaJobCancelled = false
+        _mediaJob.value = MediaJobUi(MediaJobUi.Kind.BACKGROUND, 0f)
+        mediaJobTask = viewModelScope.launch {
+            val tmp = File(app.cacheDir, "cutout/${projectId}_${System.nanoTime()}.${if (isVideo) "mp4" else "png"}").also { it.parentFile?.mkdirs() }
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    if (isVideo && media != null) {
+                        val startUs = (media.sourceStart * 1_000_000).toLong().coerceAtLeast(0L)
+                        val endUs = startUs + (layer.duration * media.speed * 1_000_000).toLong().coerceAtLeast(100_000L)
+                        BackgroundRemoval.removeFromVideo(app, source, tmp, startUs, endUs, { p -> _mediaJob.value = MediaJobUi(MediaJobUi.Kind.BACKGROUND, p, mediaJobCancelled) }, { mediaJobCancelled })
+                    } else {
+                        BackgroundRemoval.removeFromImage(app, source, tmp)
+                    }
+                }
+                if (result == null) return@launch
+                val newAsset = withContext(Dispatchers.IO) { store.importMedia(projectId, current, Uri.fromFile(tmp), if (isVideo) AssetType.VIDEO else AssetType.IMAGE) }
+                val name = text(R.string.cutout_layer_name, layerDisplayName(layer))
+                var newId: String? = null
+                edit { p ->
+                    LayerTree.find(p, layerId) ?: return@edit p
+                    MediaSwap.replace(
+                        p, layerId, newAsset, name, sourceStart = if (isVideo) 0.0 else null, scale = result.scale,
+                        alphaPacked = if (isVideo) true else null, muted = if (isVideo) !result.hasAudio || media?.muted == true else null,
+                    ).also { newId = it.second }.first
+                }
+                newId?.let { select(it) }
+                _mediaRevision.value++
+                notify(text(R.string.cutout_done))
+            } catch (e: Throwable) {
+                Log.w("Kinesis", "background removal failed", e)
+                notify(text(R.string.cutout_failed, e.message ?: e.javaClass.simpleName), true)
+            } finally {
+                tmp.delete()
+                _mediaJob.value = null
+            }
+        }
+    }
+
+    /** Stabilizes a video layer with vid.stab. A stabilized copy is placed above the layer; the original is hidden. */
+    fun stabilize(layerId: String, settings: VideoStabilizer.Settings) {
+        if (_mediaJob.value != null) return
+        val layer = LayerTree.find(current, layerId) ?: return
+        val media = layer.video ?: return
+        val asset = current.asset(media.asset) ?: return
+        val source = files.file(asset.id)?.takeIf { it.isFile } ?: return
+        val app = getApplication<Application>()
+        pause()
+        mediaJobCancelled = false
+        _mediaJob.value = MediaJobUi(MediaJobUi.Kind.STABILIZE, 0f)
+        mediaJobTask = viewModelScope.launch {
+            val tmp = File(app.cacheDir, "stabilize/${projectId}_${System.nanoTime()}.mp4").also { it.parentFile?.mkdirs() }
+            try {
+                val finished = withContext(Dispatchers.IO) {
+                    VideoStabilizer.stabilize(source, tmp, settings, { p -> _mediaJob.value = MediaJobUi(MediaJobUi.Kind.STABILIZE, p, mediaJobCancelled) }, { mediaJobCancelled })
+                }
+                if (!finished) return@launch
+                val newAsset = withContext(Dispatchers.IO) { store.importMedia(projectId, current, Uri.fromFile(tmp), AssetType.VIDEO) }
+                val name = text(R.string.stabilized_layer_name, layerDisplayName(layer))
+                var newId: String? = null
+                edit { p ->
+                    LayerTree.find(p, layerId) ?: return@edit p
+                    MediaSwap.replace(p, layerId, newAsset, name).also { newId = it.second }.first
+                }
+                newId?.let { select(it) }
+                _mediaRevision.value++
+                notify(text(R.string.stabilize_done))
+            } catch (e: Throwable) {
+                Log.w("Kinesis", "stabilization failed", e)
+                notify(text(R.string.stabilize_failed, e.message ?: e.javaClass.simpleName), true)
+            } finally {
+                tmp.delete()
+                _mediaJob.value = null
+            }
+        }
+    }
 
     /**
      * Renders [layerId] alone into a video with transparency and shows that video instead (the layer stays,

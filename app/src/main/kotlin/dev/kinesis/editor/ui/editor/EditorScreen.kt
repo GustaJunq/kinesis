@@ -144,6 +144,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var showExport by remember { mutableStateOf(false) }
     var showCaptions by remember { mutableStateOf(false) }
     var showAudio by remember { mutableStateOf(false) }
+    var stabilizeTarget by remember { mutableStateOf<String?>(null) }
+    val mediaJob by vm.mediaJob.collectAsState()
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
     var showGraph by remember { mutableStateOf(false) }
     var renderError by remember { mutableStateOf<String?>(null) }
@@ -343,6 +345,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     onLoop = { vm.loopPlayback.value = !loop },
                     onAudio = if (selectedLayer.media != null) ({ showAudio = true }) else null,
                     onExtractAudio = if (vm.canExtractAudio(selectedLayer)) ({ vm.extractAudio(selectedLayer.id) }) else null,
+                    onRemoveBackground = if (vm.canRemoveBackground(selectedLayer)) ({ vm.removeBackground(selectedLayer.id) }) else null,
+                    onStabilize = if (vm.canStabilize(selectedLayer)) ({ stabilizeTarget = selectedLayer.id }) else null,
                 )
             }
             EditorToolBar(
@@ -454,6 +458,10 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         val target = selection?.let { LayerTree.find(project, it) }
         if (target?.media != null) AudioSheet(vm, project, target, onDismiss = { showAudio = false }) else showAudio = false
     }
+    stabilizeTarget?.let { id ->
+        StabilizeDialog(onStart = { settings -> stabilizeTarget = null; vm.stabilize(id, settings) }, onDismiss = { stabilizeTarget = null })
+    }
+    mediaJob?.let { MediaJobDialog(it, onCancel = { vm.cancelMediaJob() }) }
     if (showCaptions) CaptionsSheet(vm, project, onDismiss = { showCaptions = false })
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })
 }

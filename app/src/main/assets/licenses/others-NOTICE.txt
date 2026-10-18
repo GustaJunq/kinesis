@@ -1,0 +1,5 @@
+Other components
+- whisper.cpp / whisper-rs (offline captions): MIT License.
+- Mozilla Rhino (expressions): Mozilla Public License 2.0.
+- Jetpack Compose, AndroidX, Kotlin, kotlinx: Apache License 2.0.
+- Fonts Manrope, Barlow Condensed, JetBrains Mono: SIL Open Font License 1.1 (texts in this list).

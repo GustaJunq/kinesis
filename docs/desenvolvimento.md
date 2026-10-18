@@ -109,6 +109,15 @@ biblioteca é **opcional**: sem ela (testes na JVM, build sem Rust) tudo continu
 |---|---|
 | `extrude` (extrusão de texto 3D) | Port fiel de `TextExtrusion`: entram dois vetores primitivos (pontos e tamanhos dos contornos), saem quatro (posições, normais, UVs, índices); sem objetos por ponto. Resultado idêntico ao Kotlin (teste de paridade). |
 | `whisper` (feature `whisper`) | whisper.cpp via `whisper-rs`; precisa de qualquer forma de código nativo. Progresso e cancelamento por atômicos, sem chamar a JVM de dentro do Rust. |
+| `stabilize` (feature `stabilize`) | vid.stab 1.1.0 (C, GPL-2.0+) vendorado em `native/third_party/vidstab` e compilado com a crate `cc` junto de um wrapper `ks_stab.c`. Duas passadas: `detect` (por quadro), `prepare` (caminho suavizado) e `apply` (por quadro), com planos YUV em `ByteBuffer` diretos. |
+
+### Remoção de fundo e estabilização (app)
+
+`BackgroundRemoval` usa o MediaPipe Tasks Vision (`ImageSegmenter`) com o modelo `selfie_segmenter.tflite` (Apache-2.0,
+só pessoas). A máscara passa por `MaskTools` (limiar suave, suavização temporal adaptativa) e vira PNG com alfa ou, em
+vídeo, um MP4 com alfa empacotado (cor à esquerda, alfa em cinza à direita; `video.alphaPacked`). `VideoStabilizer`
+lê/escreve quadros YUV (`YuvVideoReader`/`YuvVideoWriter`, MediaCodec) e chama `NativeCore.Stabilizer`. `MediaSwap` (core)
+põe o resultado como nova camada acima da original, que fica oculta (um passo de desfazer).
 
 ### Escala da timeline e áudio (Kotlin, no core)
 

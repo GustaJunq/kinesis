@@ -1,0 +1,9 @@
+MediaPipe Tasks Vision 0.10.14 and the MediaPipe Selfie Segmentation model
+Copyright The MediaPipe Authors / Google LLC. Licensed under the Apache License, Version 2.0 (full text: "Apache License 2.0"
+in this list).
+
+Used for background removal, which runs entirely on the device. The model (assets/models/selfie_segmenter.tflite,
+"selfie_segmenter", float16, 256x256) comes from
+https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite
+and its model card states the Apache 2.0 license. It separates people from the background; other subjects are not cut out.
+https://ai.google.dev/edge/mediapipe/solutions/vision/image_segmenter

@@ -183,8 +183,9 @@ dependencies = [
 
 [[package]]
 name = "kinesis-native"
-version = "0.1.4-hotfix"
+version = "0.1.5"
 dependencies = [
+ "cc",
  "jni",
  "whisper-rs",
 ]

@@ -14,9 +14,11 @@ android {
         applicationId = "io.github.gustajunq.kinesis"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.1.4-hotfix"
+        versionCode = 8
+        versionName = "0.1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The native libraries (ours and MediaPipe's) are built for these ABIs only.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 
     // Instrumented tests render and export the shipped example projects.
@@ -96,6 +98,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.coroutines.android)
+    // On-device person segmentation (Apache-2.0) for background removal; the model is in assets/models.
+    implementation(libs.mediapipe.tasks.vision)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
