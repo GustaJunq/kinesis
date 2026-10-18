@@ -106,6 +106,7 @@
     <string name="height">Altura</string>
     <string name="hide_layer">Ocultar camada</string>
     <string name="import_error_title">Não foi possível importar o arquivo</string>
+    <string name="import_aurea_title">Importado do Aurea</string>
     <string name="import_failed">Falha ao importar: %1$s</string>
     <string name="import_font">Importar fonte</string>
     <string name="import_invalid">Este projeto não é válido:\n%1$s</string>

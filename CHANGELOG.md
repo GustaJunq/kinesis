@@ -2,6 +2,13 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## Não lançado
+
+### Adicionado
+- **Importar projetos do Aurea** (`.aureaproj`) pelo mesmo botão de abrir projeto: composição, tempos e formas 3D
+  (posição, escala, primitivo e cor). O que ainda não é convertido aparece num aviso depois da importação. Formato
+  mapeado em [docs/aureaproj.md](docs/aureaproj.md).
+
 ## 0.1.5 — 2026-10-18
 
 Formato `.knsproj` **v8**, sem mudança: tudo o que a versão gera usa campos que já existiam (imagens PNG, `video.alphaPacked`).
