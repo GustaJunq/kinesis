@@ -1,6 +1,5 @@
 package dev.kinesis.editor.render
 
-import android.opengl.GLES30
 import android.util.Log
 
 /**
@@ -40,25 +39,25 @@ class SliceCache {
         return null
     }
 
-    /** Keeps a copy of [source] as frame [frame]. Returns false if there is no room for even one frame. */
-    fun put(owner: String, frame: Int, source: RenderTarget): Boolean {
+    /**
+     * Keeps a copy of [source] as frame [frame], made by [copy] (a plain draw pass: framebuffer blits are avoided on purpose).
+     * Returns false if there is no room for even one frame.
+     */
+    fun put(owner: String, frame: Int, source: RenderTarget, copy: (source: RenderTarget, into: RenderTarget) -> Unit): Boolean {
         val key = Key(owner, frame, source.width, source.height)
         frames[key]?.let { it.use = pass; return true }
         val cost = source.width.toLong() * source.height * 4
         if (cost > budget) return false
         while (bytes + cost > budget) if (!evictEldest()) return false
-        val copy = try {
+        val target = try {
             RenderTarget(source.width, source.height, withDepth = false)
         } catch (e: Throwable) {
             Log.w("Kinesis", "time slice cache is full of GPU memory", e)
             clear()
             return false
         }
-        GLES30.glBindFramebuffer(GLES30.GL_READ_FRAMEBUFFER, source.framebuffer)
-        GLES30.glBindFramebuffer(GLES30.GL_DRAW_FRAMEBUFFER, copy.framebuffer)
-        GLES30.glBlitFramebuffer(0, 0, source.width, source.height, 0, 0, copy.width, copy.height, GLES30.GL_COLOR_BUFFER_BIT, GLES30.GL_NEAREST)
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
-        frames[key] = Entry(copy, pass)
+        copy(source, target)
+        frames[key] = Entry(target, pass)
         bytes += cost
         return true
     }

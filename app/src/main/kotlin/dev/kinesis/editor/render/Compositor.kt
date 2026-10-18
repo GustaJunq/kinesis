@@ -822,6 +822,17 @@ class Compositor(private val res: RenderResources) {
         return dst
     }
 
+    /** Draws [src] into [dst] unchanged (the frames TimeSlice keeps). */
+    private fun copyTo(src: RenderTarget, dst: RenderTarget) {
+        dst.bind()
+        GLES30.glDisable(GLES30.GL_BLEND)
+        val p = res.shaders.get("fullscreen.vert", "copy.frag")
+        p.use()
+        bindTexture2D(0, src.texture)
+        p.set1i("u_texture", 0)
+        res.quad.draw()
+    }
+
     private fun copy(src: RenderTarget): RenderTarget {
         val dst = res.pool.acquire()
         dst.bind()
@@ -1029,7 +1040,7 @@ class Compositor(private val res: RenderResources) {
         val w = cur.width
         val h = cur.height
         val frame = source.frame
-        if (TimeSlice.isStored(frame, plan.stride)) cache.put(owner, frame, cur)
+        if (TimeSlice.isStored(frame, plan.stride)) cache.put(owner, frame, cur, ::copyTo)
 
         // One picture per distinct frame, found or made before drawing (making one uses the same targets).
         val pictures = HashMap<Int, RenderTarget?>()
@@ -1047,7 +1058,7 @@ class Compositor(private val res: RenderResources) {
                     if (node != null) {
                         val t = res.pool.acquire()
                         drawNodeAt(node, t, ctx, 1f, BlendMode.NORMAL)
-                        if (TimeSlice.isStored(g, plan.stride)) cache.put(owner, g, t)
+                        if (TimeSlice.isStored(g, plan.stride)) cache.put(owner, g, t, ::copyTo)
                         temporary += t
                         picture = t
                     }
