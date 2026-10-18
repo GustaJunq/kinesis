@@ -6,6 +6,7 @@ import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.util.Log
 import dev.kinesis.core.model.KnsProject
+import dev.kinesis.core.edit.RealCamera
 import dev.kinesis.core.scene.CameraState
 import dev.kinesis.core.scene.SceneEvaluator
 import dev.kinesis.core.scene.TimeSlice
@@ -27,6 +28,8 @@ data class PreviewState(
     val scale: Float = 1f,
     /** The editor view's camera: when set, 3D layers are drawn from it instead of the scene's camera. */
     val editorCamera: CameraState? = null,
+    /** Real Camera: the pose being recorded, drawn instead of the camera's own until the take is applied. */
+    val livePose: RealCamera.LivePose? = null,
 )
 
 /** Letterboxed area of the composition inside the view, in view pixels (origin top-left). */
@@ -129,10 +132,10 @@ class PreviewRenderer(
             val quality = (if (s.playing) 0.75f else 1f) * s.scale.coerceIn(0.1f, 1f)
             val outW = min(p.composition.width.toFloat(), vp.width * quality).roundToInt().coerceAtLeast(16)
             val outH = (outW * p.composition.height.toFloat() / p.composition.width).roundToInt().coerceAtLeast(16)
-            val key = FrameKey(Math.round(s.time * p.composition.fps), outW, outH, s.playing, s.quality3D, s.editorCamera?.view?.m?.contentHashCode() ?: 0)
+            val key = FrameKey(Math.round(s.time * p.composition.fps), outW, outH, s.playing, s.quality3D, (s.editorCamera?.view?.m?.contentHashCode() ?: 0) * 31 + (s.livePose?.rotation?.hashCode() ?: 0))
             val cached = frameCache[key]
             val shown = if (cached != null) cached else {
-                val scene = SceneEvaluator.evaluate(p, s.time).let { sc -> s.editorCamera?.let(sc::withCamera) ?: sc }
+                val scene = SceneEvaluator.evaluate(s.livePose?.let { RealCamera.withLivePose(p, it) } ?: p, s.time).let { sc -> s.editorCamera?.let(sc::withCamera) ?: sc }
                 val samples = if (s.playing) min(3, p.composition.motionBlur.samples) else p.composition.motionBlur.samples
                 val (shadowSize, dofSamples) = RenderSettings.quality3D(s.quality3D)
                 val cacheBytes = if (lowMemory) SLICE_CACHE_LOW else SLICE_CACHE
@@ -142,7 +145,9 @@ class PreviewRenderer(
                     timeSliceBudget = budget, timeSliceCacheBytes = cacheBytes,
                 )
                 val target = comp.render(p, scene, outW, outH, settings)
-                if (res.sliceDegraded) {
+                if (s.livePose != null) {
+                    target       // a take in progress: these frames are not kept
+                } else if (res.sliceDegraded) {
                     // TimeSlice used stand-ins for frames it has not fetched yet: show it, do not keep it, and finish when idle.
                     if (!s.playing && res.sliceProgress) onRefine()
                     target

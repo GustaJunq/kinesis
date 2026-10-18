@@ -142,9 +142,11 @@ fun Viewport(
         if (view.mode == EditorViewMode.EDITOR) EditorCamera.state(view, project.composition) else null
     }
 
+    val livePose by vm.realCamera.pose.collectAsState()
+
     // Push state to the GL thread after every successful composition.
     SideEffect {
-        renderer.state = PreviewState(project, time, playing, mediaRevision, AppSettings.previewQuality3D, AppSettings.previewScale, editorCamera)
+        renderer.state = PreviewState(project, time, playing, mediaRevision, AppSettings.previewQuality3D, AppSettings.previewScale, editorCamera, livePose)
         glView.requestRender()
     }
 

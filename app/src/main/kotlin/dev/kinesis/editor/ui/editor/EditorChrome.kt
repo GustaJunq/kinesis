@@ -238,6 +238,8 @@ fun SelectionActions(
     onRemoveBackground: (() -> Unit)? = null,
     /** Shown for video layers: stabilizes the shake. */
     onStabilize: (() -> Unit)? = null,
+    /** Shown for camera layers on phones with a motion sensor: the phone drives the camera. */
+    onRealCamera: (() -> Unit)? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().background(KColors.Bar).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp),
@@ -252,6 +254,7 @@ fun SelectionActions(
         if (onExtractAudio != null) ActionChip(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
         if (onRemoveBackground != null) ActionChip(Icons.Outlined.PersonOff, R.string.remove_background, onRemoveBackground)
         if (onStabilize != null) ActionChip(Icons.Outlined.CenterFocusStrong, R.string.stabilize, onStabilize)
+        if (onRealCamera != null) ActionChip(Icons.Outlined.CameraAlt, R.string.real_camera, onRealCamera)
         ActionChip(Icons.Outlined.Delete, R.string.delete, onDelete, danger = true)
         ActionChip(Icons.Outlined.Repeat, R.string.loop, onLoop, accent = loop)
     }

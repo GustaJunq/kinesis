@@ -95,6 +95,7 @@ import dev.kinesis.core.model.FillSpec
 import dev.kinesis.core.edit.KeyframeNav
 import dev.kinesis.core.edit.Markers
 import dev.kinesis.core.model.LayerTree
+import dev.kinesis.core.model.LayerType
 import dev.kinesis.core.model.PathPoint
 import dev.kinesis.core.model.PathSpec
 import dev.kinesis.core.model.ShapeKind
@@ -145,6 +146,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var showCaptions by remember { mutableStateOf(false) }
     var showAudio by remember { mutableStateOf(false) }
     var stabilizeTarget by remember { mutableStateOf<String?>(null) }
+    var showRealCamera by remember { mutableStateOf(false) }
     val mediaJob by vm.mediaJob.collectAsState()
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
     var showGraph by remember { mutableStateOf(false) }
@@ -289,6 +291,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                             .clickable { renderError = null },
                     )
                 }
+                RealCameraOverlay(vm, Modifier.matchParentSize())
                 if (selectedLayer?.hasTransform3D == true) {
                     IconButton(
                         onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE },
@@ -347,6 +350,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     onExtractAudio = if (vm.canExtractAudio(selectedLayer)) ({ vm.extractAudio(selectedLayer.id) }) else null,
                     onRemoveBackground = if (vm.canRemoveBackground(selectedLayer)) ({ vm.removeBackground(selectedLayer.id) }) else null,
                     onStabilize = if (vm.canStabilize(selectedLayer)) ({ stabilizeTarget = selectedLayer.id }) else null,
+                    onRealCamera = if (selectedLayer.type == LayerType.CAMERA && vm.realCamera.available) ({ vm.pause(); showRealCamera = true }) else null,
                 )
             }
             EditorToolBar(
@@ -461,6 +465,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     stabilizeTarget?.let { id ->
         StabilizeDialog(onStart = { settings -> stabilizeTarget = null; vm.stabilize(id, settings) }, onDismiss = { stabilizeTarget = null })
     }
+    if (showRealCamera) RealCameraSheet(vm, project, onDismiss = { showRealCamera = false })
     mediaJob?.let { MediaJobDialog(it, onCancel = { vm.cancelMediaJob() }) }
     if (showCaptions) CaptionsSheet(vm, project, onDismiss = { showCaptions = false })
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })

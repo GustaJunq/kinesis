@@ -525,4 +525,29 @@
     <string name="exit_camera">Sair da câmera</string>
     <string name="auto_keyframe">Auto keyframe</string>
     <string name="reset_view">Recentrar</string>
+    <!-- 0.1.6: Real Camera -->
+    <string name="real_camera">Real Camera</string>
+    <string name="real_camera_hint">Segure o celular como uma câmera. Toque em Gravar, conte 3-2-1 e a orientação do celular move %1$s enquanto a timeline toca.</string>
+    <string name="real_camera_unavailable">Este celular não tem um sensor de movimento que possa conduzir uma câmera.</string>
+    <string name="real_camera_too_short">A gravação foi curta demais. Grave pelo menos um instante de movimento.</string>
+    <string name="real_camera_follow">Eixos que seguem o celular</string>
+    <string name="real_camera_axes_hint">X inclina para cima e para baixo, Y gira para os lados, Z gira em torno do eixo da lente. Eixos travados ficam como estavam.</string>
+    <string name="real_camera_intensity">Intensidade</string>
+    <string name="real_camera_curve">Curva</string>
+    <string name="real_camera_smoothing">Suavização</string>
+    <string name="real_camera_simplify">Simplificar curva</string>
+    <string name="real_camera_simplify_hint">Menos keyframes, mesma forma.</string>
+    <string name="real_camera_tolerance">Erro máximo</string>
+    <string name="real_camera_options">Opções</string>
+    <string name="real_camera_calibrate_late">Calibrar após a contagem</string>
+    <string name="real_camera_calibrate_late_hint">Por padrão, a pose ao tocar em Gravar vira a rotação atual da câmera.</string>
+    <string name="real_camera_position">Gravar também a posição (experimental)</string>
+    <string name="real_camera_position_hint">Acompanha empurrões e puxões do celular; ela volta ao repouso sozinha, então serve para movimentos curtos.</string>
+    <string name="real_camera_record">Gravar</string>
+    <string name="real_camera_stop">Parar</string>
+    <string name="real_camera_recording">Gravando %1$s s</string>
+    <string name="real_camera_result">%1$d quadros gravados, aplicados como %2$d keyframes.</string>
+    <string name="real_camera_discard">Descartar</string>
+    <string name="real_camera_again">Gravar de novo</string>
+    <string name="real_camera_keep">Manter</string>
 </resources>

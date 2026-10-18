@@ -309,14 +309,21 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     /** The camera layer the picture is drawn from now, if the project has one. */
     fun activeCameraId(): String? = SceneEvaluator.activeCameraId(current, _time.value)
 
+    /** The camera layer a Real Camera take goes into: the active one, or a new one (one undo step). */
+    fun ensureCameraLayer(): String {
+        activeCameraId()?.let { return it }
+        val p = current
+        val camera = Factory.camera(p, 0.0, text(R.string.layer_camera)).let { it.copy(duration = p.composition.duration) }
+        edit { TimelineOps.addLayer(it, camera, null) }
+        select(camera.id)
+        return camera.id
+    }
+
+    fun notifyUser(message: String, error: Boolean = false) = notify(message, error)
+
     /** Gestures now move the active camera (a camera is created when the project has none). One undo step if it creates one. */
     fun enterCamera() {
-        if (activeCameraId() == null) {
-            val p = current
-            val camera = Factory.camera(p, 0.0, text(R.string.layer_camera)).let { it.copy(duration = p.composition.duration) }
-            edit { TimelineOps.addLayer(it, camera, null) }
-            select(camera.id)
-        }
+        ensureCameraLayer()
         setViewMode(EditorViewMode.INSIDE)
     }
 
@@ -880,6 +887,9 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     fun canPreRender(layerId: String): Boolean = PreRender.canPreRender(current, layerId)
 
     // ------------------------------------------------------------------ background removal and stabilization
+
+    /** Real Camera: the phone drives a 3D camera. */
+    val realCamera: RealCameraController by lazy { RealCameraController(this, getApplication(), viewModelScope) }
 
     private val _mediaJob = MutableStateFlow<MediaJobUi?>(null)
     val mediaJob: StateFlow<MediaJobUi?> = _mediaJob.asStateFlow()

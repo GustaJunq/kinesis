@@ -525,4 +525,29 @@
     <string name="exit_camera">Exit camera</string>
     <string name="auto_keyframe">Auto keyframe</string>
     <string name="reset_view">Reset view</string>
+    <!-- 0.1.6: Real Camera -->
+    <string name="real_camera">Real Camera</string>
+    <string name="real_camera_hint">Hold the phone like a camera. Tap Record, count 3-2-1, and the phone\'s orientation moves %1$s while the timeline plays.</string>
+    <string name="real_camera_unavailable">This phone has no motion sensor that can drive a camera.</string>
+    <string name="real_camera_too_short">The take was too short. Record at least a moment of movement.</string>
+    <string name="real_camera_follow">Axes that follow the phone</string>
+    <string name="real_camera_axes_hint">X tilts up and down, Y pans left and right, Z rolls. Locked axes stay as they were.</string>
+    <string name="real_camera_intensity">Intensity</string>
+    <string name="real_camera_curve">Curve</string>
+    <string name="real_camera_smoothing">Smoothing</string>
+    <string name="real_camera_simplify">Simplify curve</string>
+    <string name="real_camera_simplify_hint">Fewer keyframes, same shape.</string>
+    <string name="real_camera_tolerance">Max error</string>
+    <string name="real_camera_options">Options</string>
+    <string name="real_camera_calibrate_late">Calibrate after the countdown</string>
+    <string name="real_camera_calibrate_late_hint">By default the pose when you tap Record is the camera\'s current rotation.</string>
+    <string name="real_camera_position">Record position too (experimental)</string>
+    <string name="real_camera_position_hint">Follows pushes and pulls of the phone; it drifts back to rest, so it only suits short moves.</string>
+    <string name="real_camera_record">Record</string>
+    <string name="real_camera_stop">Stop</string>
+    <string name="real_camera_recording">Recording %1$s s</string>
+    <string name="real_camera_result">Recorded %1$d frames, applied as %2$d keyframes.</string>
+    <string name="real_camera_discard">Discard</string>
+    <string name="real_camera_again">Record again</string>
+    <string name="real_camera_keep">Keep</string>
 </resources>

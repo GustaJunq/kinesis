@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
+    <!-- Real Camera uses the motion sensors when the phone has them; nothing else needs them. -->
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
 
     <!-- Only to download a speech model once, when the user asks for it (captions). Nothing else uses the network. -->
     <uses-permission android:name="android.permission.INTERNET" />
