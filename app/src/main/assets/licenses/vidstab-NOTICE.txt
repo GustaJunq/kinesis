@@ -1,0 +1,13 @@
+vid.stab 1.1.0 — video stabilization
+Copyright (C) Georg Martius and contributors. http://public.hronopik.de/vid.stab/
+
+vid.stab is free software, distributed under the GNU General Public License, version 2 or (at your option) any later
+version. Kinesis uses it under version 3 of that license (the full text is "GNU General Public License 3.0" in this
+list), which is the license of Kinesis itself.
+
+The library is compiled into libkinesis_native.so, unmodified, together with a small wrapper (native/src/ks_stab.c).
+Its complete source code is part of the Kinesis source code, in native/third_party/vidstab, and can be obtained at
+https://github.com/gustajunq/kinesis. Upstream: https://github.com/georgmartius/vid.stab
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

@@ -10,7 +10,7 @@ object Markers {
     const val MERGE_WINDOW = 0.01
 
     /** Playhead moves smaller than this (seconds) do not count as "already there" when jumping to the next point. */
-    const val EPS = 1e-4
+    const val EPS = 1e-3
 
     fun sorted(project: KnsProject): List<Marker> = project.markers.sortedBy { it.time }
 

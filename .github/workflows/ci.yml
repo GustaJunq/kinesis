@@ -74,10 +74,15 @@ jobs:
         working-directory: native
         run: cargo test --release --locked
 
+      # vid.stab (C, vendored): the stabilizer must cut the shake of a synthetic clip.
+      - name: Stabilizer test (vid.stab)
+        working-directory: native
+        run: cargo test --release --locked --features stabilize --test stabilize
+
       - name: Build the library (with and without Whisper)
         working-directory: native
         run: |
-          cargo build --release --locked --features whisper
+          cargo build --release --locked --features whisper,stabilize
           cargo build --release --locked
 
       # With the library built, the core tests also run the Rust text extrusion and compare it with the Kotlin one.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds libkinesis_native.so (text extrusion + Whisper) for the Android ABIs and puts them where Gradle packs them:
+# Builds libkinesis_native.so (text extrusion, Whisper, vid.stab) for the Android ABIs and puts them where Gradle packs them:
 # app/src/main/jniLibs/<abi>/. Needs: Rust (rustup), cargo-ndk, cmake and the Android NDK (ANDROID_NDK_HOME).
 #
 #   native/build-android.sh                 # arm64-v8a armeabi-v7a x86_64
@@ -42,7 +42,7 @@ for abi in $ABIS; do
   CMAKE_ANDROID_ARCH_ABI="$abi" \
   CMAKE_ANDROID_NDK="$NDK" \
   CMAKE_ANDROID_STL_TYPE=c++_shared \
-  cargo ndk --platform "$API" -t "$abi" -o "$OUT" build --release --features whisper
+  cargo ndk --platform "$API" -t "$abi" -o "$OUT" build --release --features whisper,stabilize
   # Whisper is C++: the shared C++ runtime of the NDK must travel with the library.
   cp "$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$(libdir_of "$abi")/libc++_shared.so" "$OUT/$abi/"
 done

@@ -571,6 +571,9 @@ private fun SettingsTab() {
             Text(stringResource(R.string.settings_snapshots_hint), style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
         }
         SecondaryButton(stringResource(R.string.settings_welcome), { AppSettings.setOnboardingDone(context, false) }, Modifier.fillMaxWidth(), pill = true)
+        var showLicenses by remember { mutableStateOf(false) }
+        SecondaryButton(stringResource(R.string.third_party_licenses), { showLicenses = true }, Modifier.fillMaxWidth(), pill = true)
+        if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
         SettingRow(stringResource(R.string.settings_version), BuildConfig.VERSION_NAME, mono = true)
         SettingRow(stringResource(R.string.settings_format), stringResource(R.string.settings_format_value))
         SettingRow(stringResource(R.string.settings_fonts), stringResource(R.string.settings_fonts_value))
@@ -711,3 +714,42 @@ private fun NewProjectDialog(onDismiss: () -> Unit, onCreate: (String, Int, Int,
 }
 
 private val DEFAULT_BACKGROUND = Color.parse(DEFAULT_COMPOSITION_BACKGROUND)
+
+/** Third-party credits: which components Kinesis ships, under which license, and the full license texts. */
+@Composable
+private fun LicensesDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val entries = remember {
+        listOf(
+            R.string.license_vidstab to "vidstab-NOTICE.txt",
+            R.string.license_gpl3 to "GPL-3.0.txt",
+            R.string.license_mediapipe to "mediapipe-NOTICE.txt",
+            R.string.license_apache to "apache-2.0.txt",
+            R.string.license_others to "others-NOTICE.txt",
+            R.string.license_manrope to "manrope-OFL.txt",
+            R.string.license_barlow to "barlow-condensed-OFL.txt",
+            R.string.license_jetbrains to "jetbrains-mono-OFL.txt",
+        )
+    }
+    var open by remember { mutableStateOf<Int?>(null) }
+    val text = remember(open) {
+        open?.let { index ->
+            runCatching { context.assets.open("licenses/" + entries[index].second).bufferedReader().use { it.readText() } }.getOrDefault("")
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(open?.let { entries[it].first } ?: R.string.third_party_licenses)) },
+        text = {
+            if (open == null) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(stringResource(R.string.third_party_intro), style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
+                    entries.forEachIndexed { i, (label, _) -> TextButton(onClick = { open = i }, Modifier.fillMaxWidth()) { Text(stringResource(label), Modifier.fillMaxWidth()) } }
+                }
+            } else {
+                Text(text.orEmpty(), Modifier.verticalScroll(rememberScrollState()), fontSize = 11.sp, color = KColors.TextSecondary)
+            }
+        },
+        confirmButton = { TextButton(onClick = { if (open != null) open = null else onDismiss() }) { Text(stringResource(if (open != null) R.string.back else R.string.close)) } },
+    )
+}

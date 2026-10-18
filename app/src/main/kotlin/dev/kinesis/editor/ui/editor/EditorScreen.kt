@@ -92,6 +92,7 @@ import dev.kinesis.core.edit.keyframeTimes
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.FillSpec
+import dev.kinesis.core.edit.KeyframeNav
 import dev.kinesis.core.edit.Markers
 import dev.kinesis.core.model.LayerTree
 import dev.kinesis.core.model.PathPoint
@@ -143,6 +144,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var showExport by remember { mutableStateOf(false) }
     var showCaptions by remember { mutableStateOf(false) }
     var showAudio by remember { mutableStateOf(false) }
+    var stabilizeTarget by remember { mutableStateOf<String?>(null) }
+    val mediaJob by vm.mediaJob.collectAsState()
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
     var showGraph by remember { mutableStateOf(false) }
     var renderError by remember { mutableStateOf<String?>(null) }
@@ -316,13 +319,13 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 onPrevKeyframe = {
                     val l = selectedLayer
                     val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
-                    val own = l?.keyframeTimes()?.map { it + offset }.orEmpty()
+                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
                     vm.seek(Markers.previous(project, time, own) ?: 0.0)
                 },
                 onNextKeyframe = {
                     val l = selectedLayer
                     val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
-                    val own = l?.keyframeTimes()?.map { it + offset }.orEmpty()
+                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
                     Markers.next(project, time, own)?.let { vm.seek(it) }
                 },
                 onPlay = { vm.togglePlay() },
@@ -342,6 +345,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     onLoop = { vm.loopPlayback.value = !loop },
                     onAudio = if (selectedLayer.media != null) ({ showAudio = true }) else null,
                     onExtractAudio = if (vm.canExtractAudio(selectedLayer)) ({ vm.extractAudio(selectedLayer.id) }) else null,
+                    onRemoveBackground = if (vm.canRemoveBackground(selectedLayer)) ({ vm.removeBackground(selectedLayer.id) }) else null,
+                    onStabilize = if (vm.canStabilize(selectedLayer)) ({ stabilizeTarget = selectedLayer.id }) else null,
                 )
             }
             EditorToolBar(
@@ -453,6 +458,10 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         val target = selection?.let { LayerTree.find(project, it) }
         if (target?.media != null) AudioSheet(vm, project, target, onDismiss = { showAudio = false }) else showAudio = false
     }
+    stabilizeTarget?.let { id ->
+        StabilizeDialog(onStart = { settings -> stabilizeTarget = null; vm.stabilize(id, settings) }, onDismiss = { stabilizeTarget = null })
+    }
+    mediaJob?.let { MediaJobDialog(it, onCancel = { vm.cancelMediaJob() }) }
     if (showCaptions) CaptionsSheet(vm, project, onDismiss = { showCaptions = false })
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })
 }

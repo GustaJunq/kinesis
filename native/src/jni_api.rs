@@ -1,7 +1,7 @@
 //! JNI bindings, class `dev.kinesis.core.nativebridge.NativeCore` (see core/src/main/kotlin/.../nativebridge).
 
 use crate::extrude::{self, P};
-use jni::objects::{JClass, JFloatArray, JIntArray, JObject, JObjectArray, JString};
+use jni::objects::{JByteBuffer, JClass, JFloatArray, JIntArray, JObject, JObjectArray, JString};
 #[cfg(feature = "whisper")]
 use jni::objects::JLongArray;
 use jni::sys::{jboolean, jint, jlong, JNI_FALSE, JNI_TRUE};
@@ -197,5 +197,121 @@ pub extern "system" fn Java_dev_kinesis_core_nativebridge_NativeCore_whisperFree
         drop(unsafe { Box::from_raw(handle as *mut crate::whisper::Handle) });
     }
     #[cfg(not(feature = "whisper"))]
+    let _ = handle;
+}
+
+// ------------------------------------------------------------------------------------------ Stabilization (vid.stab)
+
+#[cfg(feature = "stabilize")]
+fn plane<'a>(env: &JNIEnv, buf: &JByteBuffer, stride: jint) -> Option<crate::stab::Plane<'a>> {
+    let ptr = env.get_direct_buffer_address(buf).ok()?;
+    let len = env.get_direct_buffer_capacity(buf).ok()?;
+    if ptr.is_null() || stride <= 0 { return None; }
+    // SAFETY: the direct buffer is owned by the JVM and outlives this call; vid.stab only reads it here.
+    Some(crate::stab::Plane { data: unsafe { std::slice::from_raw_parts(ptr as *const u8, len) }, stride: stride as usize })
+}
+
+#[cfg(feature = "stabilize")]
+fn plane_mut<'a>(env: &JNIEnv, buf: &JByteBuffer, stride: jint) -> Option<crate::stab::PlaneMut<'a>> {
+    let ptr = env.get_direct_buffer_address(buf).ok()?;
+    let len = env.get_direct_buffer_capacity(buf).ok()?;
+    if ptr.is_null() || stride <= 0 { return None; }
+    // SAFETY: as above; the destination planes are distinct buffers the caller owns exclusively during the call.
+    Some(crate::stab::PlaneMut { data: unsafe { std::slice::from_raw_parts_mut(ptr, len) }, stride: stride as usize })
+}
+
+/// Whether this build contains vid.stab.
+#[no_mangle]
+pub extern "system" fn Java_dev_kinesis_core_nativebridge_NativeCore_stabSupported<'l>(_env: JNIEnv<'l>, _class: JClass<'l>) -> jboolean {
+    if cfg!(feature = "stabilize") { JNI_TRUE } else { JNI_FALSE }
+}
+
+/// Creates a stabilizer for YUV 4:2:0 frames of `width` × `height` (even). Returns a handle, or 0.
+#[no_mangle]
+pub extern "system" fn Java_dev_kinesis_core_nativebridge_NativeCore_stabNew<'l>(
+    _env: JNIEnv<'l>, _class: JClass<'l>, width: jint, height: jint, shakiness: jint, accuracy: jint,
+) -> jlong {
+    #[cfg(feature = "stabilize")]
+    {
+        if width <= 0 || height <= 0 { return 0; }
+        return match crate::stab::Stabilizer::new(width as usize, height as usize, shakiness, accuracy) {
+            Some(s) => Box::into_raw(Box::new(s)) as jlong,
+            None => 0,
+        };
+    }
+    #[cfg(not(feature = "stabilize"))]
+    {
+        let _ = (width, height, shakiness, accuracy);
+        0
+    }
+}
+
+/// Pass 1: one frame (three direct ByteBuffers with their row strides). 0 = ok.
+#[no_mangle]
+pub extern "system" fn Java_dev_kinesis_core_nativebridge_NativeCore_stabDetect<'l>(
+    env: JNIEnv<'l>, _class: JClass<'l>, handle: jlong,
+    y: JByteBuffer<'l>, ys: jint, u: JByteBuffer<'l>, us: jint, v: JByteBuffer<'l>, vs: jint,
+) -> jint {
+    #[cfg(feature = "stabilize")]
+    {
+        if handle == 0 { return -100; }
+        let (Some(py), Some(pu), Some(pv)) = (plane(&env, &y, ys), plane(&env, &u, us), plane(&env, &v, vs)) else { return -101 };
+        let s = unsafe { &mut *(handle as *mut crate::stab::Stabilizer) };
+        return match s.detect(py, pu, pv) { Ok(()) => 0, Err(e) => { set_error(e); -1 } };
+    }
+    #[cfg(not(feature = "stabilize"))]
+    {
+        let _ = (&env, handle, y, ys, u, us, v, vs);
+        -102
+    }
+}
+
+/// Between the passes (see ks_stab.h). 0 = ok.
+#[no_mangle]
+pub extern "system" fn Java_dev_kinesis_core_nativebridge_NativeCore_stabPrepare<'l>(
+    _env: JNIEnv<'l>, _class: JClass<'l>, handle: jlong, smoothing: jint, zoom: f64, optzoom: jint, crop_black: jboolean,
+) -> jint {
+    #[cfg(feature = "stabilize")]
+    {
+        if handle == 0 { return -100; }
+        let s = unsafe { &mut *(handle as *mut crate::stab::Stabilizer) };
+        return match s.prepare(smoothing, zoom, optzoom, crop_black != 0) { Ok(()) => 0, Err(e) => { set_error(e); -1 } };
+    }
+    #[cfg(not(feature = "stabilize"))]
+    {
+        let _ = (handle, smoothing, zoom, optzoom, crop_black);
+        -102
+    }
+}
+
+/// Pass 2: the next frame from the source planes into the destination planes. 0 = ok.
+#[no_mangle]
+pub extern "system" fn Java_dev_kinesis_core_nativebridge_NativeCore_stabApply<'l>(
+    env: JNIEnv<'l>, _class: JClass<'l>, handle: jlong,
+    sy: JByteBuffer<'l>, sys: jint, su: JByteBuffer<'l>, sus: jint, sv: JByteBuffer<'l>, svs: jint,
+    dy: JByteBuffer<'l>, dys: jint, du: JByteBuffer<'l>, dus: jint, dv: JByteBuffer<'l>, dvs: jint,
+) -> jint {
+    #[cfg(feature = "stabilize")]
+    {
+        if handle == 0 { return -100; }
+        let (Some(a), Some(b), Some(c)) = (plane(&env, &sy, sys), plane(&env, &su, sus), plane(&env, &sv, svs)) else { return -101 };
+        let (Some(d), Some(e), Some(f)) = (plane_mut(&env, &dy, dys), plane_mut(&env, &du, dus), plane_mut(&env, &dv, dvs)) else { return -101 };
+        let s = unsafe { &mut *(handle as *mut crate::stab::Stabilizer) };
+        return match s.apply(a, b, c, d, e, f) { Ok(()) => 0, Err(err) => { set_error(err); -1 } };
+    }
+    #[cfg(not(feature = "stabilize"))]
+    {
+        let _ = (&env, handle, sy, sys, su, sus, sv, svs, dy, dys, du, dus, dv, dvs);
+        -102
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_dev_kinesis_core_nativebridge_NativeCore_stabFree<'l>(_env: JNIEnv<'l>, _class: JClass<'l>, handle: jlong) {
+    #[cfg(feature = "stabilize")]
+    if handle != 0 {
+        drop(unsafe { Box::from_raw(handle as *mut crate::stab::Stabilizer) });
+    }
+    #[cfg(not(feature = "stabilize"))]
     let _ = handle;
 }

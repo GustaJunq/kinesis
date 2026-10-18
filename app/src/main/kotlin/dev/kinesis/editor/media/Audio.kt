@@ -218,7 +218,11 @@ class AudioMixer(private val pcm: PcmCache) {
     var clips: List<AudioClip> = emptyList()
 
     /** Equalizer memory of each clip, touched only by the thread that mixes (every mixer has its own). */
-    private class EqState(val bands: List<dev.kinesis.core.model.EqBand>, val eq: dev.kinesis.core.audio.StereoEq, var nextTime: Double)
+    private class EqState(var bands: List<dev.kinesis.core.model.EqBand>, val eq: dev.kinesis.core.audio.StereoEq, var nextTime: Double)
+
+    /** When set, only this layer is heard (auditioning one clip in the audio panel). */
+    @Volatile
+    var solo: String? = null
 
     private val eqStates = HashMap<String, EqState>()
     private val eqScratch = FloatArray(256 * 2)
@@ -227,7 +231,11 @@ class AudioMixer(private val pcm: PcmCache) {
     private fun eqFor(clip: AudioClip, start: Double): dev.kinesis.core.audio.StereoEq? {
         if (clip.eq.isEmpty()) { eqStates.remove(clip.layerId); return null }
         var st = eqStates[clip.layerId]
-        if (st == null || st.bands != clip.eq) {
+        if (st != null && st.bands != clip.eq) {
+            // Same number of bands (dragging a point): new settings, same filter memory, no click.
+            if (st.eq.update(clip.eq)) st.bands = clip.eq else st = null
+        }
+        if (st == null) {
             st = EqState(clip.eq, dev.kinesis.core.audio.StereoEq(clip.eq, MIX_RATE), start)
             eqStates[clip.layerId] = st
         } else if (kotlin.math.abs(start - st.nextTime) > 2.0 / MIX_RATE) {
@@ -244,7 +252,9 @@ class AudioMixer(private val pcm: PcmCache) {
     fun mix(start: Double, frames: Int, out: FloatArray) {
         java.util.Arrays.fill(out, 0, frames * 2, 0f)
         val end = start + frames.toDouble() / MIX_RATE
+        val only = solo
         for (clip in clips) {
+            if (only != null && clip.layerId != only) continue
             if (clip.compEnd <= start || clip.compStart >= end) continue
             val data = pcm.get(clip.assetId) ?: continue
             val total = data.limit() / 2

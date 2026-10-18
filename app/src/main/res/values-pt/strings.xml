@@ -487,4 +487,35 @@
     <string name="audio_layer_name">%1$s (áudio)</string>
     <string name="audio_extracted">Áudio extraído para uma camada própria; a camada de vídeo foi silenciada.</string>
     <string name="audio_extract_failed">Não foi possível extrair o áudio.</string>
+    <!-- 0.1.5: remoção de fundo, estabilização, créditos de terceiros -->
+    <string name="remove_background">Remover fundo</string>
+    <string name="stabilize">Estabilizar</string>
+    <string name="cancelling">Cancelando…</string>
+    <string name="cutout_running">Removendo o fundo…</string>
+    <string name="cutout_hint">Roda neste aparelho, quadro a quadro. Mantenha o app aberto. Só pessoas são recortadas.</string>
+    <string name="cutout_layer_name">%1$s (recorte)</string>
+    <string name="cutout_done">Fundo removido. A camada original ficou oculta, com o recorte logo acima.</string>
+    <string name="cutout_failed">Não foi possível remover o fundo: %1$s</string>
+    <string name="stabilize_running">Estabilizando…</string>
+    <string name="stabilize_hint">Duas passadas: mede a tremida e depois corrige. Mantenha o app aberto.</string>
+    <string name="stabilized_layer_name">%1$s (estabilizado)</string>
+    <string name="stabilize_done">Vídeo estabilizado. A camada original ficou oculta.</string>
+    <string name="stabilize_failed">Não foi possível estabilizar: %1$s</string>
+    <string name="stabilize_smoothing">Suavização</string>
+    <string name="stabilize_smoothing_hint">Mais alto = mais firme, porém mais "flutuante".</string>
+    <string name="stabilize_shakiness">Tremor</string>
+    <string name="stabilize_autozoom">Corte/zoom automático</string>
+    <string name="stabilize_autozoom_hint">Aproxima a imagem para esconder as bordas que a correção mostra.</string>
+    <string name="stabilize_license">Usa vid.stab (GPL-2.0 ou posterior).</string>
+    <string name="stabilize_start">Estabilizar</string>
+    <string name="third_party_licenses">Licenças de terceiros</string>
+    <string name="third_party_intro">Componentes de código aberto incluídos no Kinesis, com suas licenças.</string>
+    <string name="license_vidstab">vid.stab (estabilização de vídeo) — GPL-2.0+</string>
+    <string name="license_gpl3">GNU General Public License 3.0</string>
+    <string name="license_mediapipe">MediaPipe e modelo Selfie Segmentation — Apache-2.0</string>
+    <string name="license_apache">Apache License 2.0</string>
+    <string name="license_others">Outros componentes</string>
+    <string name="license_manrope">Manrope — OFL 1.1</string>
+    <string name="license_barlow">Barlow Condensed — OFL 1.1</string>
+    <string name="license_jetbrains">JetBrains Mono — OFL 1.1</string>
 </resources>

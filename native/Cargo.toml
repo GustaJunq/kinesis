@@ -1,6 +1,6 @@
 [package]
 name = "kinesis-native"
-version = "0.1.4-hotfix"
+version = "0.1.5"
 edition = "2021"
 description = "Native helpers of the Kinesis Editor (text extrusion, Whisper transcription) behind JNI"
 license = "GPL-3.0-only"
@@ -14,6 +14,11 @@ crate-type = ["cdylib", "rlib"]
 default = []
 # Local speech-to-text with whisper.cpp (builds C++; needs cmake, and the NDK for Android targets).
 whisper = ["dep:whisper-rs"]
+# Video stabilization with vid.stab (GPL-2.0-or-later, vendored in third_party/vidstab).
+stabilize = []
+
+[build-dependencies]
+cc = "1"
 
 [dependencies]
 jni = "0.21"

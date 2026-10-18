@@ -2,6 +2,27 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.1.5 — 2026-10-18
+
+Formato `.knsproj` **v8**, sem mudança: tudo o que a versão gera usa campos que já existiam (imagens PNG, `video.alphaPacked`).
+Projetos antigos abrem idênticos.
+
+### Adicionado
+- **Equalizador gráfico** na aba Áudio. Pontos arrastáveis sobre a curva de resposta (X = frequência, escala log 20 Hz–20 kHz;
+  Y = ganho, ±18 dB). São cinco pontos (graves, médios e agudos); tocar num ponto o seleciona e o Q dele fica num controle discreto abaixo
+  do gráfico (1,0 por padrão; 0,7 nas pontas). Arrastar fora dos pontos continua rolando o painel. Sumiram a linha de presets e os campos numéricos; "Restaurar
+  padrão" continua. Botão **▶ ouvir** toca o clipe com o EQ aplicado e as mudanças soam em tempo real.
+- **Remover fundo** (imagem e vídeo), no aparelho: MediaPipe Image Segmenter + modelo Selfie Segmenter (Apache-2.0).
+  Vídeo é processado quadro a quadro com suavização temporal das bordas, barra de progresso e cancelamento. O resultado
+  é uma nova camada (PNG com alfa, ou vídeo `alphaPacked`) logo acima da original, que fica oculta. **Só recorta pessoas.**
+- **Estabilização de vídeo** com vid.stab (GPL-2.0 ou posterior), em duas passadas (`vidstabdetect` / `vidstabtransform`),
+  com controles de suavização, tremor e corte/zoom automático; progresso e cancelamento; o som é copiado sem recodificar.
+  O resultado é uma nova camada acima da original (oculta).
+- **Créditos de terceiros** em Ajustes → Licenças de terceiros (vid.stab, GPL-3.0, MediaPipe/modelo, Apache-2.0, fontes).
+- **Navegação por keyframes** nas setas anterior/próximo: percorre os keyframes de **todas** as propriedades da camada
+  selecionada; keyframes no mesmo instante em propriedades diferentes são uma única parada. O botão "− ◆" remove os
+  keyframes da parada mais próxima do cursor, sem precisar estar exatamente em cima (a tolerância acompanha o zoom).
+
 ## 0.1.4-hotfix — 2026-10-17
 
 Formato `.knsproj` **v8** (abre v1 a v7; só campos novos, projetos antigos ficam idênticos).

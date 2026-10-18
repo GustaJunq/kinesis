@@ -23,6 +23,8 @@ import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.CenterFocusStrong
+import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.filled.Remove
@@ -232,6 +234,10 @@ fun SelectionActions(
     onAudio: (() -> Unit)? = null,
     /** Shown only for video layers that have a sound track. */
     onExtractAudio: (() -> Unit)? = null,
+    /** Shown for image and video layers: cuts the person out of the background. */
+    onRemoveBackground: (() -> Unit)? = null,
+    /** Shown for video layers: stabilizes the shake. */
+    onStabilize: (() -> Unit)? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().background(KColors.Bar).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp),
@@ -244,6 +250,8 @@ fun SelectionActions(
         ActionChip(Icons.Outlined.CreateNewFolder, R.string.group, onGroup)
         if (onAudio != null) ActionChip(Icons.Outlined.GraphicEq, R.string.audio_panel, onAudio)
         if (onExtractAudio != null) ActionChip(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
+        if (onRemoveBackground != null) ActionChip(Icons.Outlined.PersonOff, R.string.remove_background, onRemoveBackground)
+        if (onStabilize != null) ActionChip(Icons.Outlined.CenterFocusStrong, R.string.stabilize, onStabilize)
         ActionChip(Icons.Outlined.Delete, R.string.delete, onDelete, danger = true)
         ActionChip(Icons.Outlined.Repeat, R.string.loop, onLoop, accent = loop)
     }

@@ -1,5 +1,5 @@
 name: Build the native library
-description: "Compiles native/ (Rust, text extrusion and Whisper) for the Android ABIs into app/src/main/jniLibs."
+description: "Compiles native/ (Rust, text extrusion, Whisper and vid.stab) for the Android ABIs into app/src/main/jniLibs."
 runs:
   using: composite
   steps:

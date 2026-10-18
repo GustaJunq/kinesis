@@ -487,4 +487,35 @@
     <string name="audio_layer_name">%1$s (audio)</string>
     <string name="audio_extracted">Audio extracted into its own layer; the video layer was muted.</string>
     <string name="audio_extract_failed">Could not extract the audio.</string>
+    <!-- 0.1.5: background removal, stabilization, third-party credits -->
+    <string name="remove_background">Remove background</string>
+    <string name="stabilize">Stabilize</string>
+    <string name="cancelling">Cancelling…</string>
+    <string name="cutout_running">Removing the background…</string>
+    <string name="cutout_hint">Runs on this device, frame by frame. Keep the app open. Only people are cut out.</string>
+    <string name="cutout_layer_name">%1$s (cutout)</string>
+    <string name="cutout_done">Background removed. The original layer is hidden, with the cutout right above it.</string>
+    <string name="cutout_failed">Could not remove the background: %1$s</string>
+    <string name="stabilize_running">Stabilizing…</string>
+    <string name="stabilize_hint">Two passes: measuring the shake, then correcting it. Keep the app open.</string>
+    <string name="stabilized_layer_name">%1$s (stabilized)</string>
+    <string name="stabilize_done">Video stabilized. The original layer is hidden.</string>
+    <string name="stabilize_failed">Could not stabilize: %1$s</string>
+    <string name="stabilize_smoothing">Smoothing</string>
+    <string name="stabilize_smoothing_hint">Higher is steadier but looks more floaty.</string>
+    <string name="stabilize_shakiness">Shakiness</string>
+    <string name="stabilize_autozoom">Auto crop/zoom</string>
+    <string name="stabilize_autozoom_hint">Zooms in to hide the borders the correction shows.</string>
+    <string name="stabilize_license">Uses vid.stab (GPL-2.0-or-later).</string>
+    <string name="stabilize_start">Stabilize</string>
+    <string name="third_party_licenses">Third-party licenses</string>
+    <string name="third_party_intro">Open-source components included in Kinesis, with their licenses.</string>
+    <string name="license_vidstab">vid.stab (video stabilization) — GPL-2.0+</string>
+    <string name="license_gpl3">GNU General Public License 3.0</string>
+    <string name="license_mediapipe">MediaPipe and the Selfie Segmentation model — Apache-2.0</string>
+    <string name="license_apache">Apache License 2.0</string>
+    <string name="license_others">Other components</string>
+    <string name="license_manrope">Manrope — OFL 1.1</string>
+    <string name="license_barlow">Barlow Condensed — OFL 1.1</string>
+    <string name="license_jetbrains">JetBrains Mono — OFL 1.1</string>
 </resources>
