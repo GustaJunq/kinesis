@@ -91,5 +91,8 @@ Todos os textos se chamam `Texto 3D`, então a correspondência é feita pelo **
 | texto 3D | camada `object3d` com `Primitive.TEXT`: conteúdo, alinhamento, profundidade, chanfro, cor e material; tamanho da fonte = tamanho Aurea × 3,45 (aproximado) |
 | câmera | camada `camera`: posição e rotação (com keyframes e Bézier) convertidas; campo de visão derivado da distância inicial (`2·atan((altura/2)/|z|)`), fixo |
 
+Cada tipo de objeto tem versão própria na string (`aurea-shape3d:v1`, `aurea-text3d:v2`); outra versão gera um aviso.
+O contêiner está descrito em [aureaproj.ksy](aureaproj.ksy) (Kaitai Struct, sem validação com o compilador).
+
 Ainda não importados (avisados): rotação, keyframes, efeitos, campo de visão animado da câmera, rotação/keyframes dos objetos, fonte e chanfro exatos do texto, mídia e demais tipos de camada.
 Para mapear mais campos, compare projetos que diferem em uma única coisa (um keyframe, uma rotação, um texto).

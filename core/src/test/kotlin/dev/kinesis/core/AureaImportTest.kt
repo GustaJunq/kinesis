@@ -83,6 +83,11 @@ class AureaImportTest {
     }
 
     @Test
+    fun testedObjectVersionsDoNotWarn() {
+        assertTrue(AureaImport.read(textCamera()).warnings.none { it.startsWith("objeto ") && it.contains("confira o resultado") })
+    }
+
+    @Test
     fun recognisesAureaEntries() {
         assertTrue(AureaImport.isAureaEntry("project.aurea"))
         assertTrue(!AureaImport.isAureaEntry("project.json"))
