@@ -235,7 +235,7 @@ class TimelineFeaturesTest {
     fun version7ProjectsOpenUnchangedInVersion8() {
         val v7 = """{"format":"knsproj","formatVersion":7,"layers":[]}"""
         val p = KnsprojJson.decode(v7)
-        assertEquals(8, p.formatVersion)
+        assertEquals(dev.kinesis.core.model.FORMAT_VERSION, p.formatVersion)
         assertTrue(p.markers.isEmpty())
     }
 }

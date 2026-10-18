@@ -1,10 +1,10 @@
-# Formato `.knsproj` — versão 8
+# Formato `.knsproj` — versão 9
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v8.schema.json`](../schema/knsproj-v8.schema.json) (JSON Schema draft 2020-12);
+- **Schema oficial:** [`schema/knsproj-v9.schema.json`](../schema/knsproj-v9.schema.json) (JSON Schema draft 2020-12);
   os das versões 1 a 5 continuam em [`schema/`](../schema)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
@@ -77,12 +77,13 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `8` (documentos das versões `1` a `7` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `9` (documentos das versões `1` a `8` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
-| `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120), `duration` (s), `background`, `motionBlur`, `environment` (seção 5.13) |
+| `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120; o app oferece 12–60 num controle deslizante, sem predefinições), `duration` (s), `background`, `motionBlur`, `environment` (seção 5.13) |
 | `assets` | array | mídias embutidas (seção 6) |
 | `markers` | array | marcadores da timeline (formato v8): `[{ "id", "time", "name"?, "color"? }]`; `time` em segundos da composição (0 a 3600), `id` único, `color` `#RRGGBB`. Independem das camadas; o app os usa para navegar (botões anterior/próximo) e como pontos de ímã ao arrastar clipes |
+| `editorView` | objeto | vista do editor (formato v9): a câmera livre da prévia, **fora do que é renderizado**. `{ "mode"?, "target"?, "yaw"?, "pitch"?, "distance"?, "fov"? }`. `mode`: `camera` (padrão: a imagem da câmera ativa), `editor` (câmera livre de trabalho, com a câmera da cena desenhada como pirâmide) ou `inside` (vista pela câmera ativa, gestos movem essa câmera). `target` `[x,y,z]` em pixels da composição; `yaw` (graus, 0 olha para +z), `pitch` (−89 a 89, positivo olha de cima), `distance` (50 a 200000 px do alvo), `fov` (1 a 170°). Mudar a vista não é um passo de desfazer; projetos sem `editorView` abrem em `camera`, como antes |
 | `layers` | array | camadas de topo, em ordem de pintura |
 
 ## 4. Propriedades animáveis
@@ -524,6 +525,12 @@ Comportamentos especiais:
   (preto). Substitui as cores da camada; em camadas 2D é ignorado e o validador avisa `effect.layerKind`.
 - **`echo`**: desenha atrás da camada `count` cópias dela em `t − k·delay`, com opacidade `decay^k`; as cópias levam
   só os efeitos que vêm antes do `echo` na lista.
+- **`timeSlice`** (formato v9): corta a imagem em `slices` faixas (2 a 24) ao longo da direção `angle` (0° = da esquerda
+  para a direita, 90° = de cima para baixo); a faixa `k` mostra a camada `offset` quadros (0 a 30) mais atrás por faixa,
+  segundo `order`: `forward` (a primeira faixa é o presente), `backward` (a última) ou `center` (as do meio). `smooth`
+  (0 a 1) vai de bordas em degraus (0) à mistura suave das faixas vizinhas (1). Como o `echo`, só os efeitos antes do
+  `timeSlice` entram nas imagens do passado. Na prévia, aparelhos fracos usam menos faixas e guardam só alguns quadros;
+  a exportação é exata.
 - **`posterizeTime`**: a camada inteira (transformação, conteúdo e efeitos) é avaliada no início do seu quadro em
   `fps`, criando um visual de stop-motion. A posição na lista não importa.
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
@@ -795,7 +802,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v8.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v9.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -837,6 +844,7 @@ Erros da versão 6 e 7: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeigh
   5.13; só campos novos, documentos v5 abrem sem mudança); **v7** → em `{"cyclic": …}`, `offset` passa a ser a
   assimetria de cada ciclo e o antigo deslocamento vira `phase` (a migração v6→v7 move o valor antigo de `offset` para
   `phase`, então projetos v5/v6 ficam idênticos). **v8** → `markers` na raiz e `eq` nos clipes de áudio/vídeo (seções 2 e 5; só campos novos, documentos v7 abrem sem mudança).
+  **v9** → `editorView` na raiz (seção 2), o efeito `timeSlice` (seção 7, efeitos de tempo) e os recortes do Roto Brush (seção 5.4; só campos novos, documentos v8 abrem sem mudança).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.

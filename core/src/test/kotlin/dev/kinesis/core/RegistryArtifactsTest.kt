@@ -28,6 +28,7 @@ import java.io.File
  * - `schema/knsproj-v6.schema.json` — the v5 schema plus shading, shadows, depth of field, environment, 3D text, packed alpha;
  * - `schema/knsproj-v7.schema.json` — the v6 schema with `cyclic.offset` as the skew of each cycle and the old shift as `cyclic.phase`;
  * - `schema/knsproj-v8.schema.json` — the v7 schema plus timeline `markers` and the `eq` of audio and video clips;
+ * - `schema/knsproj-v9.schema.json` — the v8 schema plus the `editorView` of the viewport (and the TimeSlice effect);
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -62,6 +63,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV8() = check(File(root, "schema/knsproj-v8.schema.json"), JsonPretty.print(buildSchemaV8()) + "\n")
+
+    @Test
+    fun schemaV9() = check(File(root, "schema/knsproj-v9.schema.json"), JsonPretty.print(buildSchemaV9()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -402,6 +406,35 @@ class RegistryArtifactsTest {
         val m = LinkedHashMap(v7)
         m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v8.schema.json")
         m["title"] = str("Kinesis project (.knsproj) — project.json, format version 8")
+        m["properties"] = JsonObject(props)
+        m["\$defs"] = JsonObject(defs)
+        return JsonObject(m)
+    }
+
+    private fun buildSchemaV9(): JsonObject {
+        val v8 = buildSchemaV8()
+        val defs = LinkedHashMap(v8.getValue("\$defs").jsonObject)
+        defs["editorView"] = obj(
+            "description" to str("The free camera of the editor viewport and which view it shows. Editor state: never rendered into the video."),
+            "type" to str("object"),
+            "properties" to obj(
+                "mode" to obj("enum" to JsonArray(listOf(str("camera"), str("editor"), str("inside"))), "description" to str("camera = the active camera's picture (default); editor = the free camera; inside = through the active camera, gestures move it.")),
+                "target" to obj("\$ref" to str("#/\$defs/vec3"), "description" to str("Point the editor camera looks at (composition pixels).")),
+                "yaw" to num(-360, 360, "Degrees; 0 looks along +z."),
+                "pitch" to num(-89, 89, "Degrees; positive looks down from above."),
+                "distance" to num(50, 200000, "Pixels from the target."),
+                "fov" to num(1, 170, "Vertical field of view in degrees."),
+            ),
+            "additionalProperties" to JsonPrimitive(false),
+        )
+        val props = LinkedHashMap<String, JsonElement>()
+        for ((k, v) in v8.getValue("properties").jsonObject) {
+            props[k] = if (k == "formatVersion") obj("const" to JsonPrimitive(9)) else v
+            if (k == "markers") props["editorView"] = ref("editorView")
+        }
+        val m = LinkedHashMap(v8)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v9.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 9")
         m["properties"] = JsonObject(props)
         m["\$defs"] = JsonObject(defs)
         return JsonObject(m)

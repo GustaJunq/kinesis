@@ -1,0 +1,18 @@
+{
+  "format": "knsproj",
+  "formatVersion": 9,
+  "generator": "knsproj skill examples",
+  "meta": { "title": "Fatias de tempo" },
+  "composition": { "width": 1080, "height": 1080, "fps": 30, "duration": 4, "background": "#101522" },
+  "layers": [
+    {
+      "id": "estrela-girando",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": { "rotation": { "keyframes": [ { "time": 0, "value": 0 }, { "time": 4, "value": 720 } ] } },
+      "shape": { "kind": "star", "size": [800, 800], "fill": { "color": "#FFC857" } },
+      "effects": [ { "type": "timeSlice", "slices": 10, "angle": 0, "offset": 3, "order": "center", "smooth": 0.35 } ]
+    }
+  ]
+}

@@ -5,6 +5,7 @@ so problems reported by this CLI match what the Android app reports when importi
 Runs on the raw JSON (after schema validation) and applies the format defaults itself.
 """
 
+import math
 import json
 import os
 
@@ -165,6 +166,19 @@ def validate(project, available_files=None):
         t = m.get("time", 0)
         if not (isinstance(t, (int, float)) and 0 <= t <= 3600):
             err("marker.time", f"{path}.time", "marker time must be between 0 and 3600 seconds")
+
+    view = project.get("editorView")
+    if isinstance(view, dict):
+        numbers = [view.get("yaw", 0), view.get("pitch", 0), view.get("distance", 2600), view.get("fov", 40)]
+        numbers += list(view.get("target", [0, 0, 0]) or [])
+        if not all(isinstance(n, (int, float)) and math.isfinite(n) for n in numbers):
+            err("editorView", "editorView", "editorView values must be finite numbers")
+        elif not (50 <= view.get("distance", 2600) <= 200000):
+            err("editorView", "editorView", "editorView.distance must be between 50.0 and 200000.0")
+        elif abs(view.get("pitch", 0)) > 89:
+            err("editorView", "editorView", "editorView.pitch must be between -89.0 and 89.0")
+        elif not (1 <= view.get("fov", 40) <= 170):
+            err("editorView", "editorView", "editorView.fov must be between 1 and 170")
 
     assets_by_id = {}
     for i, asset in enumerate(project.get("assets", []) or []):

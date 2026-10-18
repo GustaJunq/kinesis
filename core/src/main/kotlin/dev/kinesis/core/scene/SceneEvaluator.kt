@@ -406,6 +406,10 @@ object SceneEvaluator {
     fun defaultCameraDistance(height: Int, fov: Float): Float =
         (height / 2f) / tan(Math.toRadians(fov / 2.0)).toFloat()
 
+    /** Id of the camera layer that is the active camera at [time] (the one drawn from), or null for the default camera. */
+    fun activeCameraId(project: KnsProject, time: Double): String? =
+        activeLayersOfType(project, time, LayerType.CAMERA).lastOrNull()?.first?.id
+
     fun evaluateCamera(project: KnsProject, time: Double): CameraState {
         val comp = project.composition
         val active = activeLayersOfType(project, time, LayerType.CAMERA).lastOrNull()
@@ -439,7 +443,7 @@ object SceneEvaluator {
         }
         val view = Mat4.lookAt(position, forward?.let { position + it } ?: target, up)
         val projection = Mat4.perspective(fov, comp.aspect, NEAR_PLANE, FAR_PLANE)
-        return CameraState(position, target, fov, view, projection, comp.width, comp.height, dof)
+        return CameraState(position, target, fov, view, projection, comp.width, comp.height, dof, up)
     }
 
     fun evaluateLights(project: KnsProject, time: Double): Pair<Color, List<LightState>> {

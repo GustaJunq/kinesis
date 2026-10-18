@@ -6,6 +6,7 @@ import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.util.Log
 import dev.kinesis.core.model.KnsProject
+import dev.kinesis.core.scene.CameraState
 import dev.kinesis.core.scene.SceneEvaluator
 import dev.kinesis.core.scene.TimeSlice
 import javax.microedition.khronos.egl.EGLConfig
@@ -24,6 +25,8 @@ data class PreviewState(
     val quality3D: Int = 1,
     /** Preview resolution relative to the on-screen size: 1, 0.5 or 0.25 (export is never affected). */
     val scale: Float = 1f,
+    /** The editor view's camera: when set, 3D layers are drawn from it instead of the scene's camera. */
+    val editorCamera: CameraState? = null,
 )
 
 /** Letterboxed area of the composition inside the view, in view pixels (origin top-left). */
@@ -74,7 +77,7 @@ class PreviewRenderer(
 
     // Rendered frames of the current project version (cleared by any edit): replaying or scrubbing back over
     // frames already seen costs a copy instead of a render.
-    private data class FrameKey(val frame: Long, val width: Int, val height: Int, val playing: Boolean, val quality3D: Int)
+    private data class FrameKey(val frame: Long, val width: Int, val height: Int, val playing: Boolean, val quality3D: Int, val editorView: Int)
     private val frameCache = LinkedHashMap<FrameKey, RenderTarget>(64, 0.75f, true)
     private var cacheProject: KnsProject? = null
     private var cacheBytes = 0L
@@ -126,10 +129,10 @@ class PreviewRenderer(
             val quality = (if (s.playing) 0.75f else 1f) * s.scale.coerceIn(0.1f, 1f)
             val outW = min(p.composition.width.toFloat(), vp.width * quality).roundToInt().coerceAtLeast(16)
             val outH = (outW * p.composition.height.toFloat() / p.composition.width).roundToInt().coerceAtLeast(16)
-            val key = FrameKey(Math.round(s.time * p.composition.fps), outW, outH, s.playing, s.quality3D)
+            val key = FrameKey(Math.round(s.time * p.composition.fps), outW, outH, s.playing, s.quality3D, s.editorCamera?.view?.m?.contentHashCode() ?: 0)
             val cached = frameCache[key]
             val shown = if (cached != null) cached else {
-                val scene = SceneEvaluator.evaluate(p, s.time)
+                val scene = SceneEvaluator.evaluate(p, s.time).let { sc -> s.editorCamera?.let(sc::withCamera) ?: sc }
                 val samples = if (s.playing) min(3, p.composition.motionBlur.samples) else p.composition.motionBlur.samples
                 val (shadowSize, dofSamples) = RenderSettings.quality3D(s.quality3D)
                 val cacheBytes = if (lowMemory) SLICE_CACHE_LOW else SLICE_CACHE

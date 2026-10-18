@@ -417,6 +417,35 @@ class Format8Tests(unittest.TestCase):
         self.assertEqual(8, kns_migrate.migrate(minimal(formatVersion=7), 8)["formatVersion"])
 
 
+class Format9Tests(unittest.TestCase):
+    """Format v9: the editor view of the viewport and the TimeSlice effect."""
+
+    def codes(self, doc):
+        return [i["code"] for i in cli.validate_project(doc, None).issues]
+
+    def test_editor_view_is_valid(self):
+        view = {"mode": "editor", "target": [0, 0, 0], "yaw": 28, "pitch": 18, "distance": 2600, "fov": 40}
+        self.assertEqual([], self.codes(minimal(editorView=view)))
+        self.assertEqual([], self.codes(minimal(editorView={})))
+
+    def test_invalid_editor_view(self):
+        self.assertIn("schema", self.codes(minimal(editorView={"mode": "orbit"})))
+        self.assertIn("schema", self.codes(minimal(editorView={"distance": 5})))
+        self.assertIn("schema", self.codes(minimal(editorView={"pitch": 120})))
+
+    def test_time_slice_effect(self):
+        layer = {"id": "s", "type": "shape", "shape": {"kind": "rectangle"}, "effects": [
+            {"type": "timeSlice", "slices": 8, "angle": 0, "offset": 3, "order": "center", "smooth": 0.5}]}
+        self.assertEqual([], self.codes(minimal(layers=[layer])))
+        layer["effects"][0]["order"] = "sideways"
+        self.assertIn("schema", self.codes(minimal(layers=[layer])))
+
+    def test_version_8_documents_migrate_to_9(self):
+        migrated = kns_migrate.migrate(minimal(formatVersion=8), 9)
+        self.assertEqual(9, migrated["formatVersion"])
+        self.assertNotIn("editorView", migrated)
+
+
 class ExampleTests(unittest.TestCase):
     """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
 
@@ -425,7 +454,7 @@ class ExampleTests(unittest.TestCase):
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
     def test_expected_examples_exist(self):
-        self.assertEqual(20, len(example_dirs("basicos")))
+        self.assertEqual(22, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
         self.assertGreaterEqual(len(example_dirs("erros")), 5)
         self.assertEqual(12, len(example_dirs("efeitos")))

@@ -41,7 +41,10 @@ class FrameScene(
     val nodes: List<RenderNode>,
     /** Panorama and strength of reflections/ambient light of 3D layers. */
     val environment: Environment = Environment(),
-)
+) {
+    /** The same frame seen from another camera (the editor view). */
+    fun withCamera(camera: CameraState) = FrameScene(time, width, height, background, camera, ambient, lights, nodes, environment)
+}
 
 class CameraState(
     val position: Vec3,
@@ -53,6 +56,8 @@ class CameraState(
     val height: Int,
     /** Depth of field, when the active camera has it enabled. */
     val dof: ResolvedDof? = null,
+    /** World direction that points up on screen. */
+    val up: Vec3 = Vec3(0f, -1f, 0f),
 ) {
     val viewProjection: Mat4 = projection * view
 

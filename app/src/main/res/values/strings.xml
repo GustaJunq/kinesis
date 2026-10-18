@@ -518,4 +518,11 @@
     <string name="license_manrope">Manrope — OFL 1.1</string>
     <string name="license_barlow">Barlow Condensed — OFL 1.1</string>
     <string name="license_jetbrains">JetBrains Mono — OFL 1.1</string>
+    <!-- 0.1.6: viewport views -->
+    <string name="view_camera">Camera</string>
+    <string name="view_editor">Editor view</string>
+    <string name="enter_camera">Enter camera</string>
+    <string name="exit_camera">Exit camera</string>
+    <string name="auto_keyframe">Auto keyframe</string>
+    <string name="reset_view">Reset view</string>
 </resources>

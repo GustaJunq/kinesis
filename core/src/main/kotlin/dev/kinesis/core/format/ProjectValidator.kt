@@ -75,6 +75,9 @@ object ProjectValidator {
             if (!(m.time >= 0.0 && m.time <= 3600.0)) err("marker.time", "$path.time", "marker time must be between 0 and 3600 seconds")
         }
 
+        // Editor view (viewport camera)
+        project.editorView?.let { v -> dev.kinesis.core.scene.EditorCamera.problem(v)?.let { err("editorView", "editorView", it) } }
+
         // Layers (ids are unique across the whole tree)
         val seenIds = HashSet<String>()
         var cameraCount = 0

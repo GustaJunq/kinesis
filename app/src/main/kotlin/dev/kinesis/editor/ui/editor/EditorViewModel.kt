@@ -19,6 +19,11 @@ import dev.kinesis.core.edit.KeyframeClip
 import dev.kinesis.core.edit.KeyframeClipboard
 import dev.kinesis.core.edit.History
 import dev.kinesis.core.edit.TimelineOps
+import dev.kinesis.core.edit.Factory
+import dev.kinesis.core.scene.SceneEvaluator
+import dev.kinesis.core.scene.EditorCamera
+import dev.kinesis.core.model.EditorViewMode
+import dev.kinesis.core.model.EditorView
 import dev.kinesis.core.edit.mapAnimatables
 import dev.kinesis.core.anim.Animatable
 import dev.kinesis.core.model.Asset
@@ -110,6 +115,8 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     val store = ProjectStore(app)
 
     private val _project: MutableStateFlow<KnsProject>
+    private val _editorView: MutableStateFlow<EditorView>
+    val editorView: StateFlow<EditorView>
     val project: StateFlow<KnsProject>
     val loadError: String?
 
@@ -177,6 +184,8 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
         }
         loadError = error
         _project = MutableStateFlow(loaded)
+        _editorView = MutableStateFlow(loadedEditorView(loaded))
+        editorView = _editorView.asStateFlow()
         project = _project.asStateFlow()
         history = History(loaded)
         files = store.assetFiles(projectId) { _project.value }
@@ -266,6 +275,58 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
 
     val current: KnsProject get() = _project.value
 
+    // ------------------------------------------------------------------ editor view (viewport camera)
+
+    /** The viewport camera and mode. Updated live while a gesture runs; saved with the project shortly after. */
+    private var viewJob: Job? = null
+
+    private fun loadedEditorView(p: KnsProject): EditorView = p.editorView ?: EditorCamera.default(p.composition)
+
+    /** Moves the editor camera. Not an undo step; written to the project after the gesture settles. */
+    fun updateEditorView(view: EditorView) {
+        if (view == _editorView.value) return
+        _editorView.value = view
+        viewJob?.cancel()
+        viewJob = viewModelScope.launch {
+            delay(450)
+            persistEditorView()
+        }
+    }
+
+    private fun persistEditorView() {
+        val view = _editorView.value
+        val p = _project.value
+        if (p.editorView == view) return
+        apply(p.copy(editorView = view))
+    }
+
+    fun setViewMode(mode: EditorViewMode) {
+        _editorView.value = _editorView.value.copy(mode = mode)
+        viewJob?.cancel()
+        persistEditorView()
+    }
+
+    /** The camera layer the picture is drawn from now, if the project has one. */
+    fun activeCameraId(): String? = SceneEvaluator.activeCameraId(current, _time.value)
+
+    /** Gestures now move the active camera (a camera is created when the project has none). One undo step if it creates one. */
+    fun enterCamera() {
+        if (activeCameraId() == null) {
+            val p = current
+            val camera = Factory.camera(p, 0.0, text(R.string.layer_camera)).let { it.copy(duration = p.composition.duration) }
+            edit { TimelineOps.addLayer(it, camera, null) }
+            select(camera.id)
+        }
+        setViewMode(EditorViewMode.INSIDE)
+    }
+
+    /** Back to the free editor view, leaving the camera as it is. */
+    fun exitCamera() = setViewMode(EditorViewMode.EDITOR)
+
+    fun resetEditorView() {
+        updateEditorView(EditorCamera.default(current.composition).copy(mode = _editorView.value.mode))
+    }
+
     // ------------------------------------------------------------------ editing core
 
     /**
@@ -297,12 +358,13 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
 
     fun endGesture() = history.commit()
 
+    // Undo and redo bring back the project as it was, but not the editor view: moving the view is not an edit.
     fun undo() {
-        history.undo()?.let { apply(it) }
+        history.undo()?.let { apply(it.copy(editorView = _project.value.editorView)) }
     }
 
     fun redo() {
-        history.redo()?.let { apply(it) }
+        history.redo()?.let { apply(it.copy(editorView = _project.value.editorView)) }
     }
 
     private fun apply(p: KnsProject) {
