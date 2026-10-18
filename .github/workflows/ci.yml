@@ -115,8 +115,11 @@ jobs:
           sudo apt-get install -y -qq glslang-tools
           python3 tools/check_shaders.py
 
+  # Manual only (Actions → CI → Run workflow): the emulator job hangs on the hosted runners after
+  # RenderTest.everyRegisteredEffectRenders, so it no longer gates pushes and pull requests.
   emulator:
     name: Instrumented tests (emulator)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:

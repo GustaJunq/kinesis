@@ -142,6 +142,14 @@ object AureaImport {
         val models = section(SECTION_MODELS)?.body
         val shapes = models?.let { readShapeSpecs(it) }.orEmpty()
         val texts = models?.let { readTextSpecs(it) }.orEmpty()
+        models?.let { m ->
+            // Each kind of object has its own string version; only these were tested.
+            val tested = mapOf("shape3d" to 1, "text3d" to 2)
+            Regex("aurea-(shape3d|text3d):v(\\d+)").findAll(String(m, Charsets.ISO_8859_1))
+                .map { it.groupValues[1] to it.groupValues[2].toInt() }.distinct()
+                .filter { (kind, v) -> tested[kind] != v }
+                .forEach { (kind, v) -> warnings += "objeto $kind na versão v$v (testado com v${tested[kind]}): confira o resultado" }
+        }
         val layers = mutableListOf<Layer>()
         var approximateText = false
         for (rec in findLayers(comps.body, comp.layersStart)) {
