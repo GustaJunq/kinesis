@@ -26,6 +26,9 @@ Formato `.knsproj` **v9** (abre v1 a v8; só campos novos — `editorView`, `vid
   visões Final / Sobreposição / Máscara, tira de quadros com recorte, progresso e cancelamento. O objeto é seguido para
   frente e para trás a partir dos quadros pintados; pintar de novo corrige dali em diante. O resultado é uma camada com
   alfa (`alphaPacked`) acima da original, que fica oculta; as pinceladas ficam em `video.roto` para reabrir.
+- **Importar projetos do Aurea** (`.aureaproj`) pelo mesmo botão de abrir projeto: composição, tempos e formas 3D
+  (posição, escala, primitivo e cor). O que ainda não é convertido aparece num aviso depois da importação. Formato
+  mapeado em [docs/aureaproj.md](docs/aureaproj.md).
 
 ### Notas técnicas
 - Modelo do Roto Brush: Interactive Segmenter do MediaPipe com o modelo Magic Touch (Apache-2.0). Ele recebe **um ponto**

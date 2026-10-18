@@ -12,6 +12,8 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import dev.kinesis.core.edit.Factory
+import dev.kinesis.core.format.AureaFormatException
+import dev.kinesis.core.format.AureaImport
 import dev.kinesis.core.format.KnsprojArchive
 import dev.kinesis.core.format.KnsprojFormatException
 import dev.kinesis.core.format.KnsprojJson
@@ -22,7 +24,9 @@ import dev.kinesis.core.geom.GltfLoader
 import dev.kinesis.core.model.Asset
 import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.KnsProject
+import dev.kinesis.editor.BuildConfig
 import dev.kinesis.editor.render.AssetFiles
+import java.io.BufferedInputStream
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -43,6 +47,9 @@ data class ProjectSummary(
 )
 
 /** Thrown when an imported project is structurally invalid. */
+/** A new project id and what an imported Aurea project lost in the conversion. */
+data class ImportResult(val id: String, val warnings: List<String>)
+
 class ProjectImportException(message: String, val issues: List<ValidationIssue> = emptyList()) : Exception(message)
 
 /**
@@ -117,8 +124,55 @@ class ProjectStore(private val context: Context) {
         return newId
     }
 
-    /** Imports a `.knsproj` stream into a new project. Rejects invalid containers and documents. */
-    fun import(input: InputStream): String {
+    /**
+     * Imports a `.knsproj` or an Aurea `.aureaproj` into a new project. [ImportResult.warnings] lists what an Aurea
+     * project lost in the conversion (always empty for `.knsproj`).
+     */
+    fun import(input: InputStream): ImportResult {
+        val buffered = BufferedInputStream(input, 64 * 1024)
+        buffered.mark(64 * 1024)
+        val first = firstZipEntryName(buffered)
+        buffered.reset()
+        return if (AureaImport.isAureaEntry(first)) importAurea(buffered) else ImportResult(importKnsproj(buffered), emptyList())
+    }
+
+    private fun importAurea(input: InputStream): ImportResult {
+        val result = try {
+            AureaImport.read(input, "Kinesis Editor ${BuildConfig.VERSION_NAME}")
+        } catch (e: AureaFormatException) {
+            throw ProjectImportException(e.message ?: "Invalid Aurea project")
+        }
+        val report = ProjectValidator.validate(result.project)
+        if (!report.isValid) {
+            throw ProjectImportException(report.errors.take(5).joinToString("\n") { "${it.path}: ${it.message}" }, report.errors)
+        }
+        return ImportResult(create(result.project), result.warnings)
+    }
+
+    /** Name of the first local file entry of a zip, read from its header, or null. */
+    private fun firstZipEntryName(input: InputStream): String? {
+        val header = ByteArray(30)
+        if (readFully(input, header) < 30) return null
+        if (header[0] != 0x50.toByte() || header[1] != 0x4b.toByte() || header[2] != 3.toByte() || header[3] != 4.toByte()) return null
+        val length = (header[26].toInt() and 0xff) or ((header[27].toInt() and 0xff) shl 8)
+        if (length !in 1..512) return null
+        val name = ByteArray(length)
+        if (readFully(input, name) < length) return null
+        return String(name, Charsets.UTF_8)
+    }
+
+    /** Reads until [buf] is full or the stream ends (InputStream.readNBytes needs API 33). */
+    private fun readFully(input: InputStream, buf: ByteArray): Int {
+        var n = 0
+        while (n < buf.size) {
+            val r = input.read(buf, n, buf.size - n)
+            if (r < 0) break
+            n += r
+        }
+        return n
+    }
+
+    private fun importKnsproj(input: InputStream): String {
         val tmp = File(root, ".import-${UUID.randomUUID()}")
         tmp.mkdirs()
         try {

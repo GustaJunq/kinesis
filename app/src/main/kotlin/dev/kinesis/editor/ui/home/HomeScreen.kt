@@ -139,6 +139,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun dismissImportError() {
         _importError.value = null
     }
+    private val _importWarnings = MutableStateFlow<List<String>>(emptyList())
+    /** What an imported Aurea project lost in the conversion (shown once in a dialog). */
+    val importWarnings = _importWarnings.asStateFlow()
+
+    fun dismissImportWarnings() {
+        _importWarnings.value = emptyList()
+    }
     val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
 
     private val _interrupted = MutableStateFlow<ProjectSummary?>(null)
@@ -189,11 +196,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _busy.value = true
             try {
-                val id = withContext(Dispatchers.IO) {
+                val result = withContext(Dispatchers.IO) {
                     (resolver.openInputStream(uri) ?: error("Cannot open file")).use { store.import(it) }
                 }
                 refresh()
-                open(id)
+                _importWarnings.value = result.warnings
+                open(result.id)
             } catch (e: ProjectImportException) {
                 _importError.value = getApplication<Application>().getString(R.string.import_invalid, e.message ?: "")
             } catch (e: Exception) {
@@ -246,6 +254,7 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
     val loaded by vm.loaded.collectAsState()
     val busy by vm.busy.collectAsState()
     val importError by vm.importError.collectAsState()
+    val importWarnings by vm.importWarnings.collectAsState()
     val interrupted by vm.interrupted.collectAsState()
     var tab by rememberSaveable { mutableStateOf(HomeTab.PROJECTS) }
     var showNew by remember { mutableStateOf(false) }
@@ -329,6 +338,17 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
             title = { Text(stringResource(R.string.import_error_title), style = MaterialTheme.typography.titleMedium) },
             text = { Text(message, color = KColors.TextSoft, style = MaterialTheme.typography.bodyMedium) },
             confirmButton = { TextButton(onClick = vm::dismissImportError) { Text(stringResource(R.string.ok), color = KColors.Accent) } },
+        )
+    }
+    if (importWarnings.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = vm::dismissImportWarnings,
+            containerColor = KColors.Sheet,
+            shape = KShapes.Card,
+            icon = { Icon(Icons.Outlined.FolderOpen, null, tint = KColors.Accent) },
+            title = { Text(stringResource(R.string.import_aurea_title), style = MaterialTheme.typography.titleMedium) },
+            text = { Text(importWarnings.joinToString("\n") { "• $it" }, color = KColors.TextSoft, style = MaterialTheme.typography.bodyMedium) },
+            confirmButton = { TextButton(onClick = vm::dismissImportWarnings) { Text(stringResource(R.string.ok), color = KColors.Accent) } },
         )
     }
     confirmDelete?.let { p ->
