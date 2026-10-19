@@ -1214,6 +1214,51 @@
       ]
     },
     {
+      "id": "pixDither",
+      "category": "stylize",
+      "pt": "PixDither",
+      "en": "PixDither",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "matrixSize",
+          "type": "choice",
+          "default": "4",
+          "choices": ["2", "4", "8"]
+        },
+        {
+          "name": "levels",
+          "type": "integer",
+          "default": 2,
+          "min": 2,
+          "max": 16
+        },
+        {
+          "name": "scale",
+          "type": "number",
+          "default": 3,
+          "min": 1,
+          "max": 64
+        },
+        {
+          "name": "monochrome",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "colorA",
+          "type": "color",
+          "default": "#000000"
+        },
+        {
+          "name": "colorB",
+          "type": "color",
+          "default": "#FFFFFF"
+        }
+      ]
+    },
+    {
       "id": "blockGlitch",
       "category": "glitch",
       "pt": "Glitch em blocos",

@@ -543,6 +543,9 @@ Comportamentos especiais:
 - **`eightBit`** (formato v10): amostra o centro de cada célula de `pixelSize` px e reduz as cores. `paletteMode`:
   `free` (`colorLevels` níveis por canal, 2 a 32), `gray` (a luminância em `colorLevels` tons de cinza) ou `console`
   (a cor mais próxima de uma paleta fixa de 16 cores; `colorLevels` não é usado). O alfa da camada é preservado.
+- **`pixDither`** (formato v10): dithering ordenado. A grade tem pixels de `scale` px; cada um é comparado com a
+  matriz de Bayer de `matrixSize` (`"2"`, `"4"` ou `"8"`) antes de reduzir a `levels` níveis por canal. Com `monochrome`
+  a luminância vira só `colorA` (escuros) e `colorB` (claros). O alfa da camada é preservado.
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
@@ -670,6 +673,12 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 | `eightBit` (8-bit) | Estilizar | `pixelSize` | `8` | 1..200 px |
 |  |  | `colorLevels` | `4` | inteiro 2..32 |
 |  |  | `paletteMode` | `"free"` | `free`, `gray`, `console` (estático) |
+| `pixDither` (PixDither) | Estilizar | `matrixSize` | `"4"` | `2`, `4`, `8` (estático) |
+|  |  | `levels` | `2` | inteiro 2..16 |
+|  |  | `scale` | `3` | 1..64 px |
+|  |  | `monochrome` | `false` | `true`/`false` (estático) |
+|  |  | `colorA` | `#000000` | cor |
+|  |  | `colorB` | `#FFFFFF` | cor |
 | `blockGlitch` (Glitch em blocos) | Glitch | `blockSize` | `48` | 4..2000 px |
 |  |  | `intensity` | `0.5` | 0..1 % |
 |  |  | `rate` | `8` | 0..60 Hz |

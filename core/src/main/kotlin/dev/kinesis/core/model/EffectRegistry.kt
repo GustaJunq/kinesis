@@ -481,6 +481,17 @@ object EffectRegistry {
                 c("free", "Livre", "Free"), c("gray", "Tons de cinza", "Greyscale"), c("console", "Console (16 cores)", "Console (16 colours)"),
             ),
         ),
+        spec(
+            "pixDither", EffectCategory.STYLIZE, "PixDither", "PixDither",
+            "Dithering ordenado com matriz de Bayer: poucos níveis de cor com textura em grade, em cores ou em duas cores.",
+            "Ordered dithering with a Bayer matrix: few colour levels with a grid texture, in colour or in two colours.",
+            choice("matrixSize", "Matriz", "Matrix", "4", c("2", "2×2", "2×2"), c("4", "4×4", "4×4"), c("8", "8×8", "8×8")),
+            int("levels", "Níveis", "Levels", 2, 2, 16),
+            px("scale", "Escala do pixel", "Pixel scale", 3f, 64f, 16f, min = 1f),
+            bool("monochrome", "Duas cores", "Two colours", false),
+            color("colorA", "Cor A (escuros)", "Colour A (darks)", Color.BLACK),
+            color("colorB", "Cor B (claros)", "Colour B (lights)", Color.WHITE),
+        ),
 
         // Glitch
         spec(

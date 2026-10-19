@@ -1436,6 +1436,39 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "pixDither"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "matrixSize": {
+              "type": "string",
+              "enum": ["2", "4", "8"]
+            },
+            "levels": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "scale": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "monochrome": {
+              "type": "boolean"
+            },
+            "colorA": {
+              "$ref": "#/$defs/animColor"
+            },
+            "colorB": {
+              "$ref": "#/$defs/animColor"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "PixDither (Stylize). Ordered dithering with a Bayer matrix: few colour levels with a grid texture, in colour or in two colours."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "blockGlitch"
             },
             "enabled": {
