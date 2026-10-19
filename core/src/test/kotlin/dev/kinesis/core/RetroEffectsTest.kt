@@ -23,7 +23,7 @@ import org.junit.Test
 
 /** The retro and glitch effects of 0.1.8: serialization, keyframes and evaluation. The pixels are checked by the instrumented tests. */
 class RetroEffectsTest {
-    private val ids = listOf("eightBit", "pixDither", "pixelEncoder")
+    private val ids = listOf("eightBit", "pixDither", "pixelEncoder", "kernel")
 
     private fun project(effect: Effect) = KnsProject(
         layers = listOf(Layer("s", LayerType.SHAPE, shape = ShapeContent(), effects = listOf(effect))),
@@ -112,5 +112,18 @@ class RetroEffectsTest {
             }
         }
         assertEquals(PixelEncoderCharsets.levels("ascii"), PixelEncoderCharsets.levels("unknown"))
+    }
+
+    @Test
+    fun kernelWeightsAreOnlyShownForTheCustomPreset() {
+        val spec = EffectRegistry.require("kernel")
+        val weights = spec.params.filter { it.name.startsWith("weight") }
+        assertEquals(9, weights.size)
+        assertEquals(1f, spec.param("weight4").defaultFloat, 0f)
+        for (w in weights) {
+            assertTrue(w.isVisible { "custom" })
+            assertTrue(!w.isVisible { "sharpen" })
+            if (w.name != "weight4") assertEquals(0f, w.defaultFloat, 0f)   // the default kernel is the identity
+        }
     }
 }

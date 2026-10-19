@@ -1302,6 +1302,92 @@
       ]
     },
     {
+      "id": "kernel",
+      "category": "stylize",
+      "pt": "Kernel",
+      "en": "Kernel",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "preset",
+          "type": "choice",
+          "default": "sharpen",
+          "choices": ["sharpen", "emboss", "edges", "outline", "custom"]
+        },
+        {
+          "name": "strength",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "weight0",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight1",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight2",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight3",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight4",
+          "type": "number",
+          "default": 1,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight5",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight6",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight7",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight8",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        }
+      ]
+    },
+    {
       "id": "blockGlitch",
       "category": "glitch",
       "pt": "Glitch em blocos",

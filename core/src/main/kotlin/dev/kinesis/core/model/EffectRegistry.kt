@@ -503,6 +503,26 @@ object EffectRegistry {
             color("bgColor", "Cor do fundo", "Background colour", Color.BLACK),
             bool("invert", "Inverter", "Invert", false),
         ),
+        spec(
+            "kernel", EffectCategory.STYLIZE, "Kernel", "Kernel",
+            "Convolução 3×3: nitidez, relevo, detecção de bordas, contorno ou os 9 pesos que você escolher.",
+            "3×3 convolution: sharpen, emboss, edge detection, outline or the 9 weights you choose.",
+            choice(
+                "preset", "Predefinição", "Preset", "sharpen",
+                c("sharpen", "Nitidez", "Sharpen"), c("emboss", "Relevo", "Emboss"), c("edges", "Detectar bordas", "Edge detect"),
+                c("outline", "Contorno", "Outline"), c("custom", "Personalizado", "Custom"),
+            ),
+            num("strength", "Intensidade", "Strength", 1f, 0f, 1f, unit = ParamUnit.PERCENT),
+            num("weight0", "Peso superior esquerdo", "Weight top left", 0f, -10f, 10f, -4f, 4f, visibleWhen = "preset" to "custom"),
+            num("weight1", "Peso superior central", "Weight top centre", 0f, -10f, 10f, -4f, 4f, visibleWhen = "preset" to "custom"),
+            num("weight2", "Peso superior direito", "Weight top right", 0f, -10f, 10f, -4f, 4f, visibleWhen = "preset" to "custom"),
+            num("weight3", "Peso esquerdo", "Weight left", 0f, -10f, 10f, -4f, 4f, visibleWhen = "preset" to "custom"),
+            num("weight4", "Peso central", "Weight centre", 1f, -10f, 10f, -4f, 4f, visibleWhen = "preset" to "custom"),
+            num("weight5", "Peso direito", "Weight right", 0f, -10f, 10f, -4f, 4f, visibleWhen = "preset" to "custom"),
+            num("weight6", "Peso inferior esquerdo", "Weight bottom left", 0f, -10f, 10f, -4f, 4f, visibleWhen = "preset" to "custom"),
+            num("weight7", "Peso inferior central", "Weight bottom centre", 0f, -10f, 10f, -4f, 4f, visibleWhen = "preset" to "custom"),
+            num("weight8", "Peso inferior direito", "Weight bottom right", 0f, -10f, 10f, -4f, 4f, visibleWhen = "preset" to "custom"),
+        ),
 
         // Glitch
         spec(

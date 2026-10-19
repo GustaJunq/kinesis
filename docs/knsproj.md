@@ -550,6 +550,10 @@ Comportamentos especiais:
   caractere escolhido pela luminância, de `charset`: `ascii`, `numbers` ou `blocks`. Com `useSourceColor` o caractere
   leva a cor da célula; senão `fgColor` sobre `bgColor`. `invert` inverte a luminância. O alfa da camada vale por
   célula. As formas vêm de um atlas criado uma vez por conjunto (fonte monoespaçada do aparelho; `blocks` é desenhado).
+- **`kernel`** (formato v10): convolução 3×3 sobre as cores (um pixel da composição entre as amostras). `preset`:
+  `sharpen`, `emboss` (com 50% de cinza somado), `edges` (laplaciano), `outline` (laplaciano invertido sobre papel
+  claro) ou `custom`, que usa os pesos `weight0` a `weight8` (linha de cima para baixo). `strength` mistura com o original.
+  O alfa da camada é preservado.
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
@@ -689,6 +693,17 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `fgColor` | `#FFFFFF` | cor |
 |  |  | `bgColor` | `#000000` | cor |
 |  |  | `invert` | `false` | `true`/`false` (estático) |
+| `kernel` (Kernel) | Estilizar | `preset` | `"sharpen"` | `sharpen`, `emboss`, `edges`, `outline`, `custom` (estático) |
+|  |  | `strength` | `1` | 0..1 % |
+|  |  | `weight0` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight1` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight2` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight3` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight4` | `1` | -10..10 — com `preset: "custom"` |
+|  |  | `weight5` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight6` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight7` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight8` | `0` | -10..10 — com `preset: "custom"` |
 | `blockGlitch` (Glitch em blocos) | Glitch | `blockSize` | `48` | 4..2000 px |
 |  |  | `intensity` | `0.5` | 0..1 % |
 |  |  | `rate` | `8` | 0..60 Hz |

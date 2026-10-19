@@ -1499,6 +1499,54 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "kernel"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "preset": {
+              "type": "string",
+              "enum": ["sharpen", "emboss", "edges", "outline", "custom"]
+            },
+            "strength": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight0": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight1": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight2": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight3": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight4": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight5": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight6": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight7": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight8": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Kernel (Stylize). 3×3 convolution: sharpen, emboss, edge detection, outline or the 9 weights you choose."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "blockGlitch"
             },
             "enabled": {

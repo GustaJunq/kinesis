@@ -481,7 +481,7 @@ class ExampleTests(unittest.TestCase):
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
     def test_expected_examples_exist(self):
-        self.assertEqual(26, len(example_dirs("basicos")))
+        self.assertEqual(27, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
         self.assertGreaterEqual(len(example_dirs("erros")), 5)
         self.assertEqual(12, len(example_dirs("efeitos")))
