@@ -9,6 +9,11 @@ timeout 30 adb logcat -c || true
 LOGFILE="${RUNNER_TEMP:-/tmp}/kinesis-logcat.txt"
 adb logcat -v time > "$LOGFILE" 2>&1 &
 LOGCAT_PID=$!
+# The emulator's own launcher often answers "isn't responding" in the middle of a test and the dialog ends up in the
+# screenshots: close system dialogs, hide background ANRs and switch the launcher off (the tests start the app directly).
+timeout 30 adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS || true
+timeout 30 adb shell settings put secure anr_show_background 0 || true
+timeout 30 adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
 ./gradlew --no-daemon :app:connectedDebugAndroidTest
 status=$?
 sleep 2
