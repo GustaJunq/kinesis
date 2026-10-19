@@ -23,7 +23,7 @@ import org.junit.Test
 
 /** The retro and glitch effects of 0.1.8: serialization, keyframes and evaluation. The pixels are checked by the instrumented tests. */
 class RetroEffectsTest {
-    private val ids = listOf("eightBit", "pixDither", "pixelEncoder", "kernel", "signalAnalog")
+    private val ids = listOf("eightBit", "pixDither", "pixelEncoder", "kernel", "signalAnalog", "glitchify")
 
     private fun project(effect: Effect) = KnsProject(
         layers = listOf(Layer("s", LayerType.SHAPE, shape = ShapeContent(), effects = listOf(effect))),

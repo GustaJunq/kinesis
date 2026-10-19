@@ -558,6 +558,10 @@ Comportamentos especiais:
   por segundo × `speed`), mais uma deriva lenta e faixas que rasgam de vez em quando; `amount` escala os deslocamentos.
   Separa R e B em `rgbSplit` px, aplica scanlines (`scanlineIntensity`, `scanlineDensity`: 1 = um par de linhas a cada
   4 px) e `noise`. Só depende do tempo da camada e de `seed`; `speed` 0 congela. O alfa acompanha o deslocamento.
+- **`glitchify`** (formato v10): blocos largos (`2·blockSize × blockSize`) e altos (`blockSize/2 × 3·blockSize`) são
+  sorteados a cada `1/(8·speed)` s; a fração `blockDensity` deles desloca-se (até `4·blockSize·intensity`) com separação
+  RGB própria (`rgbSplit` × `intensity`) e a fração `dropoutChance` de uma terceira grade fica transparente. Só
+  depende do tempo da camada e de `seed`; com `speed` 0 o glitch fica congelado num quadro.
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
@@ -739,6 +743,13 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `scanlineIntensity` | `0.35` | 0..1 % |
 |  |  | `scanlineDensity` | `1` | 0.25..4 × |
 |  |  | `noise` | `0.2` | 0..1 % |
+|  |  | `speed` | `1` | 0..10 × |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `glitchify` (Glitchify) | Glitch | `intensity` | `0.5` | 0..1 % |
+|  |  | `blockSize` | `48` | 4..2000 px |
+|  |  | `blockDensity` | `0.35` | 0..1 % |
+|  |  | `rgbSplit` | `6` | 0..200 px |
+|  |  | `dropoutChance` | `0.1` | 0..1 % |
 |  |  | `speed` | `1` | 0..10 × |
 |  |  | `seed` | `0` | inteiro 0..99999 |
 | `findEdges` (Encontrar bordas) | Desenho e borda | `strength` | `1` | 0..5 × |

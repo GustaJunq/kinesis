@@ -581,6 +581,18 @@ object EffectRegistry {
             num("speed", "Velocidade", "Speed", 1f, 0f, 10f, 0f, 4f, ParamUnit.MULTIPLIER),
             seed(),
         ),
+        spec(
+            "glitchify", EffectCategory.GLITCH, "Glitchify", "Glitchify",
+            "Blocos aleatórios deslocados, separação RGB por bloco e blocos que somem (ficam transparentes); velocidade 0 congela o glitch.",
+            "Random displaced blocks, RGB split per block and blocks that drop out (turn transparent); speed 0 freezes the glitch.",
+            num("intensity", "Intensidade", "Intensity", 0.5f, 0f, 1f, unit = ParamUnit.PERCENT),
+            px("blockSize", "Tamanho do bloco", "Block size", 48f, 2000f, 300f, min = 4f),
+            num("blockDensity", "Densidade de blocos", "Block density", 0.35f, 0f, 1f, unit = ParamUnit.PERCENT),
+            px("rgbSplit", "Separação RGB", "RGB split", 6f, 200f, 40f),
+            num("dropoutChance", "Chance de blocos transparentes", "Dropout chance", 0.1f, 0f, 1f, unit = ParamUnit.PERCENT),
+            num("speed", "Velocidade", "Speed", 1f, 0f, 10f, 0f, 4f, ParamUnit.MULTIPLIER),
+            seed(),
+        ),
 
         // Desenho e borda
         spec(
