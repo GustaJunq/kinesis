@@ -22,6 +22,9 @@ prévia e exportação saem idênticas, e nada depende do fps da prévia.
 - Exemplos de cada efeito em `basicos/efeito-*` da skill `/knsproj`, no schema v10 e na tabela de efeitos de `docs/knsproj.md`.
 
 ### Alterado
+- Editor: voltar, play e avançar são três botões redondos separados, acima da barra de ferramentas.
+- Editor: o preview usa a largura toda (a composição, de qualquer proporção, ocupa o máximo que a tela deixa) e a barra de vistas (câmera, editor, entrar na câmera) flutua sobre ele; um botão no canto direito da linha de controles abre e fecha essa barra, e duplicar fica junto do refazer.
+- Timeline: botão na régua para esconder os nomes das camadas.
 - O job do emulador voltou a rodar em todo push e PR; o log do aparelho passa a ser gravado no runner e o job não fica mais preso quando o emulador cai.
 
 ## 0.1.7 — 2026-10-19
