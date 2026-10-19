@@ -548,5 +548,96 @@ class ExampleTests(unittest.TestCase):
         self.assertFalse([n for n in names if "__pycache__" in n or n.endswith(".pyc")])
 
 
+try:
+    import numpy  # noqa: F401
+    import PIL  # noqa: F401
+    HAVE_PREVIEW_DEPS = True
+except ImportError:
+    HAVE_PREVIEW_DEPS = False
+
+
+class EvalTests(unittest.TestCase):
+    """The pure-Python evaluator used by `preview` mirrors the Kotlin core."""
+
+    def setUp(self):
+        import kns_eval
+        self.ev = kns_eval
+
+    def test_easing_matches_kotlin_presets(self):
+        ease = self.ev.ease
+        self.assertEqual(ease("hold", 0.99), 0.0)
+        self.assertAlmostEqual(ease("linear", 0.3), 0.3, places=4)
+        self.assertAlmostEqual(ease("easeOutBounce", 0.5), 0.765625, places=4)
+        self.assertGreater(ease("easeOutBack", 0.6), 1.0)
+        cyc = {"cyclic": {"offset": 0, "cycles": 3.5}}
+        self.assertAlmostEqual(ease(cyc, 1 / 3.5 * 0.5), 1.0, places=4)
+        self.assertAlmostEqual(ease(cyc, 1 / 3.5), 0.0, places=4)
+
+    def test_keyframes_loop_and_relative_time(self):
+        raw = {"keyframes": [{"time": 0, "value": [0, 0]}, {"time": 2, "value": [100, 50]}], "loop": "pingpong"}
+        self.assertEqual(self.ev.v2(raw, (0.0, 0.0), 1), (50.0, 25.0))
+        self.assertEqual(self.ev.v2(raw, (0.0, 0.0), 3), (50.0, 25.0))
+        self.assertEqual(self.ev.v2(raw, (0.0, 0.0), 4), (0.0, 0.0))
+
+    def test_parenting_and_layer_time(self):
+        p = minimal(layers=[
+            {"id": "pai", "type": "null", "start": 1, "duration": 9,
+             "transform": {"position": {"keyframes": [{"time": 0, "value": [0, 0]}, {"time": 1, "value": [100, 0]}]}}},
+            {"id": "filho", "type": "shape", "start": 0, "duration": 10, "parent": "pai", "transform": {"position": [0, -50]},
+             "shape": {"kind": "ellipse", "size": [10, 10]}},
+        ])
+        scene = self.ev.evaluate(p, 1.5)
+        node = scene["nodes"][0]
+        self.assertEqual(node["id"], "filho")
+        self.assertAlmostEqual(node["matrix"][4], 50.0, places=3)
+        self.assertAlmostEqual(node["matrix"][5], -50.0, places=3)
+
+    def test_default_camera_projects_z0_at_composition_scale(self):
+        p = minimal()
+        comp = self.ev.composition(p)
+        cam = self.ev.evaluate_camera(p, comp, 0)
+        x, y = self.ev.project_point(cam, comp, (200.0, -100.0, 0.0))
+        self.assertAlmostEqual(x, 200.0, places=2)
+        self.assertAlmostEqual(y, -100.0, places=2)
+
+
+@unittest.skipUnless(HAVE_PREVIEW_DEPS, "preview needs Pillow and numpy")
+class PreviewTests(unittest.TestCase):
+    def test_every_example_renders(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            for group in ("basicos", "receitas"):
+                for name in sorted(os.listdir(os.path.join(EXAMPLES, group))):
+                    d = os.path.join(EXAMPLES, group, name)
+                    if not os.path.isdir(d):
+                        continue
+                    out = os.path.join(tmp, f"{name}.png")
+                    code, stdout, err = run_cli("preview", d, "--frames", "2", "--scale", "0.15", "-o", out, "--json")
+                    self.assertEqual(code, 0, f"{name}: {err}")
+                    self.assertTrue(os.path.isfile(out), name)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_shape_lands_where_the_transform_puts_it(self):
+        from PIL import Image
+        tmp = tempfile.mkdtemp()
+        try:
+            p = minimal(composition={"width": 400, "height": 200, "fps": 30, "duration": 2, "background": "#000000"}, layers=[
+                {"id": "q", "type": "shape", "duration": 2, "transform": {"position": [100, 0]},
+                 "shape": {"kind": "rectangle", "size": [40, 40], "fill": {"color": "#FF0000"}}}])
+            pj = os.path.join(tmp, "project.json")
+            with open(pj, "w") as f:
+                json.dump(p, f)
+            out = os.path.join(tmp, "f.png")
+            code, _, err = run_cli("preview", tmp, "-t", "1", "--scale", "1", "-o", out)
+            self.assertEqual(code, 0, err)
+            im = Image.open(out).convert("RGB")
+            self.assertEqual(im.size, (400, 200))
+            self.assertGreater(im.getpixel((300, 100))[0], 240)
+            self.assertLess(im.getpixel((200, 100))[0], 10)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()

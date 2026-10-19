@@ -8,7 +8,8 @@ argument-hint: "<descrição da animação>"
 
 Você vai transformar o pedido do usuário em um projeto `.knsproj` **válido e editável**: tudo deve continuar
 ajustável no app (camadas separadas, keyframes reais, nada "achatado"). O trabalho é feito localmente, sem serviços
-do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padrão) e o schema em `schema/`.
+do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padrão) e o schema em `schema/`. Para
+**ver** o resultado antes de entregar, o comando `preview` desenha quadros aproximados (precisa de Pillow e numpy).
 
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
@@ -87,14 +88,58 @@ e rode a CLI de dentro dessa pasta (`python3 tools/knsproj validate …`). Reger
    ```
    As mensagens trazem o caminho JSON do problema (ex.: `$.layers[3].text.fontSzie: unknown property (did you mean 'fontSize'?)`).
    Trate também os avisos: normalmente indicam intenção errada.
-6. **Conferir o resultado** com `python3 tools/knsproj info generated/<slug>` (árvore de camadas e tempos) e revise
-   mentalmente a linha do tempo: tudo entra, permanece legível e sai dentro de `composition.duration`?
+6. **Conferir o resultado** com `python3 tools/knsproj info generated/<slug>` (árvore de camadas e tempos) e
+   **olhando os quadros** (seção "Preview visual"):
+   ```bash
+   python3 tools/knsproj preview generated/<slug>              # contact sheet de 9 quadros → generated/<slug>_preview.png
+   ```
+   Abra a imagem gerada (ferramenta de leitura de arquivos/imagens) e confira: enquadramento, nada cortado fora da
+   tela, texto legível, ordem de entrada, cores. Corrija o `project.json`, valide e rode `preview` de novo até ficar
+   bom (2–3 rodadas costumam bastar). Para um momento específico: `--time 1.2,1.5`; para movimento: `--gif`.
 7. **Empacotar:**
    ```bash
    python3 tools/knsproj pack generated/<slug> -o generated/<slug>.knsproj
    ```
-8. **Entregar:** informe o caminho do `.knsproj`, um resumo (formato, duração, camadas principais, decisões
+8. **Entregar:** informe o caminho do `.knsproj` (e do preview/GIF, se ajudar o usuário a ver antes de importar), um resumo (formato, duração, camadas principais, decisões
    tomadas) e como importar: *app Kinesis → tela inicial → ícone "Importar .knsproj" → escolher o arquivo*.
+
+## Preview visual (aproximado)
+
+`preview` reproduz em Python a avaliação de cena do app (tempos, keyframes, easings, loops, pais, nulos, grupos,
+transições, animadores de texto, máscaras, track mattes, blend modes, câmera e luzes) e desenha os quadros em
+software. **Posição, tempo e enquadramento batem com o app; os pixels são aproximados.**
+
+Funciona igual no desktop do usuário e em sandbox — só Python:
+
+```bash
+python3 -c "import PIL, numpy" 2>/dev/null || pip install pillow numpy   # em Python gerenciado: --break-system-packages
+python3 tools/knsproj preview <pasta | project.json | arquivo.knsproj> [opções]
+```
+
+| Opção | Efeito |
+|---|---|
+| (nenhuma) | contact sheet com 9 quadros espaçados, cada um com `t=` e número do quadro |
+| `--frames N` | N quadros no contact sheet |
+| `-t 0,0.5,2.25` | só esses tempos (segundos, absolutos na composição); um tempo só → um PNG |
+| `--separate` | um PNG por tempo em vez do contact sheet |
+| `--gif anim.gif [--gif-fps 12]` | GIF da composição inteira (bom para mostrar ao usuário; caro para você ler) |
+| `--scale 0.5` | resolução (padrão: ~480 px no lado maior por quadro, ~720 px para um quadro só) |
+| `-o arquivo.png` | saída (padrão: `<projeto>_preview.png` ao lado da pasta — fora dela, para não ir no `pack`) |
+| `--json` | arquivos gerados, tempos e lista de aproximações em JSON |
+
+Como usar bem:
+- Comece pelo contact sheet: uma imagem só mostra a animação inteira gastando pouco contexto. Use `-t` para
+  investigar um trecho (ex.: o quadro em que um texto termina de entrar).
+- Leia a lista **"approximations"** que o comando imprime: diz o que não foi simulado *neste* projeto. Não "corrija"
+  o projeto por causa de algo da lista — no app aquilo aparece certo.
+- Vídeos usam `ffmpeg` se estiver instalado (sem ele, um placeholder do tamanho do vídeo). Fontes: a do asset, ou a
+  mais próxima do sistema.
+
+O que é aproximado ou ignorado: expressões JavaScript (usa o valor/keyframes de base), PBR simplificado, sem
+sombras, sem DOF, sem motion blur, sem ambiente HDRI (reflexo de céu genérico), texto 3D plano (sem extrusão), efeitos
+fora deste subconjunto — `blur`, `glow`, `deepGlow`, `dropShadow`, `fill`, `tint`, `saturation`,
+`brightnessContrast`, `exposure`, `hueShift`, `invert`, `posterize`, `pixelate`, `vignette`, `posterizeTime` e os de
+movimento (`autoShake`, `spin`, `oscillate`, `float`, `pulse`) — e o recorte do Roto Brush.
 
 ## Referência rápida do formato
 
@@ -264,6 +309,7 @@ Regras que evitam erro:
 ## Checklist antes de entregar
 
 - [ ] `validate` sem erros (e avisos compreendidos)
+- [ ] `preview` conferido: enquadramento, legibilidade e ritmo ok (ignorando o que está em "approximations")
 - [ ] Todos os `parent`/`matte` apontam para irmãos do mesmo contêiner; 2D só com 2D, 3D só com 3D (nulo 3D = `null.threeD`)
 - [ ] Assets copiados com `add-asset`; nenhum caminho fora de `assets/`
 - [ ] Tempos de keyframe relativos ao início de cada camada
