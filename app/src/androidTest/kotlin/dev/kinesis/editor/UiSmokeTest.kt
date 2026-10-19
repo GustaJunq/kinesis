@@ -1,10 +1,10 @@
 package dev.kinesis.editor
 
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -48,14 +48,17 @@ class UiSmokeTest {
         val node = (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst()
         // Tool bars scroll horizontally: bring the target into view first.
         runCatching { node.performScrollTo() }
-        // The skewed tool bar does not always report the scroll to the test: swipe it until the target is on screen.
-        repeat(4) {
-            if (runCatching { node.assertIsDisplayed() }.isSuccess) return@repeat
-            rule.onAllNodesWithTag("tool-bar").onFirst().performTouchInput { swipeLeft() }
-            rule.waitForIdle()
-        }
         node.performClick()
         rule.waitForIdle()
+    }
+
+    /** Clicks a tool of the bottom bar, which scrolls sideways: swipe it to its start or its end first. */
+    private fun tool(label: String, atEnd: Boolean) {
+        repeat(3) {
+            rule.onAllNodesWithTag("tool-bar").onFirst().performTouchInput { if (atEnd) swipeLeft() else swipeRight() }
+            rule.waitForIdle()
+        }
+        click(label)
     }
 
     @Test
@@ -71,10 +74,10 @@ class UiSmokeTest {
         click("Create")
         rule.waitUntil(20_000) { rule.onAllNodesWithContentDescription("Undo").fetchSemanticsNodes().isNotEmpty() }
 
-        click("Text")
-        click("3D")
+        tool("Text", false)
+        tool("3D", true)
         click("Cube")
-        click("Shapes")
+        tool("Shapes", false)
         click("Star")
         shot("ui-editor-timeline")
 
@@ -84,7 +87,7 @@ class UiSmokeTest {
         shot("ui-editor-after-ops")
 
         // Effect picker: categories, one category, add an effect (opens its parameters).
-        click("Effects")
+        tool("Effects", true)
         Thread.sleep(3000) // previews render in the background
         shot("ui-effects-categories")
         click("Distort")
