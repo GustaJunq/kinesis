@@ -573,5 +573,4 @@
     <string name="roto_undo_stroke">Desfazer pincelada</string>
     <string name="roto_clear_frame">Limpar quadro</string>
     <string name="roto_follow">Seguir adiante</string>
-    <string name="tools_more">Mais ferramentas</string>
 </resources>

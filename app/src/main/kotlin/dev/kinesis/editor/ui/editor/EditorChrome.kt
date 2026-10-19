@@ -42,7 +42,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +62,6 @@ import dev.kinesis.editor.ui.theme.KDims
 import dev.kinesis.editor.ui.theme.KShapes
 import dev.kinesis.editor.ui.theme.KSkew
 import dev.kinesis.editor.ui.theme.KType
-import kotlinx.coroutines.launch
 import java.util.Locale
 
 /** A round lavender button. The touch target is 48 dp; the circle is 40 dp. */
@@ -190,7 +188,6 @@ fun EditorBottomBar(
     onTool: (EditorTool) -> Unit,
 ) {
     val scroll = rememberScrollState()
-    val scope = rememberCoroutineScope()
     var viewport by remember { mutableIntStateOf(0) }
     val sideInset = KSkew.Bar.inset(BAR_HEIGHT)
     Column(Modifier.fillMaxWidth().height(EDITOR_BOTTOM_HEIGHT), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -213,14 +210,11 @@ fun EditorBottomBar(
                         Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(88.dp)
                             .background(Brush.horizontalGradient(listOf(Color.Transparent, KColors.SurfaceAlt.copy(alpha = fadeAlpha)))),
                     )
-                    Box(
-                        Modifier.align(Alignment.CenterEnd).padding(end = sideInset).size(KDims.MinTouch).clickable(
-                            role = Role.Button, onClickLabel = stringResource(R.string.tools_more),
-                        ) { scope.launch { scroll.animateScrollTo((scroll.value + viewport * 0.6f).toInt().coerceAtMost(scroll.maxValue)) } },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Lucide.ChevronRight, stringResource(R.string.tools_more), tint = KColors.TextPrimary.copy(alpha = fadeAlpha), modifier = Modifier.size(22.dp))
-                    }
+                    // Only a hint: it takes no touches, so the tools under it can still be tapped.
+                    Icon(
+                        Lucide.ChevronRight, null, tint = KColors.TextPrimary.copy(alpha = fadeAlpha),
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = sideInset + 12.dp).size(22.dp),
+                    )
                 }
             }
             // Play tab
