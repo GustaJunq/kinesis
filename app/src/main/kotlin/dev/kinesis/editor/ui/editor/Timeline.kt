@@ -31,6 +31,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FitScreen
+import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.outlined.LabelOff
+import androidx.compose.ui.platform.LocalContext
+import dev.kinesis.editor.ui.settings.AppSettings
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
@@ -130,6 +134,7 @@ fun Timeline(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
+    val context = LocalContext.current
     var pxPerSecond by remember { mutableFloatStateOf(with(density) { 72.dp.toPx() }) }
     var scrollPx by remember { mutableFloatStateOf(0f) }
     val expanded = remember { mutableStateMapOf<String, Boolean>() }
@@ -199,15 +204,28 @@ fun Timeline(
                     onEditMarker = onEditMarker,
                     modifier = Modifier.fillMaxSize(),
                 )
-                IconButton(
-                    onClick = {
-                        val fit = TimelineScale.fit(duration, trackWidthPx)
-                        pxPerSecond = fit.pxPerSecond
-                        scrollPx = 0f
-                    },
-                    modifier = Modifier.align(Alignment.CenterEnd).size(width = 44.dp, height = RULER_HEIGHT),
-                ) {
-                    Icon(Icons.Filled.FitScreen, stringResource(R.string.fit_timeline), tint = KColors.TextSecondary, modifier = Modifier.size(18.dp))
+                Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+                    val names = AppSettings.showLayerNames
+                    IconButton(
+                        onClick = { AppSettings.setShowLayerNames(context, !names) },
+                        modifier = Modifier.size(width = 44.dp, height = RULER_HEIGHT),
+                    ) {
+                        Icon(
+                            if (names) Icons.Outlined.Label else Icons.Outlined.LabelOff,
+                            stringResource(if (names) R.string.hide_layer_names else R.string.show_layer_names),
+                            tint = KColors.TextSecondary, modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            val fit = TimelineScale.fit(duration, trackWidthPx)
+                            pxPerSecond = fit.pxPerSecond
+                            scrollPx = 0f
+                        },
+                        modifier = Modifier.size(width = 44.dp, height = RULER_HEIGHT),
+                    ) {
+                        Icon(Icons.Filled.FitScreen, stringResource(R.string.fit_timeline), tint = KColors.TextSecondary, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -514,9 +532,11 @@ private fun ClipView(
                     modifier = Modifier.size(20.dp).pointerInput(Unit) { detectTapGestures { onToggleExpand() } },
                 )
             }
-            Text(
-                layerDisplayName(layer), style = MaterialTheme.typography.labelSmall, color = onClipColor(layer.type), maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            if (AppSettings.showLayerNames) {
+                Text(
+                    layerDisplayName(layer), style = MaterialTheme.typography.labelSmall, color = onClipColor(layer.type), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (layer.locked) {
                 Icon(Icons.Outlined.Lock, stringResource(R.string.layer_locked), tint = onClipColor(layer.type), modifier = Modifier.padding(start = 4.dp).size(12.dp))
             }

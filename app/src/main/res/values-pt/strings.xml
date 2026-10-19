@@ -573,4 +573,6 @@
     <string name="roto_undo_stroke">Desfazer pincelada</string>
     <string name="roto_clear_frame">Limpar quadro</string>
     <string name="roto_follow">Seguir adiante</string>
+    <string name="hide_layer_names">Esconder nomes das camadas</string>
+    <string name="show_layer_names">Mostrar nomes das camadas</string>
 </resources>

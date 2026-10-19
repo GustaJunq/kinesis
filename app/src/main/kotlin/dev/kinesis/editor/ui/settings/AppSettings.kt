@@ -46,6 +46,7 @@ object AppSettings {
     private const val MIRROR_DOCUMENTS = "mirror_documents"
     private const val USE_PROXIES = "use_proxies"
     private const val AUTO_KEYFRAME = "auto_keyframe"
+    private const val SHOW_LAYER_NAMES = "show_layer_names"
 
     var themeMode by mutableStateOf(ThemeMode.DARK)
         private set
@@ -78,6 +79,10 @@ object AppSettings {
     var autoKeyframe by mutableStateOf(false)
         private set
 
+    /** Show the layer names on the timeline clips (hide them for a cleaner timeline). */
+    var showLayerNames by mutableStateOf(true)
+        private set
+
     private var loaded = false
 
     fun init(context: Context) {
@@ -93,6 +98,12 @@ object AppSettings {
         mirrorToDocuments = p.getBoolean(MIRROR_DOCUMENTS, true)
         useProxies = p.getBoolean(USE_PROXIES, true)
         autoKeyframe = p.getBoolean(AUTO_KEYFRAME, false)
+        showLayerNames = p.getBoolean(SHOW_LAYER_NAMES, true)
+    }
+
+    fun setShowLayerNames(context: Context, on: Boolean) {
+        showLayerNames = on
+        prefs(context).edit().putBoolean(SHOW_LAYER_NAMES, on).apply()
     }
 
     fun setAutoKeyframe(context: Context, on: Boolean) {
