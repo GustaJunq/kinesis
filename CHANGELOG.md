@@ -2,6 +2,28 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.1.8 — 2026-10-19
+
+Formato `.knsproj` **v10** (abre v1 a v9; só efeitos novos — projetos antigos ficam idênticos).
+
+### Adicionado
+Pacote de efeitos retrô e de glitch (um passe de shader cada, sem estado entre quadros, todos os números animáveis;
+o alfa da camada é respeitado). Todo sorteio vem de um hash determinístico (posição + tempo da camada + `seed`), então
+prévia e exportação saem idênticas, e nada depende do fps da prévia.
+- **Estilizar:**
+  - **8-bit** (`eightBit`): pixeliza em grade e reduz as cores (níveis por canal, tons de cinza ou paleta fixa de 16 cores de console).
+  - **PixDither** (`pixDither`): dithering ordenado com matriz de Bayer 2×2, 4×4 ou 8×8, em cores ou em duas cores.
+  - **Pixel Encoder** (`pixelEncoder`): cada célula vira um caractere escolhido pela luminância (ASCII, números ou blocos), com atlas de glifos criado uma vez.
+  - **Kernel** (`kernel`): convolução 3×3 com nitidez, relevo, detecção de bordas, contorno e 9 pesos personalizados.
+- **Glitch:**
+  - **Signal Analog** (`signalAnalog`): linhas deslocadas por ruído, separação RGB, scanlines e chuvisco.
+  - **Glitchify** (`glitchify`): blocos deslocados, separação RGB por bloco e blocos que ficam transparentes; `speed` 0 congela o glitch.
+  - **Dissolve Shake** (`dissolveShake`): grade de blocos que tremem e somem com o `progress`.
+- Exemplos de cada efeito em `basicos/efeito-*` da skill `/knsproj`, no schema v10 e na tabela de efeitos de `docs/knsproj.md`.
+
+### Alterado
+- O job do emulador voltou a rodar em todo push e PR; o log do aparelho passa a ser gravado no runner e o job não fica mais preso quando o emulador cai.
+
 ## 0.1.7 — 2026-10-19
 
 Novo visual da tela de edição. Sem funções novas e sem mudança de formato (`.knsproj` continua na v9).

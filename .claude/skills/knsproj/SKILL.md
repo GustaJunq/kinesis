@@ -185,7 +185,7 @@ Valores possíveis (o schema é a fonte da verdade):
 - `material.shading`: `pbr` (padrão), `flat`, `toon`, `wireframe`. Texto 3D: `fontSize` 4–2000, `depth` 1–2000, `bevel` 0..`depth`/2
   (o validador acusa `text3d.range`). Sombras: só `directional`/`point` com `castShadows`; `shadowSoftness` 0–8.
   `camera.dof`: `focusDistance` ≈ distância da câmera ao objeto em foco (com a câmera em `[0, y, -2200]` e o objeto em z=0, ~2200).
-- Efeitos (`effects[].type`): 60 efeitos em 11 categorias (Cor e luz, Desfoque e nitidez, Distorção, Movimentar e
+- Efeitos (`effects[].type`): 68 efeitos em 11 categorias (Cor e luz, Desfoque e nitidez, Distorção, Movimentar e
   transformar, Estilizar, Glitch, Desenho e borda, Procedimental, Fosco/máscara/chave, Tempo e transição, Utilitário).
   Consulte a tabela (seção 7 de `docs/knsproj.md`) antes de usar um efeito: os nomes dos parâmetros são exatos e o
   schema rejeita os desconhecidos. Regras: parâmetros omitidos valem o padrão; números, cores e pontos são animáveis;
@@ -195,7 +195,7 @@ Valores possíveis (o schema é a fonte da verdade):
   - desfoque: `blur` (radius), `lensBlur`, `directionalBlur`, `radialBlur` (`mode`: spin/zoom), `sharpen`;
   - distorção: `glass` (refrata as camadas **abaixo** dela), `pinchBulge` (amount −1..1), `warp` (wave/fractal), `mirror`, `twirl`, `ripple`;
   - movimento sem keyframes: `autoShake`, `spin`, `oscillate`, `float`, `pulse`;
-  - estilo/glitch: `pixelate`, `dropShadow`, `vignette`, `halftone`, `posterize`, `filmGrain`, `scanlines`, `blockGlitch`, `lineGlitch`, `vhs`, `chromaticAberration`, `rgbSplit`, `staticNoise`;
+  - estilo/glitch: `pixelate`, `dropShadow`, `vignette`, `halftone`, `posterize`, `filmGrain`, `scanlines`, `eightBit` (pixeliza + paleta reduzida), `pixDither` (dithering de Bayer), `pixelEncoder` (ASCII), `kernel` (convolução 3×3), `blockGlitch`, `lineGlitch`, `vhs`, `chromaticAberration`, `rgbSplit`, `staticNoise`, `signalAnalog`, `glitchify` (`speed` 0 congela), `dissolveShake` (`progress` 0..1) — exemplos em `basicos/efeito-*`;
   - borda: `outline`, `findEdges`, `emboss`, `sketch`; geradores: `fractalNoise`, `gradientRamp`, `checkerboard`, `grid` (`mode` + `mix`);
   - chave: `chromaKey`, `lumaKey`, `spillSuppressor`, `matteChoker`; tempo: `echo`, `posterizeTime`, `strobe`, `timeSlice`;
   - utilitário: `depthMap` (só `object3d`/`model3d`), `channelShuffle`, `alphaFromLuma`.
