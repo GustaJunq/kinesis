@@ -166,8 +166,8 @@ private val TOOLS = listOf(
     ToolSpec(EditorTool.CAPTIONS, Lucide.Captions, R.string.captions),
 )
 
-private val TAB_HEIGHT = 48.dp
-private val TAB_OVERHANG = 24.dp
+private val TAB_HEIGHT = 60.dp
+private val TAB_OVERHANG = 36.dp
 private val BAR_HEIGHT = 64.dp
 
 /** Total height of [EditorBottomBar]: the bar, the part of the play tab that sticks out above it and the scroll indicator. */
@@ -225,8 +225,9 @@ fun EditorBottomBar(
             }
             // Play tab
             Row(
-                Modifier.height(TAB_HEIGHT).clip(KSkew.Bar).background(KColors.SurfaceAlt).padding(horizontal = 18.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                Modifier.height(TAB_HEIGHT).clip(KSkew.Bar).background(KColors.SurfaceAlt).padding(start = 18.dp, end = 18.dp, top = 4.dp),
+                // The buttons sit in the part of the tab above the tool bar, not on its edge.
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 TabButton(Lucide.SkipBack, stringResource(R.string.prev_keyframe), onPrev, enabled = canNavigate)
