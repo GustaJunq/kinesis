@@ -1,0 +1,112 @@
+{
+  "format": "knsproj",
+  "formatVersion": 10,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Dissolver tremendo (`dissolveShake`)"
+  },
+  "composition": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 4,
+    "background": "#101522"
+  },
+  "layers": [
+    {
+      "id": "tela",
+      "type": "group",
+      "start": 0,
+      "duration": 4,
+      "effects": [
+        {
+          "type": "dissolveShake",
+          "progress": {
+            "keyframes": [
+              {
+                "time": 0.5,
+                "value": 0
+              },
+              {
+                "time": 3.5,
+                "value": 1
+              }
+            ]
+          },
+          "blockSize": 54,
+          "shakeAmount": 20,
+          "seed": 3
+        }
+      ],
+      "layers": [
+        {
+          "id": "imagem",
+          "type": "shape",
+          "start": 0,
+          "duration": 4,
+          "shape": {
+            "kind": "rectangle",
+            "size": [
+              1080,
+              1080
+            ],
+            "fill": {
+              "gradient": {
+                "type": "linear",
+                "start": [
+                  -540.0,
+                  -540.0
+                ],
+                "end": [
+                  540.0,
+                  540.0
+                ],
+                "stops": [
+                  {
+                    "offset": 0,
+                    "color": "#0B1026"
+                  },
+                  {
+                    "offset": 0.4,
+                    "color": "#7C3AED"
+                  },
+                  {
+                    "offset": 0.75,
+                    "color": "#FFC857"
+                  },
+                  {
+                    "offset": 1,
+                    "color": "#FFFFFF"
+                  }
+                ]
+              }
+            }
+          },
+          "effects": []
+        },
+        {
+          "id": "titulo",
+          "type": "text",
+          "start": 0,
+          "duration": 4,
+          "transform": {
+            "position": [
+              0,
+              0
+            ]
+          },
+          "text": {
+            "content": "KINESIS",
+            "font": {
+              "family": "sans-serif",
+              "weight": 800
+            },
+            "fontSize": 220,
+            "color": "#FFFFFF"
+          },
+          "effects": []
+        }
+      ]
+    }
+  ]
+}

@@ -593,6 +593,15 @@ object EffectRegistry {
             num("speed", "Velocidade", "Speed", 1f, 0f, 10f, 0f, 4f, ParamUnit.MULTIPLIER),
             seed(),
         ),
+        spec(
+            "dissolveShake", EffectCategory.GLITCH, "Dissolver tremendo", "Dissolve Shake",
+            "Grade de blocos que tremem e somem conforme o progresso (0 = inteira, 1 = nada).",
+            "Grid of blocks that shake and vanish with the progress (0 = whole, 1 = nothing).",
+            num("progress", "Progresso", "Progress", 0.5f, 0f, 1f, unit = ParamUnit.PERCENT),
+            px("blockSize", "Tamanho do bloco", "Block size", 32f, 500f, 150f, min = 4f),
+            px("shakeAmount", "Tremor", "Shake amount", 12f, 200f, 60f),
+            seed(),
+        ),
 
         // Desenho e borda
         spec(

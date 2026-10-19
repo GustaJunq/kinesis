@@ -1763,6 +1763,32 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "dissolveShake"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "progress": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "blockSize": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "shakeAmount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Dissolve Shake (Glitch). Grid of blocks that shake and vanish with the progress (0 = whole, 1 = nothing)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "findEdges"
             },
             "enabled": {

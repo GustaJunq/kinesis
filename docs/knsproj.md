@@ -562,6 +562,9 @@ Comportamentos especiais:
   sorteados a cada `1/(8·speed)` s; a fração `blockDensity` deles desloca-se (até `4·blockSize·intensity`) com separação
   RGB própria (`rgbSplit` × `intensity`) e a fração `dropoutChance` de uma terceira grade fica transparente. Só
   depende do tempo da camada e de `seed`; com `speed` 0 o glitch fica congelado num quadro.
+- **`dissolveShake`** (formato v10): grade de blocos de `blockSize` px; cada bloco some num momento sorteado por `seed` e,
+  nos 30% finais do seu caminho, treme até `shakeAmount` px (30 vezes por segundo, no tempo da camada) e esmaece.
+  `progress` 0 mostra tudo, 1 não mostra nada. O alfa da camada acompanha o esmaecimento.
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
@@ -751,6 +754,10 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `rgbSplit` | `6` | 0..200 px |
 |  |  | `dropoutChance` | `0.1` | 0..1 % |
 |  |  | `speed` | `1` | 0..10 × |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `dissolveShake` (Dissolver tremendo) | Glitch | `progress` | `0.5` | 0..1 % |
+|  |  | `blockSize` | `32` | 4..500 px |
+|  |  | `shakeAmount` | `12` | 0..200 px |
 |  |  | `seed` | `0` | inteiro 0..99999 |
 | `findEdges` (Encontrar bordas) | Desenho e borda | `strength` | `1` | 0..5 × |
 |  |  | `invert` | `false` | `true`/`false` (estático) |
