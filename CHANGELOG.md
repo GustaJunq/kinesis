@@ -2,6 +2,15 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## Não lançado
+
+### Adicionado
+- CLI: `knsproj preview` desenha quadros aproximados de um projeto (contact sheet, PNGs por tempo ou GIF) para o agente
+  da skill `/knsproj` conferir o resultado antes de entregar. Reimplementa em Python a avaliação de cena do core
+  (tempos, easings, loops, pais, grupos, transições, animadores de texto, máscaras, mattes, câmera e luzes) com um
+  renderizador em software (Pillow + numpy; ffmpeg opcional para vídeo) — funciona igual no desktop e em sandbox.
+  Lista no fim o que não foi simulado (expressões, sombras, DOF, a maioria dos efeitos de shader…).
+
 ## 0.1.8 — 2026-10-19
 
 Formato `.knsproj` **v10** (abre v1 a v9; só efeitos novos — projetos antigos ficam idênticos).

@@ -8,9 +8,10 @@ Usage:
   python3 tools/knsproj new <project-dir> [--title T] [--width W] [--height H] [--fps F] [--duration S] [--background #RRGGBB]
   python3 tools/knsproj add-asset <project-dir> <file> [--id ID] [--type image|video|audio|model|font]
   python3 tools/knsproj migrate <project-dir>
+  python3 tools/knsproj preview <project-dir | project.json | file.knsproj> [--frames N | -t T[,T...]] [--scale S] [-o out.png] [--gif out.gif]
   python3 tools/knsproj schema
 
-Only the Python standard library is required. Exit status: 0 = ok, 1 = invalid project, 2 = usage/IO error.
+Only the Python standard library is required, except for `preview`, which needs Pillow and numpy (ffmpeg optional). Exit status: 0 = ok, 1 = invalid project, 2 = usage/IO error.
 """
 
 import argparse
@@ -327,6 +328,93 @@ def cmd_schema(_args):
     return 0
 
 
+def cmd_preview(args):
+    """Approximate render of frames (contact sheet, single frames or GIF) for checking a project visually."""
+    try:
+        import kns_eval
+        import kns_render
+    except ImportError as e:
+        print(f"error: preview needs Pillow and numpy ({e}). Install with: pip install pillow numpy "
+              "(add --break-system-packages on a managed Python)", file=sys.stderr)
+        return 2
+    import tempfile
+    tmp = None
+    path = args.path
+    if path.lower().endswith(".knsproj"):
+        tmp = tempfile.mkdtemp(prefix="knsproj-preview-")
+        project, _ = kns_archive.read_archive(path, extract_to=tmp)
+        base = tmp
+    elif os.path.isdir(path):
+        with open(os.path.join(path, "project.json"), encoding="utf-8-sig") as f:
+            project = json.load(f)
+        base = path
+    else:
+        with open(path, encoding="utf-8-sig") as f:
+            project = json.load(f)
+        base = os.path.dirname(os.path.abspath(path))
+    try:
+        version = project.get("formatVersion", FORMAT_VERSION)
+        if isinstance(version, int) and 1 <= version < FORMAT_VERSION:
+            project = kns_migrate.migrate(project, FORMAT_VERSION)
+        comp = kns_eval.composition(project)
+        dur = comp["duration"]
+        fps = comp["fps"]
+        if args.time:
+            times = [float(x) for x in str(args.time).replace(";", ",").split(",") if x.strip()]
+        else:
+            n = max(1, args.frames)
+            times = [dur * (i + 0.5) / n for i in range(n)]
+        # Snap to frame starts, like the app's timeline, and keep inside the composition.
+        last = max(0.0, dur - 1.0 / fps)
+        times = [min(last, max(0.0, round(t * fps) / fps)) for t in times]
+        scale = args.scale
+        if scale is None:
+            longest = max(comp["width"], comp["height"])
+            scale = min(1.0, (720 if len(times) == 1 else 480) / longest)
+        renderer = kns_render.Renderer(project, base, scale)
+        kns_eval.NOTES.items.clear()
+
+        stem = path.rstrip("/\\")
+        stem = os.path.splitext(stem)[0] if stem.lower().endswith((".knsproj", ".json")) else stem
+        if stem.endswith("project") and os.path.basename(stem) == "project":
+            stem = os.path.dirname(stem)
+        out = args.output or (stem + "_preview.png")
+        written = []
+        if args.gif:
+            gfps = max(1.0, min(30.0, args.gif_fps))
+            count = max(1, int(dur * gfps))
+            gframes = [renderer.frame(min(last, i / gfps)) for i in range(count)]
+            gframes[0].save(args.gif, save_all=True, append_images=gframes[1:], duration=int(1000 / gfps), loop=0, optimize=True)
+            written.append(args.gif)
+        if not args.gif or args.time or args.output:
+            frames = [renderer.frame(t) for t in times]
+            if len(frames) == 1 or args.separate:
+                base_out, ext = os.path.splitext(out)
+                for f, t in zip(frames, times):
+                    target = out if len(frames) == 1 else f"{base_out}_{t:06.2f}s{ext or '.png'}"
+                    f.save(target)
+                    written.append(target)
+            else:
+                kns_render.contact_sheet(frames, times, comp, cell_w=frames[0].width).save(out)
+                written.append(out)
+        notes = list(kns_eval.NOTES.items)
+        if args.json:
+            print(json.dumps({"files": written, "times": times, "scale": scale, "approximations": notes}, indent=2, ensure_ascii=False))
+        else:
+            for w in written:
+                print(f"wrote {w}")
+            print("times: " + ", ".join(f"{t:.2f}s" for t in times))
+            if notes:
+                print("approximations (the app renders these differently):")
+                for n in notes:
+                    print(f"  - {n}")
+        return 0
+    finally:
+        if tmp:
+            import shutil as _sh
+            _sh.rmtree(tmp, ignore_errors=True)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="knsproj", description="Validate, pack and inspect Kinesis projects (.knsproj).")
     parser.add_argument("--version", action="version", version=f"knsproj {VERSION} (format v{FORMAT_VERSION})")
@@ -375,6 +463,18 @@ def main(argv=None):
     p = sub.add_parser("migrate", help="upgrade a project directory to the current format version")
     p.add_argument("dir")
     p.set_defaults(func=cmd_migrate)
+
+    p = sub.add_parser("preview", help="render approximate frames (contact sheet / PNG / GIF) to check a project visually")
+    p.add_argument("path")
+    p.add_argument("--frames", type=int, default=9, help="evenly spaced frames in the contact sheet (default 9)")
+    p.add_argument("-t", "--time", help="exact times in seconds, comma separated (e.g. 0,0.5,2.25)")
+    p.add_argument("--scale", type=float, help="render scale (default: frames ~480px on the long side, ~720px for one)")
+    p.add_argument("-o", "--output", help="output PNG (default: <project>_preview.png next to the project)")
+    p.add_argument("--separate", action="store_true", help="one PNG per time instead of a contact sheet")
+    p.add_argument("--gif", help="also write an animated GIF of the whole composition")
+    p.add_argument("--gif-fps", type=float, default=12)
+    p.add_argument("--json", action="store_true", help="machine-readable output")
+    p.set_defaults(func=cmd_preview)
 
     p = sub.add_parser("schema", help="print the path of the official JSON Schema")
     p.set_defaults(func=cmd_schema)
