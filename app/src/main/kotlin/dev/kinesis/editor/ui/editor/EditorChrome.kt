@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -215,7 +216,7 @@ fun EditorBottomBar(
         Spacer(Modifier.height(TRANSPORT_GAP))
         // Tool bar
         Box(
-            Modifier.fillMaxWidth().height(BAR_HEIGHT).padding(horizontal = 4.dp)
+            Modifier.fillMaxWidth().height(BAR_HEIGHT).padding(horizontal = 4.dp).testTag("tool-bar")
                 .clip(KSkew.Bar).background(KColors.SurfaceAlt).onSizeChanged { viewport = it.width },
         ) {
             Row(

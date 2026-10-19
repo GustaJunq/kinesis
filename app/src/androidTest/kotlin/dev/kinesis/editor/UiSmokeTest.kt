@@ -1,6 +1,10 @@
 package dev.kinesis.editor
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -44,6 +48,12 @@ class UiSmokeTest {
         val node = (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst()
         // Tool bars scroll horizontally: bring the target into view first.
         runCatching { node.performScrollTo() }
+        // The skewed tool bar does not always report the scroll to the test: swipe it until the target is on screen.
+        repeat(4) {
+            if (runCatching { node.assertIsDisplayed() }.isSuccess) return@repeat
+            rule.onAllNodesWithTag("tool-bar").onFirst().performTouchInput { swipeLeft() }
+            rule.waitForIdle()
+        }
         node.performClick()
         rule.waitForIdle()
     }
