@@ -111,7 +111,7 @@ import dev.kinesis.editor.ui.theme.KColors
 import dev.kinesis.editor.ui.theme.KShapes
 
 /** Free space left and right of the preview: the camera / editor-view pill sits in the right one. */
-private val PREVIEW_GUTTER = 64.dp
+private val PREVIEW_GUTTER = 8.dp
 private val PREVIEW_RADIUS = 24.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -281,7 +281,9 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
             )
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = KColors.Primary)
 
-            // Preview in the middle, the camera / editor-view pill in the gutter on its right
+            // Preview across the whole width (any composition shape fits as large as the screen allows); the camera /
+            // editor-view pill floats over its right edge and can be switched off.
+            var viewPillShown by rememberSaveable { mutableStateOf(true) }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 Box(
                     Modifier.fillMaxSize().padding(start = PREVIEW_GUTTER, end = PREVIEW_GUTTER, top = 4.dp, bottom = 4.dp)
@@ -330,7 +332,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                         drawPath(mask, corner)
                     }
                 }
-                ViewModePill(vm, Modifier.align(Alignment.CenterEnd).padding(end = 4.dp))
+                if (viewPillShown) ViewModePill(vm, Modifier.align(Alignment.CenterEnd).padding(end = PREVIEW_GUTTER + 6.dp))
             }
 
             EditorControls(
@@ -347,6 +349,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 onUndo = { vm.undo() },
                 onRedo = { vm.redo() },
                 onDuplicate = { vm.duplicateSelected() },
+                viewPillShown = viewPillShown,
+                onToggleViewPill = { viewPillShown = !viewPillShown },
             )
 
             // Timeline (always visible)

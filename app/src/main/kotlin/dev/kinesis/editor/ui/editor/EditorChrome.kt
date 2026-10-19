@@ -118,7 +118,7 @@ fun EditorTopBar(
     }
 }
 
-/** Marker, undo · timecode · redo, duplicate: round buttons aligned with the edges of the timeline. */
+/** Marker · undo, timecode, redo, duplicate · the switch of the view pill: round buttons aligned with the edges of the timeline. */
 @Composable
 fun EditorControls(
     time: Double,
@@ -130,6 +130,8 @@ fun EditorControls(
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onDuplicate: () -> Unit,
+    viewPillShown: Boolean,
+    onToggleViewPill: () -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = TIMELINE_SIDE - 4.dp),
@@ -140,11 +142,15 @@ fun EditorControls(
         CircleButton(Lucide.Undo2, stringResource(R.string.undo), onUndo, enabled = canUndo)
         Text(
             formatTime(time, fps), style = KType.MonoLarge, color = KColors.TextPrimary,
-            modifier = Modifier.widthIn(min = 84.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.widthIn(min = 72.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         CircleButton(Lucide.Redo2, stringResource(R.string.redo), onRedo, enabled = canRedo)
-        Spacer(Modifier.weight(1f))
         CircleButton(Lucide.Copy, stringResource(R.string.duplicate), onDuplicate, enabled = hasSelection)
+        Spacer(Modifier.weight(1f))
+        CircleButton(
+            if (viewPillShown) Lucide.PanelRightClose else Lucide.PanelRightOpen,
+            stringResource(if (viewPillShown) R.string.hide_view_pill else R.string.show_view_pill), onToggleViewPill,
+        )
     }
 }
 

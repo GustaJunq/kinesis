@@ -54,6 +54,8 @@ object Lucide {
     val Undo2 by lazy { icon("undo-2", "M9 14 4 9l5-5", "M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11") }
     val Redo2 by lazy { icon("redo-2", "m15 14 5-5-5-5", "M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13") }
     val Copy by lazy { icon("copy", rect(8f, 8f, 14f, 14f, 2f), "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2") }
+    val PanelRightClose by lazy { icon("panel-right-close", rect(3f, 3f, 18f, 18f, 2f), "M15 3v18", "m8 9 3 3-3 3") }
+    val PanelRightOpen by lazy { icon("panel-right-open", rect(3f, 3f, 18f, 18f, 2f), "M15 3v18", "m10 15-3-3 3-3") }
     val SkipBack by lazy {
         icon("skip-back", "M17.971 4.285A2 2 0 0 1 21 6v12a2 2 0 0 1-3.029 1.715l-9.997-5.998a2 2 0 0 1-.003-3.432z", "M3 20V4")
     }
