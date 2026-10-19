@@ -50,6 +50,10 @@ class KPalette(
     val pink: Color,
     /** Playhead and selection outline of the timeline. */
     val selection: Color,
+    /** Secondary buttons and the tool bar of the editor (lavender in the light theme). */
+    val surfaceAlt: Color,
+    /** The lane behind each layer of the timeline. */
+    val lane: Color,
 )
 
 val DarkPalette = KPalette(
@@ -59,15 +63,17 @@ val DarkPalette = KPalette(
     textPrimary = Color(0xFFF1EEFF), textSoft = Color(0xFFB9B4D6), textSecondary = Color(0xFF8F88B8), disabled = Color(0xFF5E577F),
     accent = Color(0xFFC084FC), chipActive = Color(0xFF2A2160), onChipActive = Color(0xFFE5D6FF),
     keyframe = Color(0xFFFFC857), teal = Color(0xFF4FD1C5), pink = Color(0xFFFF6B8B), selection = Color(0xFFFFFFFF),
+    surfaceAlt = Color(0xFF1C1840), lane = Color(0xFF14112B),
 )
 
 val LightPalette = KPalette(
     isDark = false,
-    background = Color(0xFFF6F4FF), bar = Color(0xFFFFFFFF), sheet = Color(0xFFFFFFFF), card = Color(0xFFFFFFFF),
+    background = Color(0xFFF4F2FC), bar = Color(0xFFFFFFFF), sheet = Color(0xFFFFFFFF), card = Color(0xFFFFFFFF),
     field = Color(0xFFEEEAFB), line = Color(0xFFE6E1F5), lineStrong = Color(0xFFD3CCEB),
     textPrimary = Color(0xFF1A1530), textSoft = Color(0xFF4A4468), textSecondary = Color(0xFF666085), disabled = Color(0xFFA7A1C2),
     accent = Color(0xFF7C3AED), chipActive = Color(0xFFE6DAFF), onChipActive = Color(0xFF3B1E8A),
-    keyframe = Color(0xFFC98A00), teal = Color(0xFF0B8F84), pink = Color(0xFFD42B52), selection = Color(0xFF1A1530),
+    keyframe = Color(0xFFC98A00), teal = Color(0xFF0B8F84), pink = Color(0xFFD42B52), selection = Color(0xFF1C1A26),
+    surfaceAlt = Color(0xFFE7E1FA), lane = Color(0xFFE9E5F7),
 )
 
 /**
@@ -129,6 +135,17 @@ object KColors {
     val OnClipAmber = Color(0xFF1A1200)
     val ClipTeal = Color(0xFF167A72)
     val ClipViolet = Color(0xFF4A38B8)
+
+    // Editor screen
+    val SurfaceAlt: Color get() = palette.surfaceAlt
+    val Lane: Color get() = palette.lane
+    /** Behind the preview, in both themes. */
+    val Preview = Color(0xFF0E1016)
+    /** Main action and selected state of the editor (Export, active tool, selected clip). */
+    val Primary = Color(0xFF8B5CF6)
+    /** Timeline clips: indigo for everything, red for sound. */
+    val ClipIndigo = Color(0xFF4A35B8)
+    val ClipAudio = Color(0xFFC2385E)
 
     // Legacy names still used by some panels
     val Surface: Color get() = Card

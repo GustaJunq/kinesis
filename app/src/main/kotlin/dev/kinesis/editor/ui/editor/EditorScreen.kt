@@ -110,6 +110,10 @@ import dev.kinesis.editor.ui.common.formatTime
 import dev.kinesis.editor.ui.theme.KColors
 import dev.kinesis.editor.ui.theme.KShapes
 
+/** Free space left and right of the preview: the camera / editor-view pill sits in the right one. */
+private val PREVIEW_GUTTER = 64.dp
+private val PREVIEW_RADIUS = 24.dp
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(projectId: String, onClose: () -> Unit) {
@@ -147,6 +151,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var showAudio by remember { mutableStateOf(false) }
     var stabilizeTarget by remember { mutableStateOf<String?>(null) }
     var showRealCamera by remember { mutableStateOf(false) }
+    var editingMarker by remember { mutableStateOf<String?>(null) }
     var rotoRequest by remember { mutableStateOf<RotoRequest?>(null) }
     val mediaJob by vm.mediaJob.collectAsState()
     var curveTarget by remember { mutableStateOf<CurveTarget?>(null) }
@@ -269,80 +274,90 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 width = project.composition.width,
                 height = project.composition.height,
                 fps = project.composition.fps,
-                duration = project.composition.duration,
                 onClose = { vm.flushSave(); onClose() },
                 onRename = { renaming = true },
                 onSettings = { vm.pause(); showSettings = true },
-                onCaptions = { vm.pause(); showCaptions = true },
                 onExport = { vm.pause(); showExport = true },
             )
-            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = KColors.Accent)
+            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = KColors.Primary)
 
-            // Viewport
+            // Preview in the middle, the camera / editor-view pill in the gutter on its right
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                Viewport(
-                    vm, project, time, playing, selection, mediaRevision, tool3D,
-                    onRenderError = { renderError = it },
-                    modifier = Modifier.fillMaxSize(),
-                )
-                renderError?.let { msg ->
-                    Text(
-                        stringResource(R.string.render_error, msg), color = KColors.White, fontSize = 12.sp,
-                        modifier = Modifier.align(Alignment.TopCenter).padding(8.dp).background(KColors.Danger.copy(alpha = 0.85f)).padding(8.dp)
-                            .clickable { renderError = null },
+                Box(
+                    Modifier.fillMaxSize().padding(start = PREVIEW_GUTTER, end = PREVIEW_GUTTER, top = 4.dp, bottom = 4.dp)
+                        .background(KColors.Preview, RoundedCornerShape(PREVIEW_RADIUS)),
+                ) {
+                    Viewport(
+                        vm, project, time, playing, selection, mediaRevision, tool3D,
+                        onRenderError = { renderError = it },
+                        modifier = Modifier.fillMaxSize(),
                     )
-                }
-                RealCameraOverlay(vm, Modifier.matchParentSize())
-                if (selectedLayer?.hasTransform3D == true) {
-                    IconButton(
-                        onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE },
-                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(KColors.Bar.copy(alpha = 0.85f), KShapes.Tile),
-                    ) {
-                        Icon(
-                            if (tool3D == Tool3D.MOVE) Icons.Filled.OpenWith else Icons.Filled.ScreenRotation,
-                            stringResource(if (tool3D == Tool3D.MOVE) R.string.tool_move else R.string.tool_rotate),
-                            tint = KColors.Accent,
+                    renderError?.let { msg ->
+                        Text(
+                            stringResource(R.string.render_error, msg), color = KColors.White, fontSize = 12.sp,
+                            modifier = Modifier.align(Alignment.TopCenter).padding(8.dp).background(KColors.Danger.copy(alpha = 0.85f)).padding(8.dp)
+                                .clickable { renderError = null },
                         )
                     }
+                    RealCameraOverlay(vm, Modifier.matchParentSize())
+                    if (selectedLayer?.hasTransform3D == true) {
+                        IconButton(
+                            onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE },
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(KColors.Bar.copy(alpha = 0.85f), KShapes.Tile),
+                        ) {
+                            Icon(
+                                if (tool3D == Tool3D.MOVE) Icons.Filled.OpenWith else Icons.Filled.ScreenRotation,
+                                stringResource(if (tool3D == Tool3D.MOVE) R.string.tool_move else R.string.tool_rotate),
+                                tint = KColors.Accent,
+                            )
+                        }
+                    }
+                    // Rounded corners: the GL surface is square, so the corners are painted over in the screen colour.
+                    val corner = KColors.Background
+                    val radius = PREVIEW_RADIUS
+                    androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+                        val r = radius.toPx()
+                        val mask = androidx.compose.ui.graphics.Path().apply {
+                            fillType = androidx.compose.ui.graphics.PathFillType.EvenOdd
+                            addRect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+                            addRoundRect(
+                                androidx.compose.ui.geometry.RoundRect(
+                                    androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height),
+                                    androidx.compose.ui.geometry.CornerRadius(r),
+                                ),
+                            )
+                        }
+                        drawPath(mask, corner)
+                    }
                 }
+                ViewModePill(vm, Modifier.align(Alignment.CenterEnd).padding(end = 4.dp))
             }
 
-            // Timeline (always visible)
-            Timeline(vm, project, time, playing, selection, multi, Modifier.fillMaxWidth().height(boxMaxHeight * 0.30f))
-
-            EditorTransport(
+            EditorControls(
                 time = time,
                 fps = project.composition.fps,
-                playing = playing,
                 canUndo = canUndo,
                 canRedo = canRedo,
                 hasSelection = selectedLayer != null,
-                hasKeyframeHere = vm.hasKeyframeAtPlayhead(project, time),
-                canNavigate = selectedLayer != null || project.markers.isNotEmpty(),
-                // Previous / next go to the nearest marker or keyframe of the selected layer, whichever comes first.
-                onPrevKeyframe = {
-                    val l = selectedLayer
-                    val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
-                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
-                    vm.seek(Markers.previous(project, time, own) ?: 0.0)
+                onMarker = {
+                    // A marker already at the playhead is edited instead of duplicated.
+                    val here = Markers.at(project, time, window = 0.5 / project.composition.fps)
+                    if (here != null) editingMarker = here.id else vm.addMarkerAtPlayhead()
                 },
-                onNextKeyframe = {
-                    val l = selectedLayer
-                    val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
-                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
-                    Markers.next(project, time, own)?.let { vm.seek(it) }
-                },
-                onPlay = { vm.togglePlay() },
-                onAddKeyframe = { vm.toggleKeyframeAtPlayhead() },
                 onUndo = { vm.undo() },
                 onRedo = { vm.redo() },
+                onDuplicate = { vm.duplicateSelected() },
             )
+
+            // Timeline (always visible)
+            Timeline(vm, project, time, playing, selection, multi, onEditMarker = { editingMarker = it }, modifier = Modifier.fillMaxWidth().height(boxMaxHeight * 0.28f))
 
             if (selectedLayer != null) {
                 SelectionActions(
                     onProperties = { vm.pause(); propsFocus = null; showProps = true },
+                    hasKeyframeHere = vm.hasKeyframeAtPlayhead(project, time),
+                    onAddKeyframe = { vm.toggleKeyframeAtPlayhead() },
                     onSplit = { vm.splitSelected() },
-                    onDuplicate = { vm.duplicateSelected() },
                     onGroup = { vm.groupSelection() },
                     onDelete = { vm.deleteSelection() },
                     loop = loop,
@@ -358,13 +373,42 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     onRealCamera = if (selectedLayer.type == LayerType.CAMERA && vm.realCamera.available) ({ vm.pause(); showRealCamera = true }) else null,
                 )
             }
-            EditorToolBar(
+            val activeTool = when {
+                showLayers -> EditorTool.LAYERS
+                addSection == AddSection.SHAPES -> EditorTool.SHAPES
+                addSection == AddSection.MEDIA -> EditorTool.MEDIA
+                addSection == AddSection.MODEL3D -> EditorTool.MODEL3D
+                addSection == AddSection.SCENE -> EditorTool.CAMERA
+                showEffects -> EditorTool.EFFECTS
+                showProps -> EditorTool.MOTION
+                showAudio -> EditorTool.AUDIO
+                showCaptions -> EditorTool.CAPTIONS
+                else -> EditorTool.LAYERS
+            }
+            EditorBottomBar(
+                playing = playing,
+                canNavigate = selectedLayer != null || project.markers.isNotEmpty(),
+                active = activeTool,
                 enabled = { tool ->
                     when (tool) {
                         EditorTool.EFFECTS -> selectedLayer?.type?.isVisual == true
                         EditorTool.MOTION -> selectedLayer != null
                         else -> true
                     }
+                },
+                // Previous / next go to the nearest marker or keyframe of the selected layer, whichever comes first.
+                onPrev = {
+                    val l = selectedLayer
+                    val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
+                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
+                    vm.seek(Markers.previous(project, time, own) ?: 0.0)
+                },
+                onPlay = { vm.togglePlay() },
+                onNext = {
+                    val l = selectedLayer
+                    val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
+                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
+                    Markers.next(project, time, own)?.let { vm.seek(it) }
                 },
                 onTool = { tool ->
                     vm.pause()
@@ -378,11 +422,12 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                         EditorTool.CAMERA -> addSection = AddSection.SCENE
                         EditorTool.EFFECTS -> showEffects = true
                         EditorTool.MOTION -> { propsFocus = null; showProps = true }
+                        EditorTool.CAPTIONS -> showCaptions = true
                     }
                 },
             )
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp))
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = EDITOR_BOTTOM_HEIGHT + 8.dp))
 
         if (showProps || showSettings) {
             ModalBottomSheet(onDismissRequest = { showProps = false; showSettings = false; propsFocus = null }, containerColor = KColors.Sheet, shape = KShapes.Sheet) {
@@ -474,5 +519,9 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     if (showRealCamera) RealCameraSheet(vm, project, onDismiss = { showRealCamera = false })
     mediaJob?.let { MediaJobDialog(it, onCancel = { vm.cancelMediaJob() }) }
     if (showCaptions) CaptionsSheet(vm, project, onDismiss = { showCaptions = false })
+    editingMarker?.let { id ->
+        val marker = project.markers.firstOrNull { it.id == id }
+        if (marker == null) editingMarker = null else MarkerDialog(vm, marker, project.composition.fps, time, onDismiss = { editingMarker = null })
+    }
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })
 }

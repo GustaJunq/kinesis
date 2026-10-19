@@ -573,4 +573,5 @@
     <string name="roto_undo_stroke">Undo stroke</string>
     <string name="roto_clear_frame">Clear frame</string>
     <string name="roto_follow">Follow forward</string>
+    <string name="tools_more">More tools</string>
 </resources>
