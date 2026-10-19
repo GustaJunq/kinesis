@@ -2,6 +2,21 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.1.7 — 2026-10-19
+
+Novo visual da tela de edição. Sem funções novas e sem mudança de formato (`.knsproj` continua na v9).
+
+### Alterado
+- **Tela de edição redesenhada:** cabeçalho com voltar, configurações do projeto (formato, FPS, resolução) e Exportar; preview centralizado
+  com cantos arredondados; linha de controles (marcador, desfazer · tempo · refazer, duplicar); timeline com uma faixa por camada,
+  clipes com início e fim reais, nome só no clipe, keyframes como losangos brancos, cursor escuro e marcadores em roxo; aba do play
+  sobre a barra de ferramentas.
+- **Barra de ferramentas rolável:** única parte com inclinação (~15°), com o último item sumindo num degradê, seta "›" e indicador de rolagem.
+  *Legendas* passou do cabeçalho para a barra de ferramentas.
+- **Câmera / vista do editor:** os quatro botões sobre a cena viraram um seletor vertical ao lado do preview (câmera, vista do editor e
+  *Entrar na câmera*; dentro da câmera, o terceiro botão liga o auto keyframe). *Recentrar* agora é toque duplo no preview.
+- Paleta nova do editor (roxo só para a ação principal e o estado selecionado) e ícones Lucide (ISC) como vetores locais.
+
 ## 0.1.6-hotfix — 2026-10-18
 
 ### Corrigido

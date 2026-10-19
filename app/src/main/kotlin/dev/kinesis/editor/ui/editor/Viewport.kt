@@ -13,6 +13,13 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import dev.kinesis.editor.ui.common.Lucide
+import dev.kinesis.editor.ui.theme.KDims
+import dev.kinesis.editor.ui.theme.KShapes
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -186,6 +193,7 @@ fun Viewport(
             Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
+                    var lastTapAt = 0L
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         val v = currentVp
@@ -232,7 +240,12 @@ fun Viewport(
                         }
                         if (moved) {
                             if (gesture != null) vm.endGesture()
+                        } else if (currentMode == EditorViewMode.EDITOR && down.uptimeMillis - lastTapAt < DOUBLE_TAP_MS) {
+                            // A double tap on the editor view puts the free camera back where it started.
+                            lastTapAt = 0L
+                            vm.resetEditorView()
                         } else {
+                            lastTapAt = down.uptimeMillis
                             vm.select(lightHit?.layerId ?: geometry.hitTest(currentScene, toComp(down.position), vm.selection.value))
                         }
                     }
@@ -318,7 +331,6 @@ fun Viewport(
                 null -> Unit
             }
         }
-        ViewControls(vm, view, Modifier.align(Alignment.TopStart).padding(8.dp))
     }
 }
 
@@ -351,40 +363,41 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawEditorGizmos(
     at(f.apex)?.let { drawCircle(color, 5f * density, it) }
 }
 
-/** Switch between the editor view and the active camera, enter the camera to move it, auto-keyframe. */
+private const val DOUBLE_TAP_MS = 300L
+
+/**
+ * The vertical pill beside the preview: the camera (what is exported), the editor view (free camera, double tap the
+ * preview to centre it again) and a third slot: "enter the camera" so gestures move the real camera, or, once inside,
+ * the auto keyframe switch.
+ */
 @Composable
-private fun ViewControls(vm: EditorViewModel, view: EditorView, modifier: Modifier = Modifier) {
+fun ViewModePill(vm: EditorViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    Column(modifier, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
-        Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-            ViewChip(stringResource(R.string.view_camera), view.mode != EditorViewMode.EDITOR) { vm.setViewMode(EditorViewMode.CAMERA) }
-            ViewChip(stringResource(R.string.view_editor), view.mode == EditorViewMode.EDITOR) { vm.setViewMode(EditorViewMode.EDITOR) }
-        }
-        Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-            when (view.mode) {
-                EditorViewMode.CAMERA, EditorViewMode.EDITOR -> ViewChip(stringResource(R.string.enter_camera), false) { vm.enterCamera() }
-                EditorViewMode.INSIDE -> {
-                    ViewChip(stringResource(R.string.exit_camera), true) { vm.exitCamera() }
-                    ViewChip("◆ " + stringResource(R.string.auto_keyframe), AppSettings.autoKeyframe) { AppSettings.setAutoKeyframe(context, !AppSettings.autoKeyframe) }
-                }
-            }
-            if (view.mode == EditorViewMode.EDITOR) ViewChip(stringResource(R.string.reset_view), false) { vm.resetEditorView() }
+    val view by vm.editorView.collectAsState()
+    Column(
+        modifier.clip(KShapes.Pill).background(KColors.SurfaceAlt).padding(4.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        PillItem(Lucide.Video, stringResource(R.string.view_camera), view.mode != EditorViewMode.EDITOR) { vm.setViewMode(EditorViewMode.CAMERA) }
+        PillItem(Lucide.Eye, stringResource(R.string.view_editor), view.mode == EditorViewMode.EDITOR) { vm.setViewMode(EditorViewMode.EDITOR) }
+        if (view.mode == EditorViewMode.INSIDE) {
+            PillItem(Lucide.Diamond, stringResource(R.string.auto_keyframe), AppSettings.autoKeyframe) { AppSettings.setAutoKeyframe(context, !AppSettings.autoKeyframe) }
+        } else {
+            PillItem(Lucide.Move3d, stringResource(R.string.enter_camera), false) { vm.enterCamera() }
         }
     }
 }
 
 @Composable
-private fun ViewChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Text(
-        label,
-        color = if (selected) KColors.Background else KColors.TextPrimary,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier
-            .background(if (selected) KColors.Accent else KColors.Bar.copy(alpha = 0.85f), RoundedCornerShape(50))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-    )
+private fun PillItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(KDims.MinTouch).clip(CircleShape).background(if (selected) KColors.Primary else Color.Transparent)
+            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, label, tint = if (selected) KColors.White else KColors.TextPrimary, modifier = Modifier.size(22.dp))
+    }
 }
 
 /** Distance a camera moves along its view direction for a pinch that doubles the zoom. */

@@ -1,222 +1,286 @@
 package dev.kinesis.editor.ui.editor
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Redo
-import androidx.compose.material.icons.automirrored.outlined.Undo
-import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.Brush
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CenterFocusStrong
-import androidx.compose.material.icons.outlined.PersonOff
-import androidx.compose.material.icons.outlined.ClosedCaption
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Audiotrack
-import androidx.compose.material.icons.outlined.Category
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
-import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material.icons.outlined.TextFields
-import androidx.compose.material.icons.outlined.ViewInAr
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.kinesis.editor.R
-import dev.kinesis.editor.ui.common.PrimaryButton
+import dev.kinesis.editor.ui.common.Lucide
 import dev.kinesis.editor.ui.common.formatTime
 import dev.kinesis.editor.ui.theme.KColors
 import dev.kinesis.editor.ui.theme.KDims
 import dev.kinesis.editor.ui.theme.KShapes
+import dev.kinesis.editor.ui.theme.KSkew
 import dev.kinesis.editor.ui.theme.KType
+import kotlinx.coroutines.launch
 import java.util.Locale
 
-/** Close, title with "W×H · fps · duration" (tap the title to rename, the details for composition settings), export. */
+/** A round lavender button. The touch target is 48 dp; the circle is 40 dp. */
+@Composable
+fun CircleButton(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Box(
+        modifier.size(KDims.MinTouch).clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(40.dp).clip(CircleShape).background(KColors.SurfaceAlt), contentAlignment = Alignment.Center) {
+            Icon(icon, label, tint = if (enabled) KColors.TextPrimary else KColors.Disabled, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+/** Back, project settings, the title with "W×H · fps" (tap the title to rename), and Export. */
 @Composable
 fun EditorTopBar(
     title: String,
     width: Int,
     height: Int,
     fps: Double,
-    duration: Double,
     onClose: () -> Unit,
     onRename: () -> Unit,
     onSettings: () -> Unit,
-    onCaptions: () -> Unit,
     onExport: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(KDims.TopBar).background(KColors.Bar).padding(horizontal = 4.dp),
+        Modifier.fillMaxWidth().height(KDims.TopBar).padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onClose, modifier = Modifier.size(KDims.MinTouch)) {
-            Icon(Icons.Outlined.Close, stringResource(R.string.close), tint = KColors.TextPrimary)
-        }
-        Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+        CircleButton(Lucide.ArrowLeft, stringResource(R.string.close), onClose)
+        CircleButton(Lucide.Settings, stringResource(R.string.settings), onSettings)
+        Column(Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.clickable(onClickLabel = stringResource(R.string.edit_title), role = Role.Button, onClick = onRename),
             )
             val fpsText = if (fps == fps.toInt().toDouble()) fps.toInt().toString() else String.format(Locale.US, "%.2f", fps)
-            Text(
-                "${width}×$height · $fpsText fps · ${String.format(Locale.getDefault(), "%.1f", duration)} s",
-                style = KType.MonoSmall, color = KColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable(onClickLabel = stringResource(R.string.settings), role = Role.Button, onClick = onSettings),
-            )
+            Text("${width}×$height · $fpsText fps", style = KType.MonoSmall, color = KColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        IconButton(onClick = onCaptions, modifier = Modifier.size(KDims.MinTouch)) {
-            Icon(Icons.Outlined.ClosedCaption, stringResource(R.string.captions), tint = KColors.TextPrimary)
+        Box(
+            Modifier.heightIn(min = KDims.MinTouch).clickable(role = Role.Button, onClick = onExport),
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(
+                Modifier.height(40.dp).clip(KShapes.Pill).background(KColors.Primary).padding(horizontal = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.export), color = KColors.White, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            }
         }
-        PrimaryButton(stringResource(R.string.export), onExport, Modifier.padding(end = 8.dp), compact = true)
     }
 }
 
-/** Timecode, previous/next keyframe, play, + keyframe, undo, redo. */
+/** Marker, undo · timecode · redo, duplicate: round buttons aligned with the edges of the timeline. */
 @Composable
-fun EditorTransport(
+fun EditorControls(
     time: Double,
     fps: Double,
-    playing: Boolean,
     canUndo: Boolean,
     canRedo: Boolean,
     hasSelection: Boolean,
-    /** Whether the selected layer has a keyframe at the playhead (the "+ ◆" button then removes it). */
-    hasKeyframeHere: Boolean,
-    /** Previous / next only need something to jump to: a selected layer's keyframes or the markers. */
-    canNavigate: Boolean,
-    onPrevKeyframe: () -> Unit,
-    onNextKeyframe: () -> Unit,
-    onPlay: () -> Unit,
-    onAddKeyframe: () -> Unit,
+    onMarker: () -> Unit,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
+    onDuplicate: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(KDims.MinTouch + 4.dp).background(KColors.Bar).padding(horizontal = 8.dp),
+        Modifier.fillMaxWidth().padding(horizontal = TIMELINE_SIDE - 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(formatTime(time, fps), style = KType.MonoLarge, color = KColors.TextPrimary, modifier = Modifier.widthIn(min = 76.dp))
+        CircleButton(Lucide.Bookmark, stringResource(R.string.add_marker), onMarker)
         Spacer(Modifier.weight(1f))
-        TransportIcon(Icons.Outlined.SkipPrevious, R.string.prev_keyframe, onPrevKeyframe, enabled = canNavigate)
-        Box(
-            Modifier.size(KDims.MinTouch).clip(CircleShape).background(KColors.ChipActive).clickable(role = Role.Button, onClick = onPlay),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (playing) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                stringResource(if (playing) R.string.pause else R.string.play),
-                tint = KColors.OnChipActive, modifier = Modifier.size(28.dp),
-            )
-        }
-        TransportIcon(Icons.Outlined.SkipNext, R.string.next_keyframe, onNextKeyframe, enabled = canNavigate)
+        CircleButton(Lucide.Undo2, stringResource(R.string.undo), onUndo, enabled = canUndo)
+        Text(
+            formatTime(time, fps), style = KType.MonoLarge, color = KColors.TextPrimary,
+            modifier = Modifier.widthIn(min = 84.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        CircleButton(Lucide.Redo2, stringResource(R.string.redo), onRedo, enabled = canRedo)
         Spacer(Modifier.weight(1f))
-        // One button for both: "+ ◆" adds a keyframe at the playhead; when there is one it turns into a filled "− ◆" that removes it.
-        val label = stringResource(if (hasKeyframeHere) R.string.remove_keyframe else R.string.add_keyframe)
-        val fg = when {
-            !hasSelection -> KColors.Disabled
-            hasKeyframeHere -> KColors.OnAccent
-            else -> KColors.Keyframe
-        }
-        Row(
-            Modifier.heightIn(min = 36.dp).clip(KShapes.Pill)
-                .background(if (hasSelection && hasKeyframeHere) KColors.Keyframe else androidx.compose.ui.graphics.Color.Transparent)
-                .border(1.dp, if (hasSelection) KColors.Keyframe else KColors.LineStrong, KShapes.Pill)
-                .clickable(enabled = hasSelection, role = Role.Button, onClickLabel = label, onClick = onAddKeyframe)
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(if (hasKeyframeHere) Icons.Filled.Remove else Icons.Filled.Add, label, tint = fg, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(4.dp))
-            Text("◆", color = fg, style = MaterialTheme.typography.labelSmall)
-        }
-        TransportIcon(Icons.AutoMirrored.Outlined.Undo, R.string.undo, onUndo, enabled = canUndo)
-        TransportIcon(Icons.AutoMirrored.Outlined.Redo, R.string.redo, onRedo, enabled = canRedo)
+        CircleButton(Lucide.Copy, stringResource(R.string.duplicate), onDuplicate, enabled = hasSelection)
     }
 }
 
-@Composable
-private fun TransportIcon(icon: ImageVector, label: Int, onClick: () -> Unit, enabled: Boolean = true) {
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(KDims.MinTouch)) {
-        Icon(icon, stringResource(label), tint = if (enabled) KColors.TextPrimary else KColors.Disabled, modifier = Modifier.size(22.dp))
-    }
-}
-
-enum class EditorTool { LAYERS, TEXT, SHAPES, MEDIA, MODEL3D, EFFECTS, MOTION, AUDIO, CAMERA }
+enum class EditorTool { LAYERS, SHAPES, TEXT, MEDIA, MODEL3D, EFFECTS, MOTION, AUDIO, CAMERA, CAPTIONS }
 
 private class ToolSpec(val tool: EditorTool, val icon: ImageVector, val label: Int)
 
 private val TOOLS = listOf(
-    ToolSpec(EditorTool.LAYERS, Icons.Outlined.Layers, R.string.tool_layers),
-    ToolSpec(EditorTool.TEXT, Icons.Outlined.TextFields, R.string.tool_text),
-    ToolSpec(EditorTool.SHAPES, Icons.Outlined.Category, R.string.tool_shapes),
-    ToolSpec(EditorTool.MEDIA, Icons.Outlined.Image, R.string.tool_media),
-    ToolSpec(EditorTool.MODEL3D, Icons.Outlined.ViewInAr, R.string.tool_3d),
-    ToolSpec(EditorTool.EFFECTS, Icons.Outlined.AutoAwesome, R.string.effects),
-    ToolSpec(EditorTool.MOTION, Icons.Outlined.Timeline, R.string.tool_motion),
-    ToolSpec(EditorTool.AUDIO, Icons.Outlined.Audiotrack, R.string.tool_audio),
-    ToolSpec(EditorTool.CAMERA, Icons.Outlined.CameraAlt, R.string.tool_camera),
+    ToolSpec(EditorTool.LAYERS, Lucide.Layers, R.string.tool_layers),
+    ToolSpec(EditorTool.SHAPES, Lucide.Shapes, R.string.tool_shapes),
+    ToolSpec(EditorTool.TEXT, Lucide.Type, R.string.tool_text),
+    ToolSpec(EditorTool.MEDIA, Lucide.Image, R.string.tool_media),
+    ToolSpec(EditorTool.MODEL3D, Lucide.Box, R.string.tool_3d),
+    ToolSpec(EditorTool.EFFECTS, Lucide.Sparkles, R.string.effects),
+    ToolSpec(EditorTool.MOTION, Lucide.Activity, R.string.tool_motion),
+    ToolSpec(EditorTool.AUDIO, Lucide.Music, R.string.tool_audio),
+    ToolSpec(EditorTool.CAMERA, Lucide.Camera, R.string.tool_camera),
+    ToolSpec(EditorTool.CAPTIONS, Lucide.Captions, R.string.captions),
 )
 
-/** Scrollable tool bar; [enabled] tells which tools need a selected layer. */
+private val TAB_HEIGHT = 48.dp
+private val TAB_OVERHANG = 24.dp
+private val BAR_HEIGHT = 64.dp
+
+/** Total height of [EditorBottomBar]: the bar, the part of the play tab that sticks out above it and the scroll indicator. */
+val EDITOR_BOTTOM_HEIGHT = BAR_HEIGHT + TAB_OVERHANG + 10.dp
+
+/**
+ * The play tab (previous · play · next) sitting on the tool bar. Both are skewed; their content is not. The tool bar
+ * scrolls sideways and says so: its last item fades out, a chevron sits at the end and a thin indicator runs below.
+ * [active] is the tool whose panel is open (or the first one).
+ */
 @Composable
-fun EditorToolBar(enabled: (EditorTool) -> Boolean, onTool: (EditorTool) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().height(KDims.ToolBar).background(KColors.Bar).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        for (spec in TOOLS) {
-            val on = enabled(spec.tool)
-            val tint = if (on) KColors.TextSoft else KColors.Disabled
-            Column(
-                Modifier.widthIn(min = 64.dp).heightIn(min = KDims.MinTouch).clip(KShapes.Tile)
-                    .clickable(enabled = on, role = Role.Button) { onTool(spec.tool) }.padding(horizontal = 8.dp, vertical = 6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+fun EditorBottomBar(
+    playing: Boolean,
+    canNavigate: Boolean,
+    active: EditorTool,
+    enabled: (EditorTool) -> Boolean,
+    onPrev: () -> Unit,
+    onPlay: () -> Unit,
+    onNext: () -> Unit,
+    onTool: (EditorTool) -> Unit,
+) {
+    val scroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    var viewport by remember { mutableIntStateOf(0) }
+    val sideInset = KSkew.Bar.inset(BAR_HEIGHT)
+    Column(Modifier.fillMaxWidth().height(EDITOR_BOTTOM_HEIGHT), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth().height(TAB_OVERHANG + BAR_HEIGHT), contentAlignment = Alignment.TopCenter) {
+            // Tool bar
+            Box(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(BAR_HEIGHT).padding(horizontal = 4.dp)
+                    .clip(KSkew.Bar).background(KColors.SurfaceAlt).onSizeChanged { viewport = it.width },
             ) {
-                Icon(spec.icon, null, tint = tint, modifier = Modifier.size(24.dp))
-                Spacer(Modifier.height(2.dp))
-                Text(stringResource(spec.label), color = tint, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                Row(
+                    Modifier.fillMaxHeight().horizontalScroll(scroll).padding(start = sideInset + 4.dp, end = sideInset + 36.dp, top = 6.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    for (spec in TOOLS) ToolItem(spec, spec.tool == active, enabled(spec.tool)) { onTool(spec.tool) }
+                }
+                val fadeAlpha by animateFloatAsState(if (scroll.canScrollForward) 1f else 0f, label = "toolbar-fade")
+                if (fadeAlpha > 0f) {
+                    Box(
+                        Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(88.dp)
+                            .background(Brush.horizontalGradient(listOf(Color.Transparent, KColors.SurfaceAlt.copy(alpha = fadeAlpha)))),
+                    )
+                    Box(
+                        Modifier.align(Alignment.CenterEnd).padding(end = sideInset).size(KDims.MinTouch).clickable(
+                            role = Role.Button, onClickLabel = stringResource(R.string.tools_more),
+                        ) { scope.launch { scroll.animateScrollTo((scroll.value + viewport * 0.6f).toInt().coerceAtMost(scroll.maxValue)) } },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Lucide.ChevronRight, stringResource(R.string.tools_more), tint = KColors.TextPrimary.copy(alpha = fadeAlpha), modifier = Modifier.size(22.dp))
+                    }
+                }
             }
+            // Play tab
+            Row(
+                Modifier.height(TAB_HEIGHT).clip(KSkew.Bar).background(KColors.SurfaceAlt).padding(horizontal = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                TabButton(Lucide.SkipBack, stringResource(R.string.prev_keyframe), onPrev, enabled = canNavigate)
+                TabButton(
+                    if (playing) Lucide.Pause else Lucide.Play, stringResource(if (playing) R.string.pause else R.string.play), onPlay,
+                    tint = KColors.ClipIndigo.let { if (KColors.palette.isDark) KColors.Primary else it }, size = 26.dp,
+                )
+                TabButton(Lucide.SkipForward, stringResource(R.string.next_keyframe), onNext, enabled = canNavigate)
+            }
+        }
+        // Scroll indicator
+        val maxScroll = scroll.maxValue
+        if (maxScroll > 0 && viewport > 0) {
+            val track = 64.dp
+            val fraction = (viewport.toFloat() / (viewport + maxScroll)).coerceIn(0.1f, 1f)
+            val progress = scroll.value.toFloat() / maxScroll
+            Box(Modifier.padding(top = 5.dp).width(track).height(3.dp).clip(KShapes.Pill).background(KColors.LineStrong)) {
+                Box(
+                    Modifier.offset(x = track * ((1f - fraction) * progress)).width(track * fraction).fillMaxHeight()
+                        .clip(KShapes.Pill).background(KColors.Primary),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TabButton(icon: ImageVector, label: String, onClick: () -> Unit, enabled: Boolean = true, tint: Color = KColors.TextPrimary, size: androidx.compose.ui.unit.Dp = 22.dp) {
+    Box(
+        Modifier.size(KDims.MinTouch).clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, label, tint = if (enabled) tint else KColors.Disabled, modifier = Modifier.size(size))
+    }
+}
+
+@Composable
+private fun ToolItem(spec: ToolSpec, active: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val fg = when {
+        !enabled -> KColors.Disabled
+        active -> KColors.White
+        else -> KColors.TextPrimary
+    }
+    // The skewed pill is only the background; the icon and the label stay upright.
+    Box(
+        Modifier.widthIn(min = 68.dp).fillMaxHeight().clip(KSkew.Pill)
+            .background(if (active) KColors.Primary else Color.Transparent)
+            .clickable(enabled = enabled, role = Role.Tab, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Icon(spec.icon, null, tint = fg, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.height(2.dp))
+            Text(stringResource(spec.label), color = fg, style = MaterialTheme.typography.labelSmall, maxLines = 1)
         }
     }
 }
@@ -225,8 +289,10 @@ fun EditorToolBar(enabled: (EditorTool) -> Boolean, onTool: (EditorTool) -> Unit
 @Composable
 fun SelectionActions(
     onProperties: () -> Unit,
+    /** Whether the selected layer has a keyframe at the playhead (the "+ ◆" chip then removes it). */
+    hasKeyframeHere: Boolean,
+    onAddKeyframe: () -> Unit,
     onSplit: () -> Unit,
-    onDuplicate: () -> Unit,
     onGroup: () -> Unit,
     onDelete: () -> Unit,
     loop: Boolean,
@@ -245,13 +311,13 @@ fun SelectionActions(
     onRotoBrush: (() -> Unit)? = null,
 ) {
     Row(
-        Modifier.fillMaxWidth().background(KColors.Bar).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         ActionChip(Icons.Outlined.Tune, R.string.tab_properties, onProperties, accent = true)
+        KeyframeChip(hasKeyframeHere, onAddKeyframe)
         ActionChip(Icons.Outlined.ContentCut, R.string.split, onSplit)
-        ActionChip(Icons.Outlined.ContentCopy, R.string.duplicate, onDuplicate)
         ActionChip(Icons.Outlined.CreateNewFolder, R.string.group, onGroup)
         if (onAudio != null) ActionChip(Icons.Outlined.GraphicEq, R.string.audio_panel, onAudio)
         if (onExtractAudio != null) ActionChip(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
@@ -264,15 +330,34 @@ fun SelectionActions(
     }
 }
 
+/** One button for both: "+ ◆" adds a keyframe at the playhead; when there is one it turns into a filled "− ◆" that removes it. */
+@Composable
+private fun KeyframeChip(hasKeyframeHere: Boolean, onClick: () -> Unit) {
+    val label = stringResource(if (hasKeyframeHere) R.string.remove_keyframe else R.string.add_keyframe)
+    val fg = if (hasKeyframeHere) KColors.OnAccent else KColors.Keyframe
+    Row(
+        Modifier.heightIn(min = KDims.MinTouch).clip(KShapes.Pill)
+            .background(if (hasKeyframeHere) KColors.Keyframe else Color.Transparent)
+            .border(1.dp, KColors.Keyframe, KShapes.Pill)
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(if (hasKeyframeHere) Icons.Filled.Remove else Icons.Filled.Add, label, tint = fg, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(4.dp))
+        Text("◆", color = fg, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
 @Composable
 private fun ActionChip(icon: ImageVector, label: Int, onClick: () -> Unit, accent: Boolean = false, danger: Boolean = false) {
     val fg = when {
         danger -> KColors.Danger
-        accent -> KColors.OnChipActive
-        else -> KColors.TextSoft
+        accent -> KColors.White
+        else -> KColors.TextPrimary
     }
     Row(
-        Modifier.heightIn(min = KDims.MinTouch).clip(KShapes.Pill).background(if (accent) KColors.ChipActive else KColors.Field)
+        Modifier.heightIn(min = KDims.MinTouch).clip(KShapes.Pill).background(if (accent) KColors.Primary else KColors.SurfaceAlt)
             .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
