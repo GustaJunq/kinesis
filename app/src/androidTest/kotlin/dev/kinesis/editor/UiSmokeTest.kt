@@ -5,6 +5,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -30,7 +32,15 @@ class UiSmokeTest {
     private fun click(label: String) {
         fun texts() = rule.onAllNodesWithText(label, useUnmergedTree = true)
         fun descs() = rule.onAllNodesWithContentDescription(label, useUnmergedTree = true)
-        rule.waitUntil(20_000) { texts().fetchSemanticsNodes().isNotEmpty() || descs().fetchSemanticsNodes().isNotEmpty() }
+        try {
+            rule.waitUntil(20_000) { texts().fetchSemanticsNodes().isNotEmpty() || descs().fetchSemanticsNodes().isNotEmpty() }
+        } catch (e: Throwable) {
+            // Name what is on screen: the screenshot and the tree go to the logs the CI prints.
+            android.util.Log.i("KTEST", "'$label' not found")
+            rule.onRoot(useUnmergedTree = true).printToString(maxDepth = 40).chunked(3500).forEach { android.util.Log.i("KTEST", it) }
+            shot("ui-fail-" + label.lowercase().replace(Regex("[^a-z0-9]+"), "-"))
+            throw e
+        }
         val node = (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst()
         // Tool bars scroll horizontally: bring the target into view first.
         runCatching { node.performScrollTo() }
