@@ -22,10 +22,17 @@ float heightAt(vec2 uv) {
 }
 
 // Seven bands of the visible spectrum (violet .. red) and their contribution to R, G and B.
-const vec3 BAND[7] = vec3[7](
-    vec3(0.5, 0.0, 1.0), vec3(0.0, 0.1, 1.0), vec3(0.0, 0.8, 0.8), vec3(0.0, 1.0, 0.1),
-    vec3(0.8, 0.9, 0.0), vec3(1.0, 0.45, 0.0), vec3(1.0, 0.0, 0.0));
 const vec3 BAND_SUM = vec3(3.3, 3.25, 2.9);
+
+// One band: shorter wavelengths bend more, so each gets a slightly different index (k = 3 .. -3).
+void addBand(vec3 band, float k, vec3 n, float thickness, inout vec3 refr, inout float alpha) {
+    float ior = u_refraction * (1.0 + u_dispersion * 0.08 * k / 3.0);
+    vec3 r = refract(vec3(0.0, 0.0, -1.0), n, 1.0 / max(ior, 1.0));
+    vec2 offset = r.xy / max(-r.z, 0.2) * thickness;
+    vec4 s = texture(u_backdrop, v_uv + toUv(offset));
+    refr += s.rgb * band;
+    alpha += s.a;
+}
 
 void main() {
     vec4 layer = texture(u_texture, v_uv);
@@ -37,15 +44,13 @@ void main() {
     float thickness = u_bevel + u_heightScale * u_useLuminanceAsHeight + 1.0;
     vec3 refr = vec3(0.0);
     float alpha = 0.0;
-    for (int i = 0; i < 7; i++) {
-        // Shorter wavelengths bend more: each band gets a slightly different index.
-        float ior = u_refraction * (1.0 + u_dispersion * 0.08 * (3.0 - float(i)) / 3.0);
-        vec3 r = refract(vec3(0.0, 0.0, -1.0), n, 1.0 / max(ior, 1.0));
-        vec2 offset = r.xy / max(-r.z, 0.2) * thickness;
-        vec4 s = texture(u_backdrop, v_uv + toUv(offset));
-        refr += s.rgb * BAND[i];
-        alpha += s.a;
-    }
+    addBand(vec3(0.5, 0.0, 1.0), 3.0, n, thickness, refr, alpha);
+    addBand(vec3(0.0, 0.1, 1.0), 2.0, n, thickness, refr, alpha);
+    addBand(vec3(0.0, 0.8, 0.8), 1.0, n, thickness, refr, alpha);
+    addBand(vec3(0.0, 1.0, 0.1), 0.0, n, thickness, refr, alpha);
+    addBand(vec3(0.8, 0.9, 0.0), -1.0, n, thickness, refr, alpha);
+    addBand(vec3(1.0, 0.45, 0.0), -2.0, n, thickness, refr, alpha);
+    addBand(vec3(1.0, 0.0, 0.0), -3.0, n, thickness, refr, alpha);
     refr /= BAND_SUM;
     alpha /= 7.0;
     // Bright rim: strongest within edgeGlowWidth of the edge, plus on steep slopes.
