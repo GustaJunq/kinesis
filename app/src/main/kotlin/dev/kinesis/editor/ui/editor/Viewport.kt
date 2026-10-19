@@ -128,6 +128,14 @@ fun Viewport(
         }
     }
     SideEffect { renderer.onRefine = { glView.requestRender() } }
+    val screen = KColors.Background
+    SideEffect {
+        val rgb = floatArrayOf(screen.red, screen.green, screen.blue)
+        if (!rgb.contentEquals(renderer.background)) {
+            renderer.background = rgb
+            glView.requestRender()
+        }
+    }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, e ->

@@ -162,6 +162,7 @@
     <string name="nav_settings">Ajustes</string>
     <string name="new_project">Novo projeto</string>
     <string name="next_keyframe">Próximo keyframe ou marcador</string>
+    <string name="no_layers_now">Nenhuma camada no momento</string>
     <string name="no_layers_hint">Nenhuma camada ainda. Toque em + para adicionar texto, formas, mídia ou objetos 3D.</string>
     <string name="no_projects">Nenhum projeto ainda</string>
     <string name="no_projects_hint">Crie um projeto ou importe um arquivo .knsproj.</string>

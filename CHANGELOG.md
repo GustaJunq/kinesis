@@ -11,6 +11,11 @@ Todas as versões do Kinesis Editor. As notas completas de cada release ficam em
   renderizador em software (Pillow + numpy; ffmpeg opcional para vídeo) — funciona igual no desktop e em sandbox.
   Lista no fim o que não foi simulado (expressões, sombras, DOF, a maioria dos efeitos de shader…).
 
+## 0.1.8-hotfix — 2026-10-19
+
+### Corrigido
+- **Preview sem borda preta:** com camadas no projeto, a área fora do quadro da composição passa a ter a cor da tela, sem o painel escuro e arredondado de antes. O painel escuro só aparece com o projeto vazio, e só com o texto "No layers currently" ("Nenhuma camada no momento").
+
 ## 0.1.8 — 2026-10-19
 
 Formato `.knsproj` **v10** (abre v1 a v9; só efeitos novos — projetos antigos ficam idênticos).
