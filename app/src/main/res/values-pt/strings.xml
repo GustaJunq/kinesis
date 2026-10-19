@@ -574,5 +574,7 @@
     <string name="roto_clear_frame">Limpar quadro</string>
     <string name="roto_follow">Seguir adiante</string>
     <string name="hide_layer_names">Esconder nomes das camadas</string>
+    <string name="hide_view_pill">Esconder botões de vista</string>
+    <string name="show_view_pill">Mostrar botões de vista</string>
     <string name="show_layer_names">Mostrar nomes das camadas</string>
 </resources>

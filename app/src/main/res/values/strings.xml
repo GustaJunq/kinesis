@@ -574,5 +574,7 @@
     <string name="roto_clear_frame">Clear frame</string>
     <string name="roto_follow">Follow forward</string>
     <string name="hide_layer_names">Hide layer names</string>
+    <string name="hide_view_pill">Hide view buttons</string>
+    <string name="show_view_pill">Show view buttons</string>
     <string name="show_layer_names">Show layer names</string>
 </resources>
