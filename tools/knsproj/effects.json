@@ -1184,6 +1184,36 @@
       ]
     },
     {
+      "id": "eightBit",
+      "category": "stylize",
+      "pt": "8-bit",
+      "en": "8-bit",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "pixelSize",
+          "type": "number",
+          "default": 8,
+          "min": 1,
+          "max": 200
+        },
+        {
+          "name": "colorLevels",
+          "type": "integer",
+          "default": 4,
+          "min": 2,
+          "max": 32
+        },
+        {
+          "name": "paletteMode",
+          "type": "choice",
+          "default": "free",
+          "choices": ["free", "gray", "console"]
+        }
+      ]
+    },
+    {
       "id": "blockGlitch",
       "category": "glitch",
       "pt": "Glitch em blocos",

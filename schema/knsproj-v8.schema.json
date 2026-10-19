@@ -1409,6 +1409,30 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "eightBit"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "pixelSize": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "colorLevels": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "paletteMode": {
+              "type": "string",
+              "enum": ["free", "gray", "console"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "8-bit (Stylize). Pixelates on a grid and reduces the colours: levels per channel, greyscale or a fixed 16-colour console palette."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "blockGlitch"
             },
             "enabled": {

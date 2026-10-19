@@ -540,6 +540,9 @@ Comportamentos especiais:
   a exportação é exata.
 - **`posterizeTime`**: a camada inteira (transformação, conteúdo e efeitos) é avaliada no início do seu quadro em
   `fps`, criando um visual de stop-motion. A posição na lista não importa.
+- **`eightBit`** (formato v10): amostra o centro de cada célula de `pixelSize` px e reduz as cores. `paletteMode`:
+  `free` (`colorLevels` níveis por canal, 2 a 32), `gray` (a luminância em `colorLevels` tons de cinza) ou `console`
+  (a cor mais próxima de uma paleta fixa de 16 cores; `colorLevels` não é usado). O alfa da camada é preservado.
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
@@ -664,6 +667,9 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 | `scanlines` (Scanlines/CRT) | Estilizar | `spacing` | `4` | 2..200 px |
 |  |  | `intensity` | `0.4` | 0..1 % |
 |  |  | `curvature` | `0` | 0..1 % |
+| `eightBit` (8-bit) | Estilizar | `pixelSize` | `8` | 1..200 px |
+|  |  | `colorLevels` | `4` | inteiro 2..32 |
+|  |  | `paletteMode` | `"free"` | `free`, `gray`, `console` (estático) |
 | `blockGlitch` (Glitch em blocos) | Glitch | `blockSize` | `48` | 4..2000 px |
 |  |  | `intensity` | `0.5` | 0..1 % |
 |  |  | `rate` | `8` | 0..60 Hz |

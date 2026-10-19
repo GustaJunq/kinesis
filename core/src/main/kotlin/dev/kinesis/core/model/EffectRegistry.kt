@@ -470,6 +470,17 @@ object EffectRegistry {
             num("intensity", "Intensidade", "Intensity", 0.4f, 0f, 1f, unit = ParamUnit.PERCENT),
             num("curvature", "Curvatura", "Curvature", 0f, 0f, 1f, unit = ParamUnit.PERCENT),
         ),
+        spec(
+            "eightBit", EffectCategory.STYLIZE, "8-bit", "8-bit",
+            "Pixeliza em grade e reduz as cores: níveis por canal, tons de cinza ou uma paleta fixa de 16 cores de console.",
+            "Pixelates on a grid and reduces the colours: levels per channel, greyscale or a fixed 16-colour console palette.",
+            px("pixelSize", "Tamanho do pixel", "Pixel size", 8f, 200f, 48f, min = 1f),
+            int("colorLevels", "Níveis por canal", "Levels per channel", 4, 2, 32),
+            choice(
+                "paletteMode", "Paleta", "Palette", "free",
+                c("free", "Livre", "Free"), c("gray", "Tons de cinza", "Greyscale"), c("console", "Console (16 cores)", "Console (16 colours)"),
+            ),
+        ),
 
         // Glitch
         spec(
