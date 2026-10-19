@@ -285,51 +285,41 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
             // editor-view pill floats over its right edge and can be switched off.
             var viewPillShown by rememberSaveable { mutableStateOf(true) }
             Box(Modifier.weight(1f).fillMaxWidth()) {
+                // The dark panel is only there while the project is empty; with layers the preview has no border at all.
+                val empty = project.layers.isEmpty()
                 Box(
                     Modifier.fillMaxSize().padding(start = PREVIEW_GUTTER, end = PREVIEW_GUTTER, top = 4.dp, bottom = 4.dp)
-                        .background(KColors.Preview, RoundedCornerShape(PREVIEW_RADIUS)),
+                        .then(if (empty) Modifier.background(KColors.Preview, RoundedCornerShape(PREVIEW_RADIUS)) else Modifier),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Viewport(
-                        vm, project, time, playing, selection, mediaRevision, tool3D,
-                        onRenderError = { renderError = it },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    renderError?.let { msg ->
-                        Text(
-                            stringResource(R.string.render_error, msg), color = KColors.White, fontSize = 12.sp,
-                            modifier = Modifier.align(Alignment.TopCenter).padding(8.dp).background(KColors.Danger.copy(alpha = 0.85f)).padding(8.dp)
-                                .clickable { renderError = null },
+                    if (empty) {
+                        Text(stringResource(R.string.no_layers_now), color = KColors.White, fontSize = 14.sp)
+                    } else {
+                        Viewport(
+                            vm, project, time, playing, selection, mediaRevision, tool3D,
+                            onRenderError = { renderError = it },
+                            modifier = Modifier.fillMaxSize(),
                         )
-                    }
-                    RealCameraOverlay(vm, Modifier.matchParentSize())
-                    if (selectedLayer?.hasTransform3D == true) {
-                        IconButton(
-                            onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE },
-                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(KColors.Bar.copy(alpha = 0.85f), KShapes.Tile),
-                        ) {
-                            Icon(
-                                if (tool3D == Tool3D.MOVE) Icons.Filled.OpenWith else Icons.Filled.ScreenRotation,
-                                stringResource(if (tool3D == Tool3D.MOVE) R.string.tool_move else R.string.tool_rotate),
-                                tint = KColors.Accent,
+                        renderError?.let { msg ->
+                            Text(
+                                stringResource(R.string.render_error, msg), color = KColors.White, fontSize = 12.sp,
+                                modifier = Modifier.align(Alignment.TopCenter).padding(8.dp).background(KColors.Danger.copy(alpha = 0.85f)).padding(8.dp)
+                                    .clickable { renderError = null },
                             )
                         }
-                    }
-                    // Rounded corners: the GL surface is square, so the corners are painted over in the screen colour.
-                    val corner = KColors.Background
-                    val radius = PREVIEW_RADIUS
-                    androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
-                        val r = radius.toPx()
-                        val mask = androidx.compose.ui.graphics.Path().apply {
-                            fillType = androidx.compose.ui.graphics.PathFillType.EvenOdd
-                            addRect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
-                            addRoundRect(
-                                androidx.compose.ui.geometry.RoundRect(
-                                    androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height),
-                                    androidx.compose.ui.geometry.CornerRadius(r),
-                                ),
-                            )
+                        RealCameraOverlay(vm, Modifier.matchParentSize())
+                        if (selectedLayer?.hasTransform3D == true) {
+                            IconButton(
+                                onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE },
+                                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(KColors.Bar.copy(alpha = 0.85f), KShapes.Tile),
+                            ) {
+                                Icon(
+                                    if (tool3D == Tool3D.MOVE) Icons.Filled.OpenWith else Icons.Filled.ScreenRotation,
+                                    stringResource(if (tool3D == Tool3D.MOVE) R.string.tool_move else R.string.tool_rotate),
+                                    tint = KColors.Accent,
+                                )
+                            }
                         }
-                        drawPath(mask, corner)
                     }
                 }
                 if (viewPillShown) ViewModePill(vm, Modifier.align(Alignment.CenterEnd).padding(end = PREVIEW_GUTTER + 6.dp))

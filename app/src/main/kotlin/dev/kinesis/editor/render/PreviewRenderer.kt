@@ -98,6 +98,9 @@ class PreviewRenderer(
         failed = false
     }
 
+    /** Colour outside the composition frame (r, g, b): the screen colour, so the preview has no border of its own. */
+    @Volatile var background = floatArrayOf(BG_R, BG_G, BG_B)
+
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         viewW = width
         viewH = height
@@ -106,7 +109,8 @@ class PreviewRenderer(
     override fun onDrawFrame(gl: GL10?) {
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
         GLES30.glViewport(0, 0, viewW, viewH)
-        GLES30.glClearColor(BG_R, BG_G, BG_B, 1f)
+        val bg = background
+        GLES30.glClearColor(bg[0], bg[1], bg[2], 1f)
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
         val s = state ?: return
         if (failed) return
