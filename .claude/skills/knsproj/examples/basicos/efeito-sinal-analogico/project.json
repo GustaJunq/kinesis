@@ -1,0 +1,120 @@
+{
+  "format": "knsproj",
+  "formatVersion": 10,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Sinal analógico (`signalAnalog`)"
+  },
+  "composition": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 4,
+    "background": "#101522"
+  },
+  "layers": [
+    {
+      "id": "tela",
+      "type": "group",
+      "start": 0,
+      "duration": 4,
+      "effects": [
+        {
+          "type": "signalAnalog",
+          "amount": {
+            "keyframes": [
+              {
+                "time": 0,
+                "value": 0.15
+              },
+              {
+                "time": 2,
+                "value": 0.9
+              },
+              {
+                "time": 4,
+                "value": 0.3
+              }
+            ]
+          },
+          "lineJitter": 0.5,
+          "rgbSplit": 6,
+          "scanlineIntensity": 0.4,
+          "scanlineDensity": 1.2,
+          "noise": 0.25,
+          "speed": 1,
+          "seed": 7
+        }
+      ],
+      "layers": [
+        {
+          "id": "imagem",
+          "type": "shape",
+          "start": 0,
+          "duration": 4,
+          "shape": {
+            "kind": "rectangle",
+            "size": [
+              1080,
+              1080
+            ],
+            "fill": {
+              "gradient": {
+                "type": "linear",
+                "start": [
+                  -540.0,
+                  -540.0
+                ],
+                "end": [
+                  540.0,
+                  540.0
+                ],
+                "stops": [
+                  {
+                    "offset": 0,
+                    "color": "#0B1026"
+                  },
+                  {
+                    "offset": 0.4,
+                    "color": "#7C3AED"
+                  },
+                  {
+                    "offset": 0.75,
+                    "color": "#FFC857"
+                  },
+                  {
+                    "offset": 1,
+                    "color": "#FFFFFF"
+                  }
+                ]
+              }
+            }
+          },
+          "effects": []
+        },
+        {
+          "id": "titulo",
+          "type": "text",
+          "start": 0,
+          "duration": 4,
+          "transform": {
+            "position": [
+              0,
+              0
+            ]
+          },
+          "text": {
+            "content": "KINESIS",
+            "font": {
+              "family": "sans-serif",
+              "weight": 800
+            },
+            "fontSize": 220,
+            "color": "#FFFFFF"
+          },
+          "effects": []
+        }
+      ]
+    }
+  ]
+}

@@ -1623,6 +1623,72 @@
       ]
     },
     {
+      "id": "signalAnalog",
+      "category": "glitch",
+      "pt": "Sinal analógico",
+      "en": "Signal Analog",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "lineJitter",
+          "type": "number",
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "rgbSplit",
+          "type": "number",
+          "default": 4,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "name": "scanlineIntensity",
+          "type": "number",
+          "default": 0.35,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "scanlineDensity",
+          "type": "number",
+          "default": 1,
+          "min": 0.25,
+          "max": 4
+        },
+        {
+          "name": "noise",
+          "type": "number",
+          "default": 0.2,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "speed",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 10
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
       "id": "findEdges",
       "category": "drawEdges",
       "pt": "Encontrar bordas",

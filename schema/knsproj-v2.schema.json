@@ -1588,6 +1588,44 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "signalAnalog"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "lineJitter": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "rgbSplit": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "scanlineIntensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "scanlineDensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "noise": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "speed": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Signal Analog (Glitch). Noise-shifted lines, RGB split, scanlines and static of a bad analog video signal."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "findEdges"
             },
             "enabled": {

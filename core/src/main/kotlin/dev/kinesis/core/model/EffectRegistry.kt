@@ -568,6 +568,19 @@ object EffectRegistry {
             px("size", "Tamanho", "Size", 1f, 40f, 10f, min = 0.5f),
             hz("rate", 24f, "Taxa", "Rate", max = 120f), seed(),
         ),
+        spec(
+            "signalAnalog", EffectCategory.GLITCH, "Sinal analógico", "Signal Analog",
+            "Linhas deslocadas por ruído, separação RGB, scanlines e chuvisco de um sinal de vídeo analógico ruim.",
+            "Noise-shifted lines, RGB split, scanlines and static of a bad analog video signal.",
+            num("amount", "Quantidade", "Amount", 0.5f, 0f, 1f, unit = ParamUnit.PERCENT),
+            num("lineJitter", "Tremor das linhas", "Line jitter", 0.4f, 0f, 1f, unit = ParamUnit.PERCENT),
+            px("rgbSplit", "Separação RGB", "RGB split", 4f, 100f, 30f),
+            num("scanlineIntensity", "Intensidade das scanlines", "Scanline intensity", 0.35f, 0f, 1f, unit = ParamUnit.PERCENT),
+            num("scanlineDensity", "Densidade das scanlines", "Scanline density", 1f, 0.25f, 4f, 0.25f, 4f, ParamUnit.MULTIPLIER),
+            num("noise", "Ruído", "Noise", 0.2f, 0f, 1f, unit = ParamUnit.PERCENT),
+            num("speed", "Velocidade", "Speed", 1f, 0f, 10f, 0f, 4f, ParamUnit.MULTIPLIER),
+            seed(),
+        ),
 
         // Desenho e borda
         spec(

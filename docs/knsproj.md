@@ -554,6 +554,10 @@ Comportamentos especiais:
   `sharpen`, `emboss` (com 50% de cinza somado), `edges` (laplaciano), `outline` (laplaciano invertido sobre papel
   claro) ou `custom`, que usa os pesos `weight0` a `weight8` (linha de cima para baixo). `strength` mistura com o original.
   O alfa da camada é preservado.
+- **`signalAnalog`** (formato v10): desloca cada linha (2 px) em x com ruído de tremor (`lineJitter`, sorteado 12 vezes
+  por segundo × `speed`), mais uma deriva lenta e faixas que rasgam de vez em quando; `amount` escala os deslocamentos.
+  Separa R e B em `rgbSplit` px, aplica scanlines (`scanlineIntensity`, `scanlineDensity`: 1 = um par de linhas a cada
+  4 px) e `noise`. Só depende do tempo da camada e de `seed`; `speed` 0 congela. O alfa acompanha o deslocamento.
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
@@ -728,6 +732,14 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 | `staticNoise` (Chuvisco) | Glitch | `amount` | `0.5` | 0..1 % |
 |  |  | `size` | `1` | 0.5..40 px |
 |  |  | `rate` | `24` | 0..120 Hz |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `signalAnalog` (Sinal analógico) | Glitch | `amount` | `0.5` | 0..1 % |
+|  |  | `lineJitter` | `0.4` | 0..1 % |
+|  |  | `rgbSplit` | `4` | 0..100 px |
+|  |  | `scanlineIntensity` | `0.35` | 0..1 % |
+|  |  | `scanlineDensity` | `1` | 0.25..4 × |
+|  |  | `noise` | `0.2` | 0..1 % |
+|  |  | `speed` | `1` | 0..10 × |
 |  |  | `seed` | `0` | inteiro 0..99999 |
 | `findEdges` (Encontrar bordas) | Desenho e borda | `strength` | `1` | 0..5 × |
 |  |  | `invert` | `false` | `true`/`false` (estático) |

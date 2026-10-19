@@ -25,13 +25,13 @@ void main() {
         k = float[9](u_weight0, u_weight1, u_weight2, u_weight3, u_weight4, u_weight5, u_weight6, u_weight7, u_weight8);
     }
     // One composition pixel between taps, so the look does not depend on the preview resolution.
-    float step = max(u_pxScale, 0.5);
+    float tap = max(u_pxScale, 0.5);
     vec2 px = toPx(v_uv);
     vec4 centre = samplePx(px);
     vec3 acc = vec3(0.0);
     for (int j = 0; j < 3; j++) {
         for (int i = 0; i < 3; i++) {
-            vec2 d = vec2(float(i - 1), float(1 - j)) * step;   // row 0 is the top row (y up)
+            vec2 d = vec2(float(i - 1), float(1 - j)) * tap;   // row 0 is the top row (y up)
             acc += k[j * 3 + i] * unpremul(samplePx(px + d));
         }
     }
