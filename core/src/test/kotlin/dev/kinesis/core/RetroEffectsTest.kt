@@ -14,6 +14,7 @@ import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerType
 import dev.kinesis.core.model.ParamType
+import dev.kinesis.core.model.PixelEncoderCharsets
 import dev.kinesis.core.model.ShapeContent
 import dev.kinesis.core.scene.SceneEvaluator
 import org.junit.Assert.assertEquals
@@ -22,7 +23,7 @@ import org.junit.Test
 
 /** The retro and glitch effects of 0.1.8: serialization, keyframes and evaluation. The pixels are checked by the instrumented tests. */
 class RetroEffectsTest {
-    private val ids = listOf("eightBit", "pixDither")
+    private val ids = listOf("eightBit", "pixDither", "pixelEncoder")
 
     private fun project(effect: Effect) = KnsProject(
         layers = listOf(Layer("s", LayerType.SHAPE, shape = ShapeContent(), effects = listOf(effect))),
@@ -93,5 +94,23 @@ class RetroEffectsTest {
             assertEquals(id, values(0.37), values(0.37))
             assertTrue("$id values follow the keyframes", values(0.0) != values(1.0))
         }
+    }
+
+    @Test
+    fun pixelEncoderCharsetsAreOrderedFromBlankAndMatchTheRegistry() {
+        val spec = EffectRegistry.require("pixelEncoder")
+        for (choice in spec.param("charset").choices) {
+            val ramp = PixelEncoderCharsets.ramp(choice.id)
+            val levels = PixelEncoderCharsets.levels(choice.id)
+            assertTrue("${choice.id}: at least 8 levels", levels >= 8)
+            if (ramp != null) {
+                assertEquals(levels, ramp.length)
+                assertEquals("${choice.id} starts with a blank", ' ', ramp.first())
+                assertEquals("${choice.id} has no repeated glyph", ramp.length, ramp.toSet().size)
+            } else {
+                assertEquals(PixelEncoderCharsets.BLOCK_LEVELS, levels)
+            }
+        }
+        assertEquals(PixelEncoderCharsets.levels("ascii"), PixelEncoderCharsets.levels("unknown"))
     }
 }

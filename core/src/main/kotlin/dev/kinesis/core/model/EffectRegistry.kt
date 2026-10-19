@@ -492,6 +492,17 @@ object EffectRegistry {
             color("colorA", "Cor A (escuros)", "Colour A (darks)", Color.BLACK),
             color("colorB", "Cor B (claros)", "Colour B (lights)", Color.WHITE),
         ),
+        spec(
+            "pixelEncoder", EffectCategory.STYLIZE, "Pixel Encoder", "Pixel Encoder",
+            "Divide a imagem em células e desenha em cada uma um caractere escolhido pela luminância (ASCII).",
+            "Splits the picture into cells and draws in each one a character picked by its luminance (ASCII art).",
+            px("cellSize", "Tamanho da célula", "Cell size", 12f, 128f, 48f, min = 4f),
+            choice("charset", "Caracteres", "Characters", "ascii", c("numbers", "Números", "Numbers"), c("ascii", "ASCII", "ASCII"), c("blocks", "Blocos", "Blocks")),
+            bool("useSourceColor", "Usar a cor da imagem", "Use the source colour", true),
+            color("fgColor", "Cor do caractere", "Character colour", Color.WHITE),
+            color("bgColor", "Cor do fundo", "Background colour", Color.BLACK),
+            bool("invert", "Inverter", "Invert", false),
+        ),
 
         // Glitch
         spec(

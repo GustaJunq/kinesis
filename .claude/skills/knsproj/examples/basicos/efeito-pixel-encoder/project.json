@@ -1,0 +1,101 @@
+{
+  "format": "knsproj",
+  "formatVersion": 10,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Pixel Encoder (`pixelEncoder`)"
+  },
+  "composition": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 4,
+    "background": "#101522"
+  },
+  "layers": [
+    {
+      "id": "imagem",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "shape": {
+        "kind": "rectangle",
+        "size": [
+          1080,
+          1080
+        ],
+        "fill": {
+          "gradient": {
+            "type": "linear",
+            "start": [
+              -540.0,
+              -540.0
+            ],
+            "end": [
+              540.0,
+              540.0
+            ],
+            "stops": [
+              {
+                "offset": 0,
+                "color": "#0B1026"
+              },
+              {
+                "offset": 0.4,
+                "color": "#7C3AED"
+              },
+              {
+                "offset": 0.75,
+                "color": "#FFC857"
+              },
+              {
+                "offset": 1,
+                "color": "#FFFFFF"
+              }
+            ]
+          }
+        }
+      },
+      "effects": [
+        {
+          "type": "pixelEncoder",
+          "cellSize": 18,
+          "charset": "ascii",
+          "useSourceColor": false,
+          "fgColor": "#7CFFB2",
+          "bgColor": "#04110A"
+        }
+      ]
+    },
+    {
+      "id": "titulo",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": [
+          0,
+          0
+        ]
+      },
+      "text": {
+        "content": "KINESIS",
+        "font": {
+          "family": "sans-serif",
+          "weight": 800
+        },
+        "fontSize": 220,
+        "color": "#FFFFFF"
+      },
+      "effects": [
+        {
+          "type": "pixelEncoder",
+          "cellSize": 10,
+          "charset": "blocks",
+          "useSourceColor": true,
+          "bgColor": "#00000000"
+        }
+      ]
+    }
+  ]
+}

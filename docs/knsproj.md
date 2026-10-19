@@ -546,6 +546,10 @@ Comportamentos especiais:
 - **`pixDither`** (formato v10): dithering ordenado. A grade tem pixels de `scale` px; cada um é comparado com a
   matriz de Bayer de `matrixSize` (`"2"`, `"4"` ou `"8"`) antes de reduzir a `levels` níveis por canal. Com `monochrome`
   a luminância vira só `colorA` (escuros) e `colorB` (claros). O alfa da camada é preservado.
+- **`pixelEncoder`** (formato v10): divide a imagem em células de `cellSize` px; cada célula (média de 4 amostras) vira um
+  caractere escolhido pela luminância, de `charset`: `ascii`, `numbers` ou `blocks`. Com `useSourceColor` o caractere
+  leva a cor da célula; senão `fgColor` sobre `bgColor`. `invert` inverte a luminância. O alfa da camada vale por
+  célula. As formas vêm de um atlas criado uma vez por conjunto (fonte monoespaçada do aparelho; `blocks` é desenhado).
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
@@ -679,6 +683,12 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `monochrome` | `false` | `true`/`false` (estático) |
 |  |  | `colorA` | `#000000` | cor |
 |  |  | `colorB` | `#FFFFFF` | cor |
+| `pixelEncoder` (Pixel Encoder) | Estilizar | `cellSize` | `12` | 4..128 px |
+|  |  | `charset` | `"ascii"` | `numbers`, `ascii`, `blocks` (estático) |
+|  |  | `useSourceColor` | `true` | `true`/`false` (estático) |
+|  |  | `fgColor` | `#FFFFFF` | cor |
+|  |  | `bgColor` | `#000000` | cor |
+|  |  | `invert` | `false` | `true`/`false` (estático) |
 | `blockGlitch` (Glitch em blocos) | Glitch | `blockSize` | `48` | 4..2000 px |
 |  |  | `intensity` | `0.5` | 0..1 % |
 |  |  | `rate` | `8` | 0..60 Hz |

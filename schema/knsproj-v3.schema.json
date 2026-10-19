@@ -1424,6 +1424,39 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "pixelEncoder"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "cellSize": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "charset": {
+              "type": "string",
+              "enum": ["numbers", "ascii", "blocks"]
+            },
+            "useSourceColor": {
+              "type": "boolean"
+            },
+            "fgColor": {
+              "$ref": "#/$defs/animColor"
+            },
+            "bgColor": {
+              "$ref": "#/$defs/animColor"
+            },
+            "invert": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Pixel Encoder (Stylize). Splits the picture into cells and draws in each one a character picked by its luminance (ASCII art)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "blockGlitch"
             },
             "enabled": {

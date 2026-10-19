@@ -1259,6 +1259,49 @@
       ]
     },
     {
+      "id": "pixelEncoder",
+      "category": "stylize",
+      "pt": "Pixel Encoder",
+      "en": "Pixel Encoder",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "cellSize",
+          "type": "number",
+          "default": 12,
+          "min": 4,
+          "max": 128
+        },
+        {
+          "name": "charset",
+          "type": "choice",
+          "default": "ascii",
+          "choices": ["numbers", "ascii", "blocks"]
+        },
+        {
+          "name": "useSourceColor",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "name": "fgColor",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "bgColor",
+          "type": "color",
+          "default": "#000000"
+        },
+        {
+          "name": "invert",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
       "id": "blockGlitch",
       "category": "glitch",
       "pt": "Glitch em blocos",
