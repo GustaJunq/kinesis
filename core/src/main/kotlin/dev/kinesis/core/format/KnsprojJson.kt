@@ -127,7 +127,7 @@ object JsonPretty {
  * version N and returns one of version N + 1.
  */
 object Migrations {
-    private val steps: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to ::v1ToV2, 2 to ::v2ToV3, 3 to ::v3ToV4, 4 to ::v4ToV5, 5 to ::v5ToV6, 6 to ::v6ToV7, 7 to ::v7ToV8, 8 to ::v8ToV9)
+    private val steps: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to ::v1ToV2, 2 to ::v2ToV3, 3 to ::v3ToV4, 4 to ::v4ToV5, 5 to ::v5ToV6, 6 to ::v6ToV7, 7 to ::v7ToV8, 8 to ::v8ToV9, 9 to ::v9ToV10)
 
     fun migrate(root: JsonObject, fromVersion: Int): JsonObject {
         var doc = root
@@ -142,6 +142,9 @@ object Migrations {
 
     /** Version 3 only adds optional fields (expressions, text property animators), so version 2 documents are valid as they are. */
     fun v2ToV3(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(3)))
+
+    /** Version 10 only adds effects (8-bit, PixDither, Pixel Encoder, Kernel, Signal Analog, Glitchify, Dissolve Shake), so version 9 documents are valid as they are. */
+    fun v9ToV10(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(10)))
 
     /** Version 9 only adds optional fields (`editorView`, the TimeSlice effect, Roto Brush strokes), so version 8 documents are valid as they are. */
     fun v8ToV9(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(9)))

@@ -1,0 +1,3145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gustajunq/kinesis/schema/knsproj-v10.schema.json",
+  "title": "Kinesis project (.knsproj) — project.json, format version 10",
+  "description": "See docs/knsproj.md. Coordinates are pixels with the origin at the composition centre (+x right, +y down, +z away from the viewer). Keyframe times are seconds relative to the owning layer's start. Layers are listed bottom to top.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "format": {
+      "const": "knsproj"
+    },
+    "formatVersion": {
+      "const": 10
+    },
+    "generator": {
+      "type": "string"
+    },
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "composition": {
+      "$ref": "#/$defs/composition"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    },
+    "markers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/marker"
+      },
+      "description": "Timeline markers (format v8)."
+    },
+    "editorView": {
+      "$ref": "#/$defs/editorView"
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/layer"
+      },
+      "description": "Top-level layers in painter's order (first = bottom)."
+    }
+  },
+  "required": ["format", "formatVersion", "composition", "layers"],
+  "additionalProperties": false,
+  "$defs": {
+    "number": {
+      "type": "number"
+    },
+    "vec2": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "[x, y] in pixels; origin at the composition centre, +y down."
+    },
+    "vec3": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "[x, y, z] in pixels; +y down, +z away from the viewer."
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+      "description": "#RRGGBB or #RRGGBBAA (sRGB, straight alpha)."
+    },
+    "easing": {
+      "description": "Easing of the segment that starts at this keyframe.",
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": ["linear", "hold", "ease", "easeIn", "easeOut", "easeInOut", "easeInSine", "easeOutSine", "easeInOutSine", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInCubic", "easeOutCubic", "easeInOutCubic", "easeInQuart", "easeOutQuart", "easeInOutQuart", "easeInQuint", "easeOutQuint", "easeInOutQuint", "easeInExpo", "easeOutExpo", "easeInOutExpo", "easeInCirc", "easeOutCirc", "easeInOutCirc", "easeInBack", "easeOutBack", "easeInOutBack", "easeInBounce", "easeOutBounce", "easeInOutBounce", "easeInElastic", "easeOutElastic", "easeInOutElastic"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "cubicBezier": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4,
+              "description": "[x1, y1, x2, y2] like CSS cubic-bezier(); x1 and x2 within 0..1."
+            }
+          },
+          "additionalProperties": false,
+          "required": ["cubicBezier"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "cyclic": {
+              "type": "object",
+              "description": "Wave between the two keyframe values: 0.5 − 0.5·cos(2π·g), where g is the progress of the current cycle skewed by offset. With a half-integer number of cycles (1.5, 2.5, 3.5...) it starts at 0 and ends at 1.",
+              "properties": {
+                "offset": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1,
+                  "description": "Skew of each cycle (default 0). Negative: the wave rises fast and falls slowly; 0: symmetric; positive: it rises slowly and falls fast. The crest sits at 0.5 + 0.45·offset of the cycle; minimum, maximum and number of cycles do not change."
+                },
+                "cycles": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "description": "Full waves across the segment (default 3.5)."
+                },
+                "phase": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1,
+                  "description": "Shifts the whole wave to the right by this fraction of the segment (default 0). Kept from format v5/v6, where this was called offset."
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false,
+          "required": ["cyclic"]
+        }
+      ]
+    },
+    "animFloat": {
+      "description": "A number, or {\"keyframes\": [...]} to animate it, with an optional \"expression\".",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/number"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "keyframes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "number",
+                    "description": "Seconds from the start of the layer that owns the property."
+                  },
+                  "value": {
+                    "$ref": "#/$defs/number"
+                  },
+                  "easing": {
+                    "$ref": "#/$defs/easing"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["time", "value"]
+              }
+            },
+            "loop": {
+              "type": "string",
+              "enum": ["none", "cycle", "pingpong"],
+              "description": "Repeat the keyframed range after the last keyframe."
+            },
+            "value": {
+              "$ref": "#/$defs/number"
+            },
+            "expression": {
+              "type": "string",
+              "maxLength": 20000,
+              "description": "JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
+            },
+            "expressionEnabled": {
+              "type": "boolean",
+              "description": "false switches the expression off without deleting it (default true)."
+            }
+          },
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": ["keyframes"]
+            },
+            {
+              "required": ["value", "expression"]
+            }
+          ]
+        }
+      ]
+    },
+    "animVec2": {
+      "description": "[x, y], or {\"keyframes\": [...]} to animate it, with an optional \"expression\".",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/vec2"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "keyframes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "number",
+                    "description": "Seconds from the start of the layer that owns the property."
+                  },
+                  "value": {
+                    "$ref": "#/$defs/vec2"
+                  },
+                  "easing": {
+                    "$ref": "#/$defs/easing"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["time", "value"]
+              }
+            },
+            "loop": {
+              "type": "string",
+              "enum": ["none", "cycle", "pingpong"],
+              "description": "Repeat the keyframed range after the last keyframe."
+            },
+            "value": {
+              "$ref": "#/$defs/vec2"
+            },
+            "expression": {
+              "type": "string",
+              "maxLength": 20000,
+              "description": "JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
+            },
+            "expressionEnabled": {
+              "type": "boolean",
+              "description": "false switches the expression off without deleting it (default true)."
+            }
+          },
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": ["keyframes"]
+            },
+            {
+              "required": ["value", "expression"]
+            }
+          ]
+        }
+      ]
+    },
+    "animVec3": {
+      "description": "[x, y, z], or {\"keyframes\": [...]} to animate it, with an optional \"expression\".",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/vec3"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "keyframes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "number",
+                    "description": "Seconds from the start of the layer that owns the property."
+                  },
+                  "value": {
+                    "$ref": "#/$defs/vec3"
+                  },
+                  "easing": {
+                    "$ref": "#/$defs/easing"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["time", "value"]
+              }
+            },
+            "loop": {
+              "type": "string",
+              "enum": ["none", "cycle", "pingpong"],
+              "description": "Repeat the keyframed range after the last keyframe."
+            },
+            "value": {
+              "$ref": "#/$defs/vec3"
+            },
+            "expression": {
+              "type": "string",
+              "maxLength": 20000,
+              "description": "JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
+            },
+            "expressionEnabled": {
+              "type": "boolean",
+              "description": "false switches the expression off without deleting it (default true)."
+            }
+          },
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": ["keyframes"]
+            },
+            {
+              "required": ["value", "expression"]
+            }
+          ]
+        }
+      ]
+    },
+    "animColor": {
+      "description": "A colour, or {\"keyframes\": [...]} to animate it, with an optional \"expression\".",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/color"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "keyframes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": {
+                    "type": "number",
+                    "description": "Seconds from the start of the layer that owns the property."
+                  },
+                  "value": {
+                    "$ref": "#/$defs/color"
+                  },
+                  "easing": {
+                    "$ref": "#/$defs/easing"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["time", "value"]
+              }
+            },
+            "loop": {
+              "type": "string",
+              "enum": ["none", "cycle", "pingpong"],
+              "description": "Repeat the keyframed range after the last keyframe."
+            },
+            "value": {
+              "$ref": "#/$defs/color"
+            },
+            "expression": {
+              "type": "string",
+              "maxLength": 20000,
+              "description": "JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
+            },
+            "expressionEnabled": {
+              "type": "boolean",
+              "description": "false switches the expression off without deleting it (default true)."
+            }
+          },
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": ["keyframes"]
+            },
+            {
+              "required": ["value", "expression"]
+            }
+          ]
+        }
+      ]
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO-8601 timestamp."
+        },
+        "modifiedAt": {
+          "type": "string",
+          "description": "ISO-8601 timestamp."
+        }
+      },
+      "additionalProperties": false
+    },
+    "motionBlur": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "shutterAngle": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 720,
+          "description": "Degrees (180 = half a frame)."
+        },
+        "samples": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Sub-frames per frame."
+        }
+      },
+      "additionalProperties": false
+    },
+    "composition": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 8192
+        },
+        "fps": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 3600,
+          "description": "Seconds."
+        },
+        "background": {
+          "$ref": "#/$defs/color"
+        },
+        "motionBlur": {
+          "$ref": "#/$defs/motionBlur"
+        },
+        "environment": {
+          "$ref": "#/$defs/environment"
+        }
+      },
+      "additionalProperties": false
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": ["image", "video", "audio", "model", "font"]
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^assets/[^\\\\:]+$",
+          "description": "Relative path inside the container, under assets/."
+        },
+        "name": {
+          "type": "string"
+        },
+        "mimeType": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hasAudio": {
+          "type": "boolean"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["id", "type", "path"]
+    },
+    "transform2d": {
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "position": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "scale": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "rotation": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "opacity": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false,
+      "description": "2D transform: position of the anchor in the parent space; scale 1 = 100%; rotation in degrees clockwise; opacity 0..1."
+    },
+    "transform3d": {
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "position": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "rotation": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "scale": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "opacity": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false,
+      "description": "3D transform: rotation in degrees applied X, then Y, then Z."
+    },
+    "effect": {
+      "description": "An effect of EffectRegistry; see the effects table in docs/knsproj.md.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "gradientMap"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "stops": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "offset": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "color": {
+                    "$ref": "#/$defs/color"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["offset", "color"]
+              }
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Gradient Map (Color & light). Maps each pixel's luminance to the gradient stops."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "exposure"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "exposure": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "offset": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "gamma": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Exposure (Color & light). Exposure in EV stops, offset and gamma."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "brightnessContrast"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "brightness": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "contrast": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Brightness & Contrast (Color & light). Adds brightness and scales contrast around mid grey."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "saturation"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "saturation": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Saturation (Color & light). Raises or lowers saturation (-100% = greyscale)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "hueShift"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "hue": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Hue Shift (Color & light). Rotates the hue of the colours."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "invert"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Invert Colors (Color & light). Inverts the colours, keeping alpha."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "fill"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Fill (Color & light). Paints the layer with a solid colour, keeping alpha."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "deepGlow"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "threshold": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "intensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "falloff": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Deep Glow (Color & light). Multi-pass bloom built from the areas above the threshold."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "lensFlare"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "position": {
+              "$ref": "#/$defs/animVec2"
+            },
+            "intensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "rings": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Lens Flare (Color & light). Procedural lens flare: core, streaks and rings along the optical axis."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "tint"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Tint (Color & light). Colourizes the layer keeping its luminance."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "glow"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "intensity": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Glow (Color & light). Blurred halo around the content."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "colorBalance"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "shadows": {
+              "$ref": "#/$defs/animColor"
+            },
+            "midtones": {
+              "$ref": "#/$defs/animColor"
+            },
+            "highlights": {
+              "$ref": "#/$defs/animColor"
+            },
+            "preserveLuminosity": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Color Balance (Color & light). Shifts the colour of shadows, midtones and highlights (mid grey = no change)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "vibrance"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "vibrance": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Vibrance (Color & light). Saturates muted colours more than saturated ones."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "blur"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Gaussian Blur (Blur & sharpen). Gaussian blur."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "sharpen"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Sharpen (Blur & sharpen). Unsharp mask."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "lensBlur"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "blades": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "rotation": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "brightness": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Lens Blur (Blur & sharpen). Bokeh blur with a bladed aperture and bright highlights."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "directionalBlur"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "length": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Directional Blur (Blur & sharpen). Blur along one direction."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "radialBlur"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["spin", "zoom"]
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "center": {
+              "$ref": "#/$defs/animVec2"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Radial Blur (Blur & sharpen). Spin (degrees) or zoom (% of the distance to the centre) blur."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "pinchBulge"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "center": {
+              "$ref": "#/$defs/animVec2"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "falloff": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Pinch/Bulge (Distort). Distortion < 0 pulls towards the centre (pinch), > 0 bulges outwards, 0 does nothing."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "glass"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "refraction": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "dispersion": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "edgeGlow": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "edgeGlowWidth": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "edgeGlowColor": {
+              "$ref": "#/$defs/animColor"
+            },
+            "bevel": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "useLuminanceAsHeight": {
+              "type": "boolean"
+            },
+            "heightScale": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "heightSoftness": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Glass (Distort). Turns the layer into glass: refracts what is behind it (shape from alpha), with a bright rim and 7-band spectral dispersion."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "warp"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["wave", "fractal"]
+            },
+            "amplitude": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "frequency": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "direction": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "phase": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "scale": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "complexity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "evolution": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Warp (Distort). Wave or fractal displacement."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "mirror"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "axis": {
+              "type": "string",
+              "enum": ["horizontal", "vertical", "both"]
+            },
+            "center": {
+              "$ref": "#/$defs/animVec2"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Mirror (Distort). Mirrors the layer across an axis through the centre."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "twirl"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "center": {
+              "$ref": "#/$defs/animVec2"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Twirl (Distort). Rotates the content more near the centre."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "ripple"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amplitude": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "wavelength": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "phase": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "radius": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "center": {
+              "$ref": "#/$defs/animVec2"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Ripple (Distort). Concentric waves from the centre."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "autoShake"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amplitude": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "frequency": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "axes": {
+              "type": "string",
+              "enum": ["xy", "x", "y"]
+            },
+            "rotation": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Auto-Shake (Move & transform). Smooth pseudo-random shake of position and rotation."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "spin"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "speed": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "center": {
+              "$ref": "#/$defs/animVec2"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Spin (Move & transform). Continuous rotation in degrees per second."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "oscillate"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "frequency": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "scaleAmount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "rotationAmount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "phase": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Oscillate (Move & transform). Sinusoidal wiggle of position, scale and rotation."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "float"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amplitude": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "frequency": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "phase": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Float (Move & transform). Bobs up and down gently with a slight sway."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "pulse"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "frequency": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "phase": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Pulse (Move & transform). Rhythmic scale pulse."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "pixelate"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "size": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Pixelate (Stylize). Mosaic of square cells."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "dropShadow"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "opacity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "distance": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "softness": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Drop Shadow (Stylize). Blurred cast shadow (90° = down)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "vignette"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "softness": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Vignette (Stylize). Darkens the edges of the frame."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "halftone"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "dotSize": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "monochrome": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Halftone (Stylize). Halftone dots sized by luminance."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "posterize"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "levels": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Posterize (Stylize). Reduces the number of levels per channel."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "filmGrain"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "size": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Film Grain (Stylize). Film grain that changes every frame."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "scanlines"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "spacing": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "intensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "curvature": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Scanlines/CRT (Stylize). Scanlines and CRT tube curvature."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "blockGlitch"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "blockSize": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "intensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "rate": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Block Glitch (Glitch). Displaced, channel-swapped blocks, re-rolled at each step."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "lineGlitch"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "lineHeight": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "offset": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "density": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "rate": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Line Glitch (Glitch). Displaced horizontal slices."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "vhs"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "tracking": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "jitter": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "colorBleed": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "noise": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "scanlines": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "VHS Tape (Glitch). VHS tracking, jitter, colour bleed, noise and scanlines."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "chromaticAberration"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Chromatic Aberration (Glitch). Splits the RGB channels along an angle."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "rgbSplit"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "rate": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "RGB Split (Glitch). RGB split that jumps to random offsets (rate 0 = static)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "staticNoise"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "size": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "rate": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Static Noise (Glitch). TV static over the layer."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "findEdges"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "strength": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "invert": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Find Edges (Drawing & edges). Highlights edges (Sobel)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "outline"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "width": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "opacity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "position": {
+              "type": "string",
+              "enum": ["outside", "inside", "center"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Outline (Drawing & edges). Outline built from alpha."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "emboss"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "strength": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "distance": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Emboss (Drawing & edges). Relief lit from an angle."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "sketch"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "strength": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "colored": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Sketch (Drawing & edges). Pencil strokes from the edges."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "fractalNoise"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "scale": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "complexity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "evolution": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "contrast": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "brightness": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "colorA": {
+              "$ref": "#/$defs/animColor"
+            },
+            "colorB": {
+              "$ref": "#/$defs/animColor"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["replace", "add", "multiply", "screen", "overlay"]
+            },
+            "mix": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Fractal Noise (Procedural). Fractal noise between two colours."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "gradientRamp"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "shape": {
+              "type": "string",
+              "enum": ["linear", "radial"]
+            },
+            "start": {
+              "$ref": "#/$defs/animVec2"
+            },
+            "end": {
+              "$ref": "#/$defs/animVec2"
+            },
+            "startColor": {
+              "$ref": "#/$defs/animColor"
+            },
+            "endColor": {
+              "$ref": "#/$defs/animColor"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["replace", "add", "multiply", "screen", "overlay"]
+            },
+            "mix": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Gradient Ramp (Procedural). Linear or radial gradient between two points."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "checkerboard"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "size": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "colorA": {
+              "$ref": "#/$defs/animColor"
+            },
+            "colorB": {
+              "$ref": "#/$defs/animColor"
+            },
+            "offset": {
+              "$ref": "#/$defs/animVec2"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["replace", "add", "multiply", "screen", "overlay"]
+            },
+            "mix": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Checkerboard (Procedural). Checkerboard pattern."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "grid"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "spacing": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "width": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "offset": {
+              "$ref": "#/$defs/animVec2"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["replace", "add", "multiply", "screen", "overlay"]
+            },
+            "mix": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Grid (Procedural). Grid lines (transparent background)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "chromaKey"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "tolerance": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "softness": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "spill": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "choke": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Chroma Key (Matte, mask & key). Keys out a colour (green/blue screen) with softness, spill removal and choke."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "lumaKey"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "threshold": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "tolerance": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "softness": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "invert": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Luma Key (Matte, mask & key). Keys out dark areas (or bright ones when inverted)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "spillSuppressor"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Spill Suppressor (Matte, mask & key). Removes the screen colour reflected on the edges."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "matteChoker"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "choke": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "softness": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Matte Choker (Matte, mask & key). Shrinks (> 0) or grows (< 0) the alpha and softens the edge."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "echo"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "delay": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "count": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "decay": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Echo (Time & transition). Copies of the layer at earlier times, fading out."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "posterizeTime"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "fps": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Posterize Time (Time & transition). Animates the layer at a lower frame rate (stop-motion look)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "strobe"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "frequency": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "duty": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "mode": {
+              "type": "string",
+              "enum": ["flash", "hide"]
+            },
+            "color": {
+              "$ref": "#/$defs/animColor"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Strobe (Time & transition). Blinks the layer (hide) or flashes a colour in rhythm."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "timeSlice"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "slices": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "offset": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "order": {
+              "type": "string",
+              "enum": ["forward", "backward", "center"]
+            },
+            "smooth": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "TimeSlice (Time & transition). Each strip of the picture shows a different moment of the video (time displacement)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "depthMap"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "near": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "far": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "gamma": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "invert": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Depth Map (Utility & expression). Shows the distance to the camera (z-buffer) of 3D layers, from white (near) to black (far)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "channelShuffle"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "red": {
+              "type": "string",
+              "enum": ["red", "green", "blue", "alpha", "luma", "zero", "one"]
+            },
+            "green": {
+              "type": "string",
+              "enum": ["red", "green", "blue", "alpha", "luma", "zero", "one"]
+            },
+            "blue": {
+              "type": "string",
+              "enum": ["red", "green", "blue", "alpha", "luma", "zero", "one"]
+            },
+            "alpha": {
+              "type": "string",
+              "enum": ["red", "green", "blue", "alpha", "luma", "zero", "one"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Channel Shuffle (Utility & expression). Picks the source of each output channel."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "alphaFromLuma"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "invert": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Set Alpha from Luma (Utility & expression). Uses luminance as transparency."
+        }
+      ]
+    },
+    "mask": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "type": "string",
+          "enum": ["rectangle", "ellipse"]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["add", "subtract", "intersect"]
+        },
+        "position": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "size": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "roundness": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "feather": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "opacity": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "inverted": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Shape mask in layer-local pixels (max 4 per layer)."
+    },
+    "matte": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["alpha", "alphaInverted", "luma", "lumaInverted"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["layer"],
+      "description": "Track matte: the layer is visible where the sibling layer 'layer' is opaque/bright. The matte source is hidden automatically."
+    },
+    "transition": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["fade", "slideLeft", "slideRight", "slideUp", "slideDown", "zoomIn", "zoomOut", "spin", "blur", "wipeLeft", "wipeRight"]
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Seconds."
+        },
+        "easing": {
+          "$ref": "#/$defs/easing"
+        },
+        "distance": {
+          "type": "number",
+          "description": "Slide distance in px (default: 25% of the composition)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "font": {
+      "type": "object",
+      "properties": {
+        "family": {
+          "type": "string",
+          "description": "System family: sans-serif, serif, monospace, sans-serif-condensed, cursive, casual..."
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 900
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "asset": {
+          "type": "string",
+          "description": "Id of a font asset."
+        }
+      },
+      "additionalProperties": false
+    },
+    "stroke": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "width": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "cap": {
+          "type": "string",
+          "enum": ["butt", "round", "square"]
+        },
+        "join": {
+          "type": "string",
+          "enum": ["miter", "round", "bevel"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "textAnimator": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["typewriter", "fade", "slideUp", "slideDown", "slideLeft", "slideRight", "scale", "rotate", "wave"]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["in", "out"]
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["character", "word", "line"]
+        },
+        "start": {
+          "type": "number",
+          "description": "Layer-local seconds."
+        },
+        "stagger": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Delay between units (s)."
+        },
+        "unitDuration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Seconds each unit animates."
+        },
+        "easing": {
+          "$ref": "#/$defs/easing"
+        },
+        "amount": {
+          "type": "number",
+          "description": "px for slides/wave, degrees for rotate, starting scale % for scale."
+        },
+        "order": {
+          "type": "string",
+          "enum": ["forward", "backward", "center", "random"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "textContent": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "font": {
+          "$ref": "#/$defs/font"
+        },
+        "fontSize": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "align": {
+          "type": "string",
+          "enum": ["left", "center", "right"]
+        },
+        "lineHeight": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "letterSpacing": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "maxWidth": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Wrap width in px; 0 = no wrapping."
+        },
+        "stroke": {
+          "$ref": "#/$defs/stroke"
+        },
+        "animators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/textAnimator"
+          }
+        },
+        "propertyAnimators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/textPropertyAnimator"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "gradient": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["linear", "radial"]
+        },
+        "start": {
+          "$ref": "#/$defs/vec2"
+        },
+        "end": {
+          "$ref": "#/$defs/vec2"
+        },
+        "stops": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              }
+            },
+            "additionalProperties": false,
+            "required": ["offset", "color"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "fill": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "gradient": {
+          "$ref": "#/$defs/gradient"
+        }
+      },
+      "additionalProperties": false
+    },
+    "trim": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "end": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "offset": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false
+    },
+    "pathPoint": {
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/vec2"
+        },
+        "in": {
+          "$ref": "#/$defs/vec2"
+        },
+        "out": {
+          "$ref": "#/$defs/vec2"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["point"]
+    },
+    "path": {
+      "type": "object",
+      "properties": {
+        "closed": {
+          "type": "boolean"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pathPoint"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "shapeContent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["rectangle", "ellipse", "polygon", "star", "path"]
+        },
+        "size": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "roundness": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "sides": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "innerRatio": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "fill": {
+          "$ref": "#/$defs/fill"
+        },
+        "stroke": {
+          "$ref": "#/$defs/stroke"
+        },
+        "trim": {
+          "$ref": "#/$defs/trim"
+        }
+      },
+      "additionalProperties": false
+    },
+    "imageContent": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": ["asset"]
+    },
+    "mediaContent": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0
+        },
+        "speed": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "volume": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "muted": {
+          "type": "boolean"
+        },
+        "fadeIn": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fadeOut": {
+          "type": "number",
+          "minimum": 0
+        },
+        "alphaPacked": {
+          "type": "boolean",
+          "description": "Video frames hold colour on the left half and alpha (grey) on the right half."
+        },
+        "eq": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/eqBand"
+          },
+          "description": "Parametric equalizer applied after the volume of the clip; omitted or empty = off."
+        },
+        "roto": {
+          "$ref": "#/$defs/rotoBrush"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["asset"]
+    },
+    "material": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "metallic": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "roughness": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "emissive": {
+          "$ref": "#/$defs/animColor"
+        },
+        "texture": {
+          "type": "string",
+          "description": "Id of an image asset."
+        },
+        "shading": {
+          "type": "string",
+          "enum": ["pbr", "flat", "toon", "wireframe"],
+          "description": "pbr (default): smooth physically based; flat: one normal per face (low poly); toon: hard light bands; wireframe: mesh edges only."
+        }
+      },
+      "additionalProperties": false
+    },
+    "object3dContent": {
+      "type": "object",
+      "properties": {
+        "primitive": {
+          "type": "string",
+          "enum": ["cube", "sphere", "cylinder", "cone", "torus", "plane", "empty", "text"]
+        },
+        "size": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "material": {
+          "$ref": "#/$defs/material"
+        },
+        "text": {
+          "$ref": "#/$defs/text3d"
+        }
+      },
+      "additionalProperties": false
+    },
+    "model3dContent": {
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "material": {
+          "$ref": "#/$defs/material"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["asset"]
+    },
+    "cameraContent": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "target": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "fov": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "rotation": {
+          "$ref": "#/$defs/animVec3",
+          "description": "Degrees applied X, then Y, then Z; used when aim is \"rotation\". With zero rotation the camera looks along +z (+x right, +y down). Independent from position."
+        },
+        "aim": {
+          "type": "string",
+          "enum": ["target", "rotation"],
+          "description": "\"target\" (default): look at `target`. \"rotation\": look along the camera's own axes turned by `rotation`; `target` is ignored."
+        },
+        "dof": {
+          "$ref": "#/$defs/depthOfField"
+        }
+      },
+      "additionalProperties": false
+    },
+    "lightContent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["ambient", "directional", "point"]
+        },
+        "color": {
+          "$ref": "#/$defs/animColor"
+        },
+        "intensity": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "position": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "target": {
+          "$ref": "#/$defs/animVec3"
+        },
+        "radius": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Directional and point lights: 3D objects cast shadows on 3D objects."
+        },
+        "shadowDarkness": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "shadowSoftness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 8,
+          "description": "Shadow edge softness in shadow-map texels (default 1.5)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "layer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": ["text", "shape", "image", "video", "audio", "group", "object3d", "model3d", "camera", "light", "null"]
+        },
+        "name": {
+          "type": "string"
+        },
+        "start": {
+          "type": "number",
+          "description": "Seconds, in the time of the container (composition or group)."
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Seconds."
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "parent": {
+          "type": "string",
+          "description": "Id of a sibling layer whose transform is inherited."
+        },
+        "label": {
+          "type": "string"
+        },
+        "blendMode": {
+          "type": "string",
+          "enum": ["normal", "add", "multiply", "screen"]
+        },
+        "motionBlur": {
+          "type": "boolean"
+        },
+        "transform": {
+          "$ref": "#/$defs/transform2d"
+        },
+        "transform3d": {
+          "$ref": "#/$defs/transform3d"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/effect"
+          }
+        },
+        "masks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mask"
+          }
+        },
+        "matte": {
+          "$ref": "#/$defs/matte"
+        },
+        "transitionIn": {
+          "$ref": "#/$defs/transition"
+        },
+        "transitionOut": {
+          "$ref": "#/$defs/transition"
+        },
+        "text": {
+          "$ref": "#/$defs/textContent"
+        },
+        "shape": {
+          "$ref": "#/$defs/shapeContent"
+        },
+        "image": {
+          "$ref": "#/$defs/imageContent"
+        },
+        "video": {
+          "$ref": "#/$defs/mediaContent"
+        },
+        "audio": {
+          "$ref": "#/$defs/mediaContent"
+        },
+        "object3d": {
+          "$ref": "#/$defs/object3dContent"
+        },
+        "model3d": {
+          "$ref": "#/$defs/model3dContent"
+        },
+        "camera": {
+          "$ref": "#/$defs/cameraContent"
+        },
+        "light": {
+          "$ref": "#/$defs/lightContent"
+        },
+        "null": {
+          "$ref": "#/$defs/nullContent"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/layer"
+          },
+          "description": "Children of a group (painter's order)."
+        }
+      },
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "text"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["text"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "shape"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["shape"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "image"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["image"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "video"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["video"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "audio"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["audio"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "object3d"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["object3d"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "model3d"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["model3d"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "camera"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["camera"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "light"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["light"]
+          }
+        }
+      ]
+    },
+    "textPropertyAnimator": {
+      "description": "After Effects style text animator: properties weighted per character by the Expression Selector `amount`.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["character", "word", "line"],
+          "description": "What textIndex counts (default character)."
+        },
+        "position": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "scale": {
+          "$ref": "#/$defs/animVec2"
+        },
+        "rotation": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "opacity": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "amount": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false
+    },
+    "nullContent": {
+      "description": "Content of a null layer. A null layer draws nothing; other layers of the same dimension can use it as parent. 2D nulls use `transform`, 3D nulls (`threeD`: true) use `transform3d`.",
+      "type": "object",
+      "properties": {
+        "threeD": {
+          "type": "boolean",
+          "description": "true for a 3D null object (default false)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "text3d": {
+      "description": "Extruded text of object3d layers with primitive \"text\". Pixels; centred on the layer origin, front face towards the default camera.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "Text; \\n starts a new line."
+        },
+        "font": {
+          "$ref": "#/$defs/font"
+        },
+        "fontSize": {
+          "type": "number",
+          "minimum": 4,
+          "maximum": 2000,
+          "description": "Pixels (default 200)."
+        },
+        "depth": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 2000,
+          "description": "Thickness of the extrusion in pixels (default 60)."
+        },
+        "bevel": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Rounded edge width in pixels, at most half the depth (default 4)."
+        },
+        "align": {
+          "type": "string",
+          "enum": ["left", "center", "right"]
+        },
+        "lineHeight": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Multiple of the font size (default 1.2)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "depthOfField": {
+      "description": "Depth of field of the camera: 3D layers away from focusDistance are blurred.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "focusDistance": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "range": {
+          "$ref": "#/$defs/animFloat"
+        },
+        "blur": {
+          "$ref": "#/$defs/animFloat"
+        }
+      },
+      "additionalProperties": false
+    },
+    "environment": {
+      "description": "Reflections and ambient light of 3D layers. Without asset a procedural studio is used.",
+      "type": "object",
+      "properties": {
+        "asset": {
+          "type": "string",
+          "description": "Id of an image asset with an equirectangular (2:1) panorama."
+        },
+        "intensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Multiplier (default 1)."
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Degrees around the vertical axis."
+        }
+      },
+      "additionalProperties": false
+    },
+    "marker": {
+      "description": "A named point in time on the timeline ruler, independent of the layers.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Composition seconds."
+        },
+        "name": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "#RRGGBB; default colour when omitted."
+        }
+      },
+      "required": ["id", "time"],
+      "additionalProperties": false
+    },
+    "eqBand": {
+      "description": "One band of the parametric equalizer.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["peak", "lowShelf", "highShelf"],
+          "description": "Default peak."
+        },
+        "frequency": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 20000,
+          "description": "Hz (default 1000)."
+        },
+        "gain": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 24,
+          "description": "dB (default 0)."
+        },
+        "q": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10,
+          "description": "Bandwidth: higher is narrower (default 1)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "editorView": {
+      "description": "The free camera of the editor viewport and which view it shows. Editor state: never rendered into the video.",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": ["camera", "editor", "inside"],
+          "description": "camera = the active camera's picture (default); editor = the free camera; inside = through the active camera, gestures move it."
+        },
+        "target": {
+          "$ref": "#/$defs/vec3",
+          "description": "Point the editor camera looks at (composition pixels)."
+        },
+        "yaw": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360,
+          "description": "Degrees; 0 looks along +z."
+        },
+        "pitch": {
+          "type": "number",
+          "minimum": -89,
+          "maximum": 89,
+          "description": "Degrees; positive looks down from above."
+        },
+        "distance": {
+          "type": "number",
+          "minimum": 50,
+          "maximum": 200000,
+          "description": "Pixels from the target."
+        },
+        "fov": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 170,
+          "description": "Vertical field of view in degrees."
+        }
+      },
+      "additionalProperties": false
+    },
+    "rotoStroke": {
+      "description": "A brush stroke of the Roto Brush.",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": ["add", "remove"],
+          "description": "add = part of the object (default); remove = not part of it."
+        },
+        "size": {
+          "type": "number",
+          "minimum": 0.005,
+          "maximum": 0.5,
+          "description": "Brush diameter as a fraction of the frame's shorter side (default 0.06)."
+        },
+        "points": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2000,
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Points [x, y] of the stroke, normalised 0..1 in the upright frame."
+        }
+      },
+      "required": ["points"],
+      "additionalProperties": false
+    },
+    "rotoFrame": {
+      "description": "The strokes painted on one frame.",
+      "type": "object",
+      "properties": {
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Seconds after roto.sourceStart."
+        },
+        "strokes": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/rotoStroke"
+          }
+        }
+      },
+      "required": ["time"],
+      "additionalProperties": false
+    },
+    "rotoBrush": {
+      "description": "How a packed-alpha video was cut out with the Roto Brush: the source video and the strokes, so it can be edited again.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Asset id of the source video."
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Seconds into the source where the cut-out starts (default 0)."
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 3600,
+          "description": "Seconds of the source that the cut-out covers."
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 240,
+          "items": {
+            "$ref": "#/$defs/rotoFrame"
+          }
+        }
+      },
+      "required": ["source", "duration"],
+      "additionalProperties": false
+    }
+  }
+}

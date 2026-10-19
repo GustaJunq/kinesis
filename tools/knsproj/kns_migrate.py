@@ -104,7 +104,13 @@ def v8_to_v9(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7, 7: v7_to_v8, 8: v8_to_v9}
+def v9_to_v10(doc):
+    """Version 10 only adds effects (8-bit, PixDither, Pixel Encoder, Kernel, Signal Analog, Glitchify, Dissolve Shake)."""
+    doc["formatVersion"] = 10
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7, 7: v7_to_v8, 8: v8_to_v9, 9: v9_to_v10}
 
 
 def migrate(doc, to_version):

@@ -7,6 +7,7 @@ import dev.kinesis.core.math.Color
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.model.EditorView
+import dev.kinesis.core.model.FORMAT_VERSION
 import dev.kinesis.core.model.EditorViewMode
 import dev.kinesis.core.scene.EditorCamera
 import dev.kinesis.core.scene.SceneEvaluator
@@ -106,11 +107,11 @@ class EditorCameraTest {
         val view = EditorView(mode = EditorViewMode.EDITOR, target = Vec3(10f, 20f, 30f), yaw = 40f, pitch = -10f, distance = 1234f, fov = 50f)
         val saved = KnsprojJson.encode(project.copy(editorView = view))
         assertEquals(view, KnsprojJson.decode(saved).editorView)
-        // A v8 document has no editorView and opens as v9 unchanged.
-        val v8 = KnsprojJson.encode(project).replace("\"formatVersion\": 9", "\"formatVersion\": 8")
+        // A v8 document has no editorView and opens as the current version unchanged.
+        val v8 = KnsprojJson.encode(project).replace("\"formatVersion\": $FORMAT_VERSION", "\"formatVersion\": 8")
         val opened = KnsprojJson.decode(v8)
         assertNull(opened.editorView)
-        assertEquals(9, opened.formatVersion)
+        assertEquals(FORMAT_VERSION, opened.formatVersion)
         assertEquals(project.composition, opened.composition)
     }
 

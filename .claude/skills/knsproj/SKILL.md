@@ -12,8 +12,8 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
-- Schema oficial: `schema/knsproj-v9.schema.json` (formato versão 9; arquivos v1 a v8 ainda abrem e são migrados). Escreva sempre `"formatVersion": 9`.
-  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`; v7 `cyclic.offset` = assimetria (skew) de cada ciclo, `phase` = deslocamento; v8 `markers` (marcadores da timeline) e `eq` (equalizador) em clipes de áudio/vídeo; v9 `editorView` (câmera livre da prévia, não renderizada: exemplo `basicos/vista-do-editor`) o efeito `timeSlice` (exemplo `basicos/fatias-de-tempo`) e `video.roto` (receita do Roto Brush: vídeo de origem e pinceladas; exemplo `basicos/recorte-roto-brush`);
+- Schema oficial: `schema/knsproj-v10.schema.json` (formato versão 10; arquivos v1 a v9 ainda abrem e são migrados). Escreva sempre `"formatVersion": 10`.
+  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`; v7 `cyclic.offset` = assimetria (skew) de cada ciclo, `phase` = deslocamento; v8 `markers` (marcadores da timeline) e `eq` (equalizador) em clipes de áudio/vídeo; v9 `editorView` (câmera livre da prévia, não renderizada: exemplo `basicos/vista-do-editor`) o efeito `timeSlice` (exemplo `basicos/fatias-de-tempo`) e `video.roto` (receita do Roto Brush: vídeo de origem e pinceladas; exemplo `basicos/recorte-roto-brush`); v10 os efeitos retrô e de glitch `eightBit`, `pixDither`, `pixelEncoder`, `kernel`, `signalAnalog`, `glitchify` e `dissolveShake` (exemplos `basicos/efeito-*`);
   v6 texto 3D (`primitive: "text"`), `material.shading`, sombras (`light.castShadows`), profundidade de campo (`camera.dof`),
   ambiente HDRI (`composition.environment`) e vídeo com transparência (`video.alphaPacked`).
 - Expressões (APIs, unidades, matriz de compatibilidade): `docs/expressoes.md`

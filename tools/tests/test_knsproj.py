@@ -462,6 +462,17 @@ class Format9Tests(unittest.TestCase):
         self.assertNotIn("editorView", migrated)
 
 
+class FormatV10Tests(unittest.TestCase):
+    """Format v10: the retro and glitch effects. Only effects were added, so v9 documents open unchanged."""
+
+    def test_version_9_documents_migrate_to_10(self):
+        migrated = kns_migrate.migrate(minimal(formatVersion=9), 10)
+        self.assertEqual(10, migrated["formatVersion"])
+
+    def test_current_version_is_10(self):
+        self.assertEqual(10, cli.FORMAT_VERSION)
+
+
 class ExampleTests(unittest.TestCase):
     """The skill's examples: basicos/ and receitas/ must be clean, erros/ must fail with the documented code."""
 
