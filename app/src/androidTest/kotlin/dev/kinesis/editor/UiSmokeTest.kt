@@ -1,10 +1,16 @@
 package dev.kinesis.editor
 
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -30,12 +36,29 @@ class UiSmokeTest {
     private fun click(label: String) {
         fun texts() = rule.onAllNodesWithText(label, useUnmergedTree = true)
         fun descs() = rule.onAllNodesWithContentDescription(label, useUnmergedTree = true)
-        rule.waitUntil(20_000) { texts().fetchSemanticsNodes().isNotEmpty() || descs().fetchSemanticsNodes().isNotEmpty() }
+        try {
+            rule.waitUntil(20_000) { texts().fetchSemanticsNodes().isNotEmpty() || descs().fetchSemanticsNodes().isNotEmpty() }
+        } catch (e: Throwable) {
+            // Name what is on screen: the screenshot and the tree go to the logs the CI prints.
+            android.util.Log.i("KTEST", "'$label' not found")
+            rule.onRoot(useUnmergedTree = true).printToString(maxDepth = 40).chunked(3500).forEach { android.util.Log.i("KTEST", it) }
+            shot("ui-fail-" + label.lowercase().replace(Regex("[^a-z0-9]+"), "-"))
+            throw e
+        }
         val node = (if (texts().fetchSemanticsNodes().isNotEmpty()) texts() else descs()).onFirst()
         // Tool bars scroll horizontally: bring the target into view first.
         runCatching { node.performScrollTo() }
         node.performClick()
         rule.waitForIdle()
+    }
+
+    /** Clicks a tool of the bottom bar, which scrolls sideways: swipe it to its start or its end first. */
+    private fun tool(label: String, atEnd: Boolean) {
+        repeat(3) {
+            rule.onAllNodesWithTag("tool-bar").onFirst().performTouchInput { if (atEnd) swipeLeft() else swipeRight() }
+            rule.waitForIdle()
+        }
+        click(label)
     }
 
     @Test
@@ -51,10 +74,10 @@ class UiSmokeTest {
         click("Create")
         rule.waitUntil(20_000) { rule.onAllNodesWithContentDescription("Undo").fetchSemanticsNodes().isNotEmpty() }
 
-        click("Text")
-        click("3D")
+        tool("Text", false)
+        tool("3D", true)
         click("Cube")
-        click("Shapes")
+        tool("Shapes", false)
         click("Star")
         shot("ui-editor-timeline")
 
@@ -64,7 +87,7 @@ class UiSmokeTest {
         shot("ui-editor-after-ops")
 
         // Effect picker: categories, one category, add an effect (opens its parameters).
-        click("Effects")
+        tool("Effects", true)
         Thread.sleep(3000) // previews render in the background
         shot("ui-effects-categories")
         click("Distort")

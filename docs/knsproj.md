@@ -1,10 +1,10 @@
-# Formato `.knsproj` — versão 9
+# Formato `.knsproj` — versão 10
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v9.schema.json`](../schema/knsproj-v9.schema.json) (JSON Schema draft 2020-12);
+- **Schema oficial:** [`schema/knsproj-v10.schema.json`](../schema/knsproj-v10.schema.json) (JSON Schema draft 2020-12);
   os das versões 1 a 5 continuam em [`schema/`](../schema)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
@@ -77,7 +77,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `9` (documentos das versões `1` a `8` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `10` (documentos das versões `1` a `9` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
 | `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120; o app oferece 12–60 num controle deslizante, sem predefinições), `duration` (s), `background`, `motionBlur`, `environment` (seção 5.13) |
@@ -540,6 +540,31 @@ Comportamentos especiais:
   a exportação é exata.
 - **`posterizeTime`**: a camada inteira (transformação, conteúdo e efeitos) é avaliada no início do seu quadro em
   `fps`, criando um visual de stop-motion. A posição na lista não importa.
+- **`eightBit`** (formato v10): amostra o centro de cada célula de `pixelSize` px e reduz as cores. `paletteMode`:
+  `free` (`colorLevels` níveis por canal, 2 a 32), `gray` (a luminância em `colorLevels` tons de cinza) ou `console`
+  (a cor mais próxima de uma paleta fixa de 16 cores; `colorLevels` não é usado). O alfa da camada é preservado.
+- **`pixDither`** (formato v10): dithering ordenado. A grade tem pixels de `scale` px; cada um é comparado com a
+  matriz de Bayer de `matrixSize` (`"2"`, `"4"` ou `"8"`) antes de reduzir a `levels` níveis por canal. Com `monochrome`
+  a luminância vira só `colorA` (escuros) e `colorB` (claros). O alfa da camada é preservado.
+- **`pixelEncoder`** (formato v10): divide a imagem em células de `cellSize` px; cada célula (média de 4 amostras) vira um
+  caractere escolhido pela luminância, de `charset`: `ascii`, `numbers` ou `blocks`. Com `useSourceColor` o caractere
+  leva a cor da célula; senão `fgColor` sobre `bgColor`. `invert` inverte a luminância. O alfa da camada vale por
+  célula. As formas vêm de um atlas criado uma vez por conjunto (fonte monoespaçada do aparelho; `blocks` é desenhado).
+- **`kernel`** (formato v10): convolução 3×3 sobre as cores (um pixel da composição entre as amostras). `preset`:
+  `sharpen`, `emboss` (com 50% de cinza somado), `edges` (laplaciano), `outline` (laplaciano invertido sobre papel
+  claro) ou `custom`, que usa os pesos `weight0` a `weight8` (linha de cima para baixo). `strength` mistura com o original.
+  O alfa da camada é preservado.
+- **`signalAnalog`** (formato v10): desloca cada linha (2 px) em x com ruído de tremor (`lineJitter`, sorteado 12 vezes
+  por segundo × `speed`), mais uma deriva lenta e faixas que rasgam de vez em quando; `amount` escala os deslocamentos.
+  Separa R e B em `rgbSplit` px, aplica scanlines (`scanlineIntensity`, `scanlineDensity`: 1 = um par de linhas a cada
+  4 px) e `noise`. Só depende do tempo da camada e de `seed`; `speed` 0 congela. O alfa acompanha o deslocamento.
+- **`glitchify`** (formato v10): blocos largos (`2·blockSize × blockSize`) e altos (`blockSize/2 × 3·blockSize`) são
+  sorteados a cada `1/(8·speed)` s; a fração `blockDensity` deles desloca-se (até `4·blockSize·intensity`) com separação
+  RGB própria (`rgbSplit` × `intensity`) e a fração `dropoutChance` de uma terceira grade fica transparente. Só
+  depende do tempo da camada e de `seed`; com `speed` 0 o glitch fica congelado num quadro.
+- **`dissolveShake`** (formato v10): grade de blocos de `blockSize` px; cada bloco some num momento sorteado por `seed` e,
+  nos 30% finais do seu caminho, treme até `shakeAmount` px (30 vezes por segundo, no tempo da camada) e esmaece.
+  `progress` 0 mostra tudo, 1 não mostra nada. O alfa da camada acompanha o esmaecimento.
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
@@ -664,6 +689,32 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 | `scanlines` (Scanlines/CRT) | Estilizar | `spacing` | `4` | 2..200 px |
 |  |  | `intensity` | `0.4` | 0..1 % |
 |  |  | `curvature` | `0` | 0..1 % |
+| `eightBit` (8-bit) | Estilizar | `pixelSize` | `8` | 1..200 px |
+|  |  | `colorLevels` | `4` | inteiro 2..32 |
+|  |  | `paletteMode` | `"free"` | `free`, `gray`, `console` (estático) |
+| `pixDither` (PixDither) | Estilizar | `matrixSize` | `"4"` | `2`, `4`, `8` (estático) |
+|  |  | `levels` | `2` | inteiro 2..16 |
+|  |  | `scale` | `3` | 1..64 px |
+|  |  | `monochrome` | `false` | `true`/`false` (estático) |
+|  |  | `colorA` | `#000000` | cor |
+|  |  | `colorB` | `#FFFFFF` | cor |
+| `pixelEncoder` (Pixel Encoder) | Estilizar | `cellSize` | `12` | 4..128 px |
+|  |  | `charset` | `"ascii"` | `numbers`, `ascii`, `blocks` (estático) |
+|  |  | `useSourceColor` | `true` | `true`/`false` (estático) |
+|  |  | `fgColor` | `#FFFFFF` | cor |
+|  |  | `bgColor` | `#000000` | cor |
+|  |  | `invert` | `false` | `true`/`false` (estático) |
+| `kernel` (Kernel) | Estilizar | `preset` | `"sharpen"` | `sharpen`, `emboss`, `edges`, `outline`, `custom` (estático) |
+|  |  | `strength` | `1` | 0..1 % |
+|  |  | `weight0` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight1` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight2` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight3` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight4` | `1` | -10..10 — com `preset: "custom"` |
+|  |  | `weight5` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight6` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight7` | `0` | -10..10 — com `preset: "custom"` |
+|  |  | `weight8` | `0` | -10..10 — com `preset: "custom"` |
 | `blockGlitch` (Glitch em blocos) | Glitch | `blockSize` | `48` | 4..2000 px |
 |  |  | `intensity` | `0.5` | 0..1 % |
 |  |  | `rate` | `8` | 0..60 Hz |
@@ -688,6 +739,25 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 | `staticNoise` (Chuvisco) | Glitch | `amount` | `0.5` | 0..1 % |
 |  |  | `size` | `1` | 0.5..40 px |
 |  |  | `rate` | `24` | 0..120 Hz |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `signalAnalog` (Sinal analógico) | Glitch | `amount` | `0.5` | 0..1 % |
+|  |  | `lineJitter` | `0.4` | 0..1 % |
+|  |  | `rgbSplit` | `4` | 0..100 px |
+|  |  | `scanlineIntensity` | `0.35` | 0..1 % |
+|  |  | `scanlineDensity` | `1` | 0.25..4 × |
+|  |  | `noise` | `0.2` | 0..1 % |
+|  |  | `speed` | `1` | 0..10 × |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `glitchify` (Glitchify) | Glitch | `intensity` | `0.5` | 0..1 % |
+|  |  | `blockSize` | `48` | 4..2000 px |
+|  |  | `blockDensity` | `0.35` | 0..1 % |
+|  |  | `rgbSplit` | `6` | 0..200 px |
+|  |  | `dropoutChance` | `0.1` | 0..1 % |
+|  |  | `speed` | `1` | 0..10 × |
+|  |  | `seed` | `0` | inteiro 0..99999 |
+| `dissolveShake` (Dissolver tremendo) | Glitch | `progress` | `0.5` | 0..1 % |
+|  |  | `blockSize` | `32` | 4..500 px |
+|  |  | `shakeAmount` | `12` | 0..200 px |
 |  |  | `seed` | `0` | inteiro 0..99999 |
 | `findEdges` (Encontrar bordas) | Desenho e borda | `strength` | `1` | 0..5 × |
 |  |  | `invert` | `false` | `true`/`false` (estático) |
@@ -809,7 +879,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v9.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v10.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -852,6 +922,7 @@ Erros da versão 6 e 7: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeigh
   assimetria de cada ciclo e o antigo deslocamento vira `phase` (a migração v6→v7 move o valor antigo de `offset` para
   `phase`, então projetos v5/v6 ficam idênticos). **v8** → `markers` na raiz e `eq` nos clipes de áudio/vídeo (seções 2 e 5; só campos novos, documentos v7 abrem sem mudança).
   **v9** → `editorView` na raiz (seção 2), o efeito `timeSlice` (seção 7, efeitos de tempo) e os recortes do Roto Brush (seção 5.4; só campos novos, documentos v8 abrem sem mudança).
+  **v10** → efeitos de estilo e glitch retrô: `eightBit`, `pixDither`, `pixelEncoder`, `kernel`, `signalAnalog`, `glitchify` e `dissolveShake` (seção 7; só efeitos novos, documentos v9 abrem sem mudança).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.

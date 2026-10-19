@@ -131,6 +131,8 @@ class RenderTest {
             val res = RenderResources(app.assets, AssetFiles { null })
             val comp = Compositor(res)
             specs.forEachIndexed { i, spec ->
+                // Logged first: if the emulator dies on this effect, the streamed logcat names it.
+                android.util.Log.i("KTEST", "effect ${spec.id}")
                 val project = effectScene(Effect.create(spec.id))
                 for (preview in listOf(false, true)) {
                     val target = comp.render(project, SceneEvaluator.evaluate(project, 1.25), 240, 240, RenderSettings(motionBlurSamples = 1, preview = preview))

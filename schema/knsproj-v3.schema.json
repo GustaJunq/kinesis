@@ -1367,6 +1367,144 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "eightBit"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "pixelSize": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "colorLevels": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "paletteMode": {
+              "type": "string",
+              "enum": ["free", "gray", "console"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "8-bit (Stylize). Pixelates on a grid and reduces the colours: levels per channel, greyscale or a fixed 16-colour console palette."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "pixDither"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "matrixSize": {
+              "type": "string",
+              "enum": ["2", "4", "8"]
+            },
+            "levels": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "scale": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "monochrome": {
+              "type": "boolean"
+            },
+            "colorA": {
+              "$ref": "#/$defs/animColor"
+            },
+            "colorB": {
+              "$ref": "#/$defs/animColor"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "PixDither (Stylize). Ordered dithering with a Bayer matrix: few colour levels with a grid texture, in colour or in two colours."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "pixelEncoder"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "cellSize": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "charset": {
+              "type": "string",
+              "enum": ["numbers", "ascii", "blocks"]
+            },
+            "useSourceColor": {
+              "type": "boolean"
+            },
+            "fgColor": {
+              "$ref": "#/$defs/animColor"
+            },
+            "bgColor": {
+              "$ref": "#/$defs/animColor"
+            },
+            "invert": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Pixel Encoder (Stylize). Splits the picture into cells and draws in each one a character picked by its luminance (ASCII art)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "kernel"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "preset": {
+              "type": "string",
+              "enum": ["sharpen", "emboss", "edges", "outline", "custom"]
+            },
+            "strength": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight0": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight1": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight2": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight3": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight4": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight5": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight6": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight7": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "weight8": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Kernel (Stylize). 3×3 convolution: sharpen, emboss, edge detection, outline or the 9 weights you choose."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "blockGlitch"
             },
             "enabled": {
@@ -1521,6 +1659,105 @@
           "additionalProperties": false,
           "required": ["type"],
           "description": "Static Noise (Glitch). TV static over the layer."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "signalAnalog"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "lineJitter": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "rgbSplit": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "scanlineIntensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "scanlineDensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "noise": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "speed": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Signal Analog (Glitch). Noise-shifted lines, RGB split, scanlines and static of a bad analog video signal."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "glitchify"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "intensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "blockSize": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "blockDensity": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "rgbSplit": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "dropoutChance": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "speed": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Glitchify (Glitch). Random displaced blocks, RGB split per block and blocks that drop out (turn transparent); speed 0 freezes the glitch."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "dissolveShake"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "progress": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "blockSize": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "shakeAmount": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "seed": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Dissolve Shake (Glitch). Grid of blocks that shake and vanish with the progress (0 = whole, 1 = nothing)."
         },
         {
           "type": "object",

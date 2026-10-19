@@ -29,6 +29,7 @@ import java.io.File
  * - `schema/knsproj-v7.schema.json` — the v6 schema with `cyclic.offset` as the skew of each cycle and the old shift as `cyclic.phase`;
  * - `schema/knsproj-v8.schema.json` — the v7 schema plus timeline `markers` and the `eq` of audio and video clips;
  * - `schema/knsproj-v9.schema.json` — the v8 schema plus the `editorView` of the viewport (and the TimeSlice effect);
+ * - `schema/knsproj-v10.schema.json` — the v9 schema plus the retro and glitch effects of 0.1.8 (8-bit, PixDither, Pixel Encoder, Kernel, Signal Analog, Glitchify, Dissolve Shake);
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -66,6 +67,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV9() = check(File(root, "schema/knsproj-v9.schema.json"), JsonPretty.print(buildSchemaV9()) + "\n")
+
+    @Test
+    fun schemaV10() = check(File(root, "schema/knsproj-v10.schema.json"), JsonPretty.print(buildSchemaV10()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -475,6 +479,18 @@ class RegistryArtifactsTest {
         m["title"] = str("Kinesis project (.knsproj) — project.json, format version 9")
         m["properties"] = JsonObject(props)
         m["\$defs"] = JsonObject(defs)
+        return JsonObject(m)
+    }
+
+    /** Version 10 only adds effects, which come from the registry: the schema differs from v9 in the version only. */
+    private fun buildSchemaV10(): JsonObject {
+        val v9 = buildSchemaV9()
+        val props = LinkedHashMap<String, JsonElement>()
+        for ((k, v) in v9.getValue("properties").jsonObject) props[k] = if (k == "formatVersion") obj("const" to JsonPrimitive(10)) else v
+        val m = LinkedHashMap(v9)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v10.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 10")
+        m["properties"] = JsonObject(props)
         return JsonObject(m)
     }
 

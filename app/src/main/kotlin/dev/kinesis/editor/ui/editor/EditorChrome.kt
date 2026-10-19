@@ -42,7 +42,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +50,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,7 +63,6 @@ import dev.kinesis.editor.ui.theme.KDims
 import dev.kinesis.editor.ui.theme.KShapes
 import dev.kinesis.editor.ui.theme.KSkew
 import dev.kinesis.editor.ui.theme.KType
-import kotlinx.coroutines.launch
 import java.util.Locale
 
 /** A round lavender button. The touch target is 48 dp; the circle is 40 dp. */
@@ -166,15 +165,15 @@ private val TOOLS = listOf(
     ToolSpec(EditorTool.CAPTIONS, Lucide.Captions, R.string.captions),
 )
 
-private val TAB_HEIGHT = 60.dp
-private val TAB_OVERHANG = 36.dp
+private val TRANSPORT_HEIGHT = 56.dp
+private val TRANSPORT_GAP = 8.dp
 private val BAR_HEIGHT = 64.dp
 
-/** Total height of [EditorBottomBar]: the bar, the part of the play tab that sticks out above it and the scroll indicator. */
-val EDITOR_BOTTOM_HEIGHT = BAR_HEIGHT + TAB_OVERHANG + 10.dp
+/** Total height of [EditorBottomBar]: the three round buttons, the gap, the tool bar and the scroll indicator. */
+val EDITOR_BOTTOM_HEIGHT = TRANSPORT_HEIGHT + TRANSPORT_GAP + BAR_HEIGHT + 10.dp
 
 /**
- * The play tab (previous · play · next) sitting on the tool bar. Both are skewed; their content is not. The tool bar
+ * Previous · play · next as three separate round buttons above the tool bar. The tool bar (skewed, its active item too)
  * scrolls sideways and says so: its last item fades out, a chevron sits at the end and a thin indicator runs below.
  * [active] is the tool whose panel is open (or the first one).
  */
@@ -190,52 +189,54 @@ fun EditorBottomBar(
     onTool: (EditorTool) -> Unit,
 ) {
     val scroll = rememberScrollState()
-    val scope = rememberCoroutineScope()
     var viewport by remember { mutableIntStateOf(0) }
     val sideInset = KSkew.Bar.inset(BAR_HEIGHT)
     Column(Modifier.fillMaxWidth().height(EDITOR_BOTTOM_HEIGHT), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.fillMaxWidth().height(TAB_OVERHANG + BAR_HEIGHT), contentAlignment = Alignment.TopCenter) {
-            // Tool bar
+        Row(
+            Modifier.height(TRANSPORT_HEIGHT),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            CircleButton(Lucide.SkipBack, stringResource(R.string.prev_keyframe), onPrev, enabled = canNavigate)
             Box(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(BAR_HEIGHT).padding(horizontal = 4.dp)
-                    .clip(KSkew.Bar).background(KColors.SurfaceAlt).onSizeChanged { viewport = it.width },
+                Modifier.size(TRANSPORT_HEIGHT).clickable(
+                    role = Role.Button, onClickLabel = stringResource(if (playing) R.string.pause else R.string.play), onClick = onPlay,
+                ),
+                contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    Modifier.fillMaxHeight().horizontalScroll(scroll).padding(start = sideInset + 4.dp, end = sideInset + 36.dp, top = 6.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    for (spec in TOOLS) ToolItem(spec, spec.tool == active, enabled(spec.tool)) { onTool(spec.tool) }
-                }
-                val fadeAlpha by animateFloatAsState(if (scroll.canScrollForward) 1f else 0f, label = "toolbar-fade")
-                if (fadeAlpha > 0f) {
-                    Box(
-                        Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(88.dp)
-                            .background(Brush.horizontalGradient(listOf(Color.Transparent, KColors.SurfaceAlt.copy(alpha = fadeAlpha)))),
+                Box(Modifier.size(52.dp).clip(CircleShape).background(KColors.Primary), contentAlignment = Alignment.Center) {
+                    Icon(
+                        if (playing) Lucide.Pause else Lucide.Play, stringResource(if (playing) R.string.pause else R.string.play),
+                        tint = KColors.White, modifier = Modifier.size(26.dp),
                     )
-                    Box(
-                        Modifier.align(Alignment.CenterEnd).padding(end = sideInset).size(KDims.MinTouch).clickable(
-                            role = Role.Button, onClickLabel = stringResource(R.string.tools_more),
-                        ) { scope.launch { scroll.animateScrollTo((scroll.value + viewport * 0.6f).toInt().coerceAtMost(scroll.maxValue)) } },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Lucide.ChevronRight, stringResource(R.string.tools_more), tint = KColors.TextPrimary.copy(alpha = fadeAlpha), modifier = Modifier.size(22.dp))
-                    }
                 }
             }
-            // Play tab
+            CircleButton(Lucide.SkipForward, stringResource(R.string.next_keyframe), onNext, enabled = canNavigate)
+        }
+        Spacer(Modifier.height(TRANSPORT_GAP))
+        // Tool bar
+        Box(
+            Modifier.fillMaxWidth().height(BAR_HEIGHT).padding(horizontal = 4.dp).testTag("tool-bar")
+                .clip(KSkew.Bar).background(KColors.SurfaceAlt).onSizeChanged { viewport = it.width },
+        ) {
             Row(
-                Modifier.height(TAB_HEIGHT).clip(KSkew.Bar).background(KColors.SurfaceAlt).padding(start = 18.dp, end = 18.dp, top = 4.dp),
-                // The buttons sit in the part of the tab above the tool bar, not on its edge.
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                Modifier.fillMaxHeight().horizontalScroll(scroll).padding(start = sideInset + 4.dp, end = sideInset + 36.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                TabButton(Lucide.SkipBack, stringResource(R.string.prev_keyframe), onPrev, enabled = canNavigate)
-                TabButton(
-                    if (playing) Lucide.Pause else Lucide.Play, stringResource(if (playing) R.string.pause else R.string.play), onPlay,
-                    tint = KColors.ClipIndigo.let { if (KColors.palette.isDark) KColors.Primary else it }, size = 26.dp,
+                for (spec in TOOLS) ToolItem(spec, spec.tool == active, enabled(spec.tool)) { onTool(spec.tool) }
+            }
+            val fadeAlpha by animateFloatAsState(if (scroll.canScrollForward) 1f else 0f, label = "toolbar-fade")
+            if (fadeAlpha > 0f) {
+                Box(
+                    Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(88.dp)
+                        .background(Brush.horizontalGradient(listOf(Color.Transparent, KColors.SurfaceAlt.copy(alpha = fadeAlpha)))),
                 )
-                TabButton(Lucide.SkipForward, stringResource(R.string.next_keyframe), onNext, enabled = canNavigate)
+                // Only a hint: it takes no touches, so the tools under it can still be tapped.
+                Icon(
+                    Lucide.ChevronRight, null, tint = KColors.TextPrimary.copy(alpha = fadeAlpha),
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = sideInset + 12.dp).size(22.dp),
+                )
             }
         }
         // Scroll indicator
@@ -251,16 +252,6 @@ fun EditorBottomBar(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun TabButton(icon: ImageVector, label: String, onClick: () -> Unit, enabled: Boolean = true, tint: Color = KColors.TextPrimary, size: androidx.compose.ui.unit.Dp = 22.dp) {
-    Box(
-        Modifier.size(KDims.MinTouch).clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, label, tint = if (enabled) tint else KColors.Disabled, modifier = Modifier.size(size))
     }
 }
 

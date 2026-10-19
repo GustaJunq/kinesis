@@ -56,6 +56,8 @@ class RenderResources(assets: AssetManager, val files: AssetFiles, proxies: (Str
     val meshes = MeshCache(files, typefaces)
     /** Frames kept for TimeSlice, and what the last rendered frame needed from it (see [Compositor.timeSlice]). */
     val slices = SliceCache()
+    /** Glyph strips of the Pixel Encoder effect (built once per character set). */
+    val glyphs = GlyphAtlas()
     @Volatile var sliceDegraded = false
     @Volatile var sliceProgress = false
     val environments = EnvironmentMaps(files, min(4096, Gl.maxTextureSize()))
@@ -81,6 +83,7 @@ class RenderResources(assets: AssetManager, val files: AssetFiles, proxies: (Str
         videos.release()
         meshes.release()
         slices.clear()
+        glyphs.release()
         quad.release()
         shaders.release()
     }
@@ -885,6 +888,7 @@ class Compositor(private val res: RenderResources) {
                     "glass" -> glass(cur, e, ctx, ctx.backdrop ?: below)
                     "echo" -> echo(cur, e, ctx)
                     "timeSlice" -> timeSlice(cur, e, slices++, ctx)
+                    "pixelEncoder" -> pixelEncoder(cur, e, spec, ctx)
                     "posterizeTime", "depthMap" -> cur // handled by scene evaluation / 3D drawing
                     else -> generic(spec, e, cur, ctx)
                 }
@@ -910,7 +914,10 @@ class Compositor(private val res: RenderResources) {
      * Single-pass effects: `shaders/fx/<type>.frag` with one uniform per parameter, named `u_<param>`.
      * Pixel lengths are converted to output pixels, points to uv, choices to their index, switches to 0/1.
      */
-    private fun generic(spec: EffectSpec, e: ResolvedEffect, src: RenderTarget, ctx: Ctx): RenderTarget = pass("fx/${spec.id}.frag", src) { p ->
+    private fun generic(spec: EffectSpec, e: ResolvedEffect, src: RenderTarget, ctx: Ctx): RenderTarget =
+        pass("fx/${spec.id}.frag", src) { p -> setEffectUniforms(p, spec, e, ctx) }
+
+    private fun setEffectUniforms(p: Program, spec: EffectSpec, e: ResolvedEffect, ctx: Ctx) {
         setCommon(p, e, ctx)
         for (param in spec.params) {
             val u = "u_${param.name}"
@@ -934,6 +941,18 @@ class Compositor(private val res: RenderResources) {
                     p.set4fv("${u}Color[0]", 8, colors)
                 }
             }
+        }
+    }
+
+    /** Pixel Encoder: the generic uniforms plus the glyph strip of the chosen character set on texture unit 1. */
+    private fun pixelEncoder(src: RenderTarget, e: ResolvedEffect, spec: EffectSpec, ctx: Ctx): RenderTarget {
+        val charset = e.choice("charset")
+        val atlas = res.glyphs.texture(charset)
+        return pass("fx/pixelEncoder.frag", src) { p ->
+            setEffectUniforms(p, spec, e, ctx)
+            bindTexture2D(1, atlas)
+            p.set1i("u_atlas", 1)
+            p.set1i("u_atlasLevels", res.glyphs.levels(charset))
         }
     }
 

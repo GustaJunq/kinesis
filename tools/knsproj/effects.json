@@ -1184,6 +1184,210 @@
       ]
     },
     {
+      "id": "eightBit",
+      "category": "stylize",
+      "pt": "8-bit",
+      "en": "8-bit",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "pixelSize",
+          "type": "number",
+          "default": 8,
+          "min": 1,
+          "max": 200
+        },
+        {
+          "name": "colorLevels",
+          "type": "integer",
+          "default": 4,
+          "min": 2,
+          "max": 32
+        },
+        {
+          "name": "paletteMode",
+          "type": "choice",
+          "default": "free",
+          "choices": ["free", "gray", "console"]
+        }
+      ]
+    },
+    {
+      "id": "pixDither",
+      "category": "stylize",
+      "pt": "PixDither",
+      "en": "PixDither",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "matrixSize",
+          "type": "choice",
+          "default": "4",
+          "choices": ["2", "4", "8"]
+        },
+        {
+          "name": "levels",
+          "type": "integer",
+          "default": 2,
+          "min": 2,
+          "max": 16
+        },
+        {
+          "name": "scale",
+          "type": "number",
+          "default": 3,
+          "min": 1,
+          "max": 64
+        },
+        {
+          "name": "monochrome",
+          "type": "boolean",
+          "default": false
+        },
+        {
+          "name": "colorA",
+          "type": "color",
+          "default": "#000000"
+        },
+        {
+          "name": "colorB",
+          "type": "color",
+          "default": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "id": "pixelEncoder",
+      "category": "stylize",
+      "pt": "Pixel Encoder",
+      "en": "Pixel Encoder",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "cellSize",
+          "type": "number",
+          "default": 12,
+          "min": 4,
+          "max": 128
+        },
+        {
+          "name": "charset",
+          "type": "choice",
+          "default": "ascii",
+          "choices": ["numbers", "ascii", "blocks"]
+        },
+        {
+          "name": "useSourceColor",
+          "type": "boolean",
+          "default": true
+        },
+        {
+          "name": "fgColor",
+          "type": "color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "bgColor",
+          "type": "color",
+          "default": "#000000"
+        },
+        {
+          "name": "invert",
+          "type": "boolean",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "kernel",
+      "category": "stylize",
+      "pt": "Kernel",
+      "en": "Kernel",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "preset",
+          "type": "choice",
+          "default": "sharpen",
+          "choices": ["sharpen", "emboss", "edges", "outline", "custom"]
+        },
+        {
+          "name": "strength",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "weight0",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight1",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight2",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight3",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight4",
+          "type": "number",
+          "default": 1,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight5",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight6",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight7",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        },
+        {
+          "name": "weight8",
+          "type": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10
+        }
+      ]
+    },
+    {
       "id": "blockGlitch",
       "category": "glitch",
       "pt": "Glitch em blocos",
@@ -1408,6 +1612,169 @@
           "default": 24,
           "min": 0,
           "max": 120
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "signalAnalog",
+      "category": "glitch",
+      "pt": "Sinal analógico",
+      "en": "Signal Analog",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "lineJitter",
+          "type": "number",
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "rgbSplit",
+          "type": "number",
+          "default": 4,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "name": "scanlineIntensity",
+          "type": "number",
+          "default": 0.35,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "scanlineDensity",
+          "type": "number",
+          "default": 1,
+          "min": 0.25,
+          "max": 4
+        },
+        {
+          "name": "noise",
+          "type": "number",
+          "default": 0.2,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "speed",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 10
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "glitchify",
+      "category": "glitch",
+      "pt": "Glitchify",
+      "en": "Glitchify",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "intensity",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "blockSize",
+          "type": "number",
+          "default": 48,
+          "min": 4,
+          "max": 2000
+        },
+        {
+          "name": "blockDensity",
+          "type": "number",
+          "default": 0.35,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "rgbSplit",
+          "type": "number",
+          "default": 6,
+          "min": 0,
+          "max": 200
+        },
+        {
+          "name": "dropoutChance",
+          "type": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "speed",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 10
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 99999
+        }
+      ]
+    },
+    {
+      "id": "dissolveShake",
+      "category": "glitch",
+      "pt": "Dissolver tremendo",
+      "en": "Dissolve Shake",
+      "target": "any",
+      "needsBackdrop": false,
+      "params": [
+        {
+          "name": "progress",
+          "type": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        {
+          "name": "blockSize",
+          "type": "number",
+          "default": 32,
+          "min": 4,
+          "max": 500
+        },
+        {
+          "name": "shakeAmount",
+          "type": "number",
+          "default": 12,
+          "min": 0,
+          "max": 200
         },
         {
           "name": "seed",
