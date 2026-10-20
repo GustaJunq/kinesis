@@ -1,0 +1,141 @@
+{
+  "format": "knsproj",
+  "formatVersion": 11,
+  "generator": "knsproj skill examples",
+  "meta": {
+    "title": "Copiar fundo (`copyBackground`)"
+  },
+  "composition": {
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "duration": 4,
+    "background": "#101522"
+  },
+  "layers": [
+    {
+      "id": "fundo",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "shape": {
+        "kind": "rectangle",
+        "size": [
+          1080,
+          1080
+        ],
+        "fill": {
+          "gradient": {
+            "type": "linear",
+            "start": [
+              -540.0,
+              -540.0
+            ],
+            "end": [
+              540.0,
+              540.0
+            ],
+            "stops": [
+              {
+                "offset": 0,
+                "color": "#0B1026"
+              },
+              {
+                "offset": 0.4,
+                "color": "#7C3AED"
+              },
+              {
+                "offset": 0.75,
+                "color": "#FFC857"
+              },
+              {
+                "offset": 1,
+                "color": "#FFFFFF"
+              }
+            ]
+          }
+        }
+      },
+      "effects": []
+    },
+    {
+      "id": "titulo",
+      "type": "text",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": [
+          0,
+          0
+        ]
+      },
+      "text": {
+        "content": "KINESIS",
+        "font": {
+          "family": "sans-serif",
+          "weight": 800
+        },
+        "fontSize": 220,
+        "color": "#FFFFFF"
+      },
+      "effects": []
+    },
+    {
+      "id": "lente",
+      "type": "shape",
+      "start": 0,
+      "duration": 4,
+      "transform": {
+        "position": {
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                -380,
+                0
+              ]
+            },
+            {
+              "time": 4,
+              "value": [
+                380,
+                0
+              ]
+            }
+          ]
+        }
+      },
+      "shape": {
+        "kind": "ellipse",
+        "size": [
+          420,
+          420
+        ],
+        "fill": {
+          "color": "#FFFFFF"
+        }
+      },
+      "effects": [
+        {
+          "type": "copyBackground",
+          "amount": 1
+        },
+        {
+          "type": "hueShift",
+          "hue": {
+            "keyframes": [
+              {
+                "time": 0,
+                "value": 0
+              },
+              {
+                "time": 4,
+                "value": 180
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -183,7 +183,7 @@ dependencies = [
 
 [[package]]
 name = "kinesis-native"
-version = "0.1.8-hotfix"
+version = "0.1.8-hotfix-2"
 dependencies = [
  "cc",
  "jni",

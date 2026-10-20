@@ -889,6 +889,7 @@ class Compositor(private val res: RenderResources) {
                     "echo" -> echo(cur, e, ctx)
                     "timeSlice" -> timeSlice(cur, e, slices++, ctx)
                     "pixelEncoder" -> pixelEncoder(cur, e, spec, ctx)
+                    "copyBackground" -> copyBackground(cur, e, spec, ctx, ctx.backdrop ?: below)
                     "posterizeTime", "depthMap" -> cur // handled by scene evaluation / 3D drawing
                     else -> generic(spec, e, cur, ctx)
                 }
@@ -954,6 +955,18 @@ class Compositor(private val res: RenderResources) {
             p.set1i("u_atlas", 1)
             p.set1i("u_atlasLevels", res.glyphs.levels(charset))
         }
+    }
+
+    /** Copy Background: the composite below replaces the layer's colour, its alpha stays as the region the next effects act on. */
+    private fun copyBackground(cur: RenderTarget, e: ResolvedEffect, spec: EffectSpec, ctx: Ctx, below: RenderTarget): RenderTarget {
+        val backdrop = copy(below)
+        val r = pass("fx/copyBackground.frag", cur) { p ->
+            setEffectUniforms(p, spec, e, ctx)
+            bindTexture2D(1, backdrop.texture)
+            p.set1i("u_backdrop", 1)
+        }
+        res.pool.release(backdrop)
+        return r
     }
 
     private fun glow(cur: RenderTarget, color: Color, radius: Float, intensity: Float, ctx: Ctx): RenderTarget {
