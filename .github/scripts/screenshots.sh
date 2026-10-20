@@ -32,4 +32,8 @@ for name, parts in chunks.items():
     open(f"{out}/{name.replace('/', '_')}.jpg", "wb").write(data)
     print(f"saved {name} ({len(data)} bytes)")
 PY
+# The artifact is the main output; the same shots go to the job log too, so they can be read without downloading it.
+echo "===KSHOT-BEGIN==="
+grep -o 'KSHOT|[^ ]*' "$LOGFILE" || true
+echo "===KSHOT-END==="
 exit "$status"
