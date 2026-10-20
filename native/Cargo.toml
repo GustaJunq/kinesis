@@ -1,6 +1,6 @@
 [package]
 name = "kinesis-native"
-version = "0.1.8-hotfix"
+version = "0.1.8-hotfix-2"
 edition = "2021"
 description = "Native helpers of the Kinesis Editor (text extrusion, Whisper transcription) behind JNI"
 license = "GPL-3.0-only"

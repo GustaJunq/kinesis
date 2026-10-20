@@ -11,6 +11,13 @@ Todas as versões do Kinesis Editor. As notas completas de cada release ficam em
   renderizador em software (Pillow + numpy; ffmpeg opcional para vídeo) — funciona igual no desktop e em sandbox.
   Lista no fim o que não foi simulado (expressões, sombras, DOF, a maioria dos efeitos de shader…).
 
+## 0.1.8-hotfix-2 — 2026-10-20
+
+Formato `.knsproj` **v11** (abre v1 a v10; só um efeito novo — projetos antigos ficam idênticos).
+
+### Adicionado
+- **Copiar fundo** (`copyBackground`, em *Utilitário e expressão*): copia o que está embaixo da camada para dentro dela, e a camada vira uma camada de ajuste. Os efeitos que vêm depois dele atuam nos pixels de fundo cobertos pelas partes opacas da camada; máscaras, `feather` e opacidade recortam a região. `amount` mistura a camada com o fundo. Uma forma que cobre o quadro, com `copyBackground` e um efeito de cor, funciona como a camada de ajuste de outros editores. Exemplo: `basicos/efeito-copiar-fundo` da skill `/knsproj`.
+
 ## 0.1.8-hotfix — 2026-10-19
 
 ### Corrigido
