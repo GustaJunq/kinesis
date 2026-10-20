@@ -33,7 +33,7 @@ import kns_semantic  # noqa: E402
 
 VERSION = "1.0.0"
 FORMAT_ID = "knsproj"
-FORMAT_VERSION = 10
+FORMAT_VERSION = 11
 
 
 def schema_path(version=FORMAT_VERSION):

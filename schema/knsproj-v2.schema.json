@@ -2191,6 +2191,23 @@
           "additionalProperties": false,
           "required": ["type"],
           "description": "Set Alpha from Luma (Utility & expression). Uses luminance as transparency."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "copyBackground"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Copy Background (Utility & expression). Copies the background (the layers below) into the layer, which turns it into an adjustment layer: the effects after it act on the background pixels covered by the opaque parts of the layer. The layer's masks, feather and opacity cut out the region."
         }
       ]
     },

@@ -762,6 +762,13 @@ object EffectRegistry {
             "Usa a luminância como transparência.", "Uses luminance as transparency.",
             bool("invert", "Inverter", "Invert", false),
         ),
+        spec(
+            "copyBackground", EffectCategory.UTILITY, "Copiar fundo", "Copy Background",
+            "Copia o fundo (as camadas de baixo) para dentro da camada, que vira uma camada de ajuste: os efeitos seguintes atuam nos pixels de fundo cobertos pelas partes opacas da camada. Máscaras, feather e opacidade da camada recortam a região.",
+            "Copies the background (the layers below) into the layer, which turns it into an adjustment layer: the effects after it act on the background pixels covered by the opaque parts of the layer. The layer's masks, feather and opacity cut out the region.",
+            amount(),
+            needsBackdrop = true,
+        ),
     )
 
     private val byId = all.associateBy { it.id }

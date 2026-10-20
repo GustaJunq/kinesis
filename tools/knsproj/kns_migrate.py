@@ -110,7 +110,13 @@ def v9_to_v10(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7, 7: v7_to_v8, 8: v8_to_v9, 9: v9_to_v10}
+def v10_to_v11(doc):
+    """Version 11 only adds an effect (Copy Background)."""
+    doc["formatVersion"] = 11
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7, 7: v7_to_v8, 8: v8_to_v9, 9: v9_to_v10, 10: v10_to_v11}
 
 
 def migrate(doc, to_version):

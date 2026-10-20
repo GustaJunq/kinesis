@@ -139,6 +139,11 @@ class EffectPreviews private constructor(private val context: Context) {
                 val spin = Animatable(0f, listOf(Keyframe(0.0, 0f), Keyframe(4.0, 1440f)))
                 listOf(image, star.copy(effects = listOf(effect), transform = star.transform.copy(scale = anim(Vec2(0.9f, 0.9f)), rotation = spin)))
             }
+            key == "copyBackground" -> {
+                // A star that copies the picture below and inverts it, so the copied region shows.
+                val star = Factory.shape(p, 0.0, ShapeKind.STAR, "star")
+                listOf(image, star.copy(effects = listOf(effect, Effect.create("invert")), transform = star.transform.copy(scale = anim(Vec2(0.5f, 0.5f)))))
+            }
             key in SHAPE_SUBJECT -> {
                 val star = Factory.shape(p, 0.0, ShapeKind.STAR, "star")
                 listOf(image, star.copy(effects = listOf(effect), transform = star.transform.copy(scale = anim(Vec2(0.5f, 0.5f)))))

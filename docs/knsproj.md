@@ -1,10 +1,10 @@
-# Formato `.knsproj` — versão 10
+# Formato `.knsproj` — versão 11
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v10.schema.json`](../schema/knsproj-v10.schema.json) (JSON Schema draft 2020-12);
+- **Schema oficial:** [`schema/knsproj-v11.schema.json`](../schema/knsproj-v11.schema.json) (JSON Schema draft 2020-12);
   os das versões 1 a 5 continuam em [`schema/`](../schema)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
@@ -77,7 +77,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `10` (documentos das versões `1` a `9` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `11` (documentos das versões `1` a `10` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
 | `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120; o app oferece 12–60 num controle deslizante, sem predefinições), `duration` (s), `background`, `motionBlur`, `environment` (seção 5.13) |
@@ -565,6 +565,11 @@ Comportamentos especiais:
 - **`dissolveShake`** (formato v10): grade de blocos de `blockSize` px; cada bloco some num momento sorteado por `seed` e,
   nos 30% finais do seu caminho, treme até `shakeAmount` px (30 vezes por segundo, no tempo da camada) e esmaece.
   `progress` 0 mostra tudo, 1 não mostra nada. O alfa da camada acompanha o esmaecimento.
+- **`copyBackground`** (formato v11): copia o fundo (a composição das camadas de baixo) para dentro da camada, que vira uma
+  camada de ajuste: a cor da camada é trocada pela do fundo e só o alfa dela é mantido. Os efeitos que vêm depois dele na
+  lista atuam nos pixels de fundo cobertos pelas partes opacas da camada; máscaras, `feather` e `opacity` da camada recortam
+  a região. `amount` (0..1, animável) mistura a camada com o fundo copiado (1 = só o fundo). Põe-se no começo da lista de
+  efeitos: o que vem antes é descartado. Só vê as camadas abaixo na lista, nunca as de cima. Exemplo: `basicos/efeito-copiar-fundo`.
 - No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
@@ -836,6 +841,7 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `blue` | `"blue"` | `red`, `green`, `blue`, `alpha`, `luma`, `zero`, `one` (estático) |
 |  |  | `alpha` | `"alpha"` | `red`, `green`, `blue`, `alpha`, `luma`, `zero`, `one` (estático) |
 | `alphaFromLuma` (Alfa pela luminância) | Utilitário e expressão | `invert` | `false` | `true`/`false` (estático) |
+| `copyBackground` (Copiar fundo) | Utilitário e expressão | `amount` | `1` | 0..1 % |
 <!-- END effects-table -->
 
 ## 8. Máscaras e track mattes
@@ -879,7 +885,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v10.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v11.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -923,6 +929,7 @@ Erros da versão 6 e 7: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeigh
   `phase`, então projetos v5/v6 ficam idênticos). **v8** → `markers` na raiz e `eq` nos clipes de áudio/vídeo (seções 2 e 5; só campos novos, documentos v7 abrem sem mudança).
   **v9** → `editorView` na raiz (seção 2), o efeito `timeSlice` (seção 7, efeitos de tempo) e os recortes do Roto Brush (seção 5.4; só campos novos, documentos v8 abrem sem mudança).
   **v10** → efeitos de estilo e glitch retrô: `eightBit`, `pixDither`, `pixelEncoder`, `kernel`, `signalAnalog`, `glitchify` e `dissolveShake` (seção 7; só efeitos novos, documentos v9 abrem sem mudança).
+  **v11** → o efeito `copyBackground` (Copiar fundo, seção 7; só um efeito novo, documentos v10 abrem sem mudança).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.

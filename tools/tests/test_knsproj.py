@@ -470,7 +470,18 @@ class FormatV10Tests(unittest.TestCase):
         self.assertEqual(10, migrated["formatVersion"])
 
     def test_current_version_is_10(self):
-        self.assertEqual(10, cli.FORMAT_VERSION)
+        self.assertTrue(cli.FORMAT_VERSION >= 10)
+
+
+class FormatV11Tests(unittest.TestCase):
+    """Format v11: the Copy Background effect. Only an effect was added, so v10 documents open unchanged."""
+
+    def test_version_10_documents_migrate_to_11(self):
+        migrated = kns_migrate.migrate(minimal(formatVersion=10), 11)
+        self.assertEqual(11, migrated["formatVersion"])
+
+    def test_current_version_is_11(self):
+        self.assertEqual(11, cli.FORMAT_VERSION)
 
 
 class ExampleTests(unittest.TestCase):
@@ -481,7 +492,7 @@ class ExampleTests(unittest.TestCase):
     EXPECTED = re.compile(r"\*\*C\u00f3digo esperado:\*\* `([A-Za-z.]+)`")
 
     def test_expected_examples_exist(self):
-        self.assertEqual(30, len(example_dirs("basicos")))
+        self.assertEqual(31, len(example_dirs("basicos")))
         self.assertGreaterEqual(len(example_dirs("receitas")), 5)
         self.assertGreaterEqual(len(example_dirs("erros")), 5)
         self.assertEqual(12, len(example_dirs("efeitos")))

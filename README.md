@@ -24,7 +24,7 @@ Basicamente offline-first.
 - **Texto:** fontes do sistema ou suas (TTF/OTF), animação por letra, palavra ou linha, e expressões no estilo do
   After Effects (`wiggle`, `loopOut`…).
 - **Formas, imagens, vídeo e áudio:** cortar, dividir, velocidade, volume com fades, máscaras e track mattes.
-- **68 efeitos** (brilho, desfoque, glitch, vidro, chroma key…), transições e motion blur.
+- **69 efeitos** (brilho, desfoque, glitch, vidro, chroma key…), transições e motion blur.
 - **3D:** cubos, esferas, modelos GLB, **texto 3D** com profundidade e chanfro, luzes com **sombras**, iluminação por
   **panorama (HDRI)**, câmera com **profundidade de campo**, nulos para montar rigs e estilos flat, toon e wireframe.
 - **Legendas automáticas** geradas **no aparelho** pelo Whisper (sem internet depois de baixar o modelo uma vez):

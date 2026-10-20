@@ -30,6 +30,7 @@ import java.io.File
  * - `schema/knsproj-v8.schema.json` — the v7 schema plus timeline `markers` and the `eq` of audio and video clips;
  * - `schema/knsproj-v9.schema.json` — the v8 schema plus the `editorView` of the viewport (and the TimeSlice effect);
  * - `schema/knsproj-v10.schema.json` — the v9 schema plus the retro and glitch effects of 0.1.8 (8-bit, PixDither, Pixel Encoder, Kernel, Signal Analog, Glitchify, Dissolve Shake);
+ * - `schema/knsproj-v11.schema.json` — the v10 schema plus the Copy Background effect;
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -70,6 +71,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV10() = check(File(root, "schema/knsproj-v10.schema.json"), JsonPretty.print(buildSchemaV10()) + "\n")
+
+    @Test
+    fun schemaV11() = check(File(root, "schema/knsproj-v11.schema.json"), JsonPretty.print(buildSchemaV11()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -490,6 +494,18 @@ class RegistryArtifactsTest {
         val m = LinkedHashMap(v9)
         m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v10.schema.json")
         m["title"] = str("Kinesis project (.knsproj) — project.json, format version 10")
+        m["properties"] = JsonObject(props)
+        return JsonObject(m)
+    }
+
+    /** Version 11 only adds an effect, which comes from the registry: the schema differs from v10 in the version only. */
+    private fun buildSchemaV11(): JsonObject {
+        val v10 = buildSchemaV10()
+        val props = LinkedHashMap<String, JsonElement>()
+        for ((k, v) in v10.getValue("properties").jsonObject) props[k] = if (k == "formatVersion") obj("const" to JsonPrimitive(11)) else v
+        val m = LinkedHashMap(v10)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v11.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 11")
         m["properties"] = JsonObject(props)
         return JsonObject(m)
     }

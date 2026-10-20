@@ -2461,6 +2461,23 @@
           "default": false
         }
       ]
+    },
+    {
+      "id": "copyBackground",
+      "category": "utility",
+      "pt": "Copiar fundo",
+      "en": "Copy Background",
+      "target": "any",
+      "needsBackdrop": true,
+      "params": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1
+        }
+      ]
     }
   ]
 }
