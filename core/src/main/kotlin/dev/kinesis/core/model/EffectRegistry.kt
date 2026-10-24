@@ -769,6 +769,12 @@ object EffectRegistry {
             amount(),
             needsBackdrop = true,
         ),
+        spec(
+            "sliderControl", EffectCategory.UTILITY, "Controle deslizante", "Slider Control",
+            "Não desenha nada: guarda um número (animável) que as expressões leem com effect(\"nome\")(\"Slider\"). Dê um nome ao efeito para referenciá-lo. É o controle que o áudio reativo preenche.",
+            "Draws nothing: holds a number (animatable) that expressions read with effect(\"name\")(\"Slider\"). Give the effect a name to reference it. It is the control that reactive audio fills in.",
+            num("slider", "Controle", "Slider", 0f, sliderMin = 0f, sliderMax = 100f),
+        ),
     )
 
     private val byId = all.associateBy { it.id }

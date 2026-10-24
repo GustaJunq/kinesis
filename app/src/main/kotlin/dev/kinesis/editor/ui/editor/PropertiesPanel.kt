@@ -147,7 +147,7 @@ enum class PropTab(val label: Int) {
 fun propTabs(layer: Layer): List<PropTab> = buildList {
     add(PropTab.TRANSFORM)
     if (layer.type == LayerType.TEXT) add(PropTab.TEXT)
-    if (layer.type.isVisual) add(PropTab.EFFECTS)
+    if (layer.type.isVisual || layer.type == LayerType.NULL) add(PropTab.EFFECTS) // a null layer hosts Slider Controls
     if (layer.type.is2DVisual) add(PropTab.MASK)
     if (layer.type.isVisual) add(PropTab.TRANSITION)
 }
@@ -242,7 +242,7 @@ fun propertyItemKeys(layer: Layer): List<String> = buildList {
         if (section.id.startsWith("effects.") || section.id.startsWith("masks.")) continue
         add("section:${section.id}")
     }
-    if (layer.type.isVisual) add("effects")
+    if (layer.type.isVisual || layer.type == LayerType.NULL) add("effects")
     if (layer.type.is2DVisual) { add("masks"); add("matte") }
     if (layer.type == LayerType.TEXT) add("animators")
     if (layer.type.isVisual) add("transitions")
@@ -783,6 +783,16 @@ private fun EffectsBlock(vm: EditorViewModel, layer: Layer, local: Double, onEdi
         OutlinedButton(onClick = onAddEffect, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.add_effect)) }
     }
     val section = { i: Int -> LayerProps.sections(layer).firstOrNull { it.id == "effects.$i" } }
+    var renamingEffect by remember { mutableStateOf<Int?>(null) }
+    renamingEffect?.let { r ->
+        val current = layer.effects.getOrNull(r)
+        if (current != null) {
+            TextInputDialog(stringResource(R.string.rename), current.name.orEmpty(), onDismiss = { renamingEffect = null }) { name ->
+                vm.updateLayer(layer.id) { l -> l.copy(effects = l.effects.mapIndexed { j, x -> if (j == r) x.withName(name) else x }) }
+                renamingEffect = null
+            }
+        }
+    }
     layer.effects.forEachIndexed { i, e ->
         val spec = EffectRegistry.get(e.type) ?: return@forEachIndexed
         fun upd(f: (Effect) -> Effect) = vm.updateLayer(layer.id) { l -> l.copy(effects = l.effects.mapIndexed { j, x -> if (j == i) f(x) else x }) }
@@ -793,9 +803,10 @@ private fun EffectsBlock(vm: EditorViewModel, layer: Layer, local: Double, onEdi
         }
         Card {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(spec.label(pt), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(spec.category.label(pt), fontSize = 11.sp, color = KColors.TextSecondary, maxLines = 1)
+                // Tap the title to name the effect: expressions call it by that name, effect("name").
+                Column(Modifier.weight(1f).clickable { renamingEffect = i }) {
+                    Text(e.name ?: spec.label(pt), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(if (e.name != null) spec.label(pt) else spec.category.label(pt), fontSize = 11.sp, color = KColors.TextSecondary, maxLines = 1)
                 }
                 IconButton(onClick = { move(i - 1) }, enabled = i > 0, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.move_up)) }
                 IconButton(onClick = { move(i + 1) }, enabled = i < layer.effects.lastIndex, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.move_down)) }

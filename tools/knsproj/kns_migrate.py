@@ -116,7 +116,13 @@ def v10_to_v11(doc):
     return doc
 
 
-STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7, 7: v7_to_v8, 8: v8_to_v9, 9: v9_to_v10, 10: v10_to_v11}
+def v11_to_v12(doc):
+    """Version 12 only adds the optional `name` of an effect and the Slider Control effect."""
+    doc["formatVersion"] = 12
+    return doc
+
+
+STEPS = {1: v1_to_v2, 2: v2_to_v3, 3: v3_to_v4, 4: v4_to_v5, 5: v5_to_v6, 6: v6_to_v7, 7: v7_to_v8, 8: v8_to_v9, 9: v9_to_v10, 10: v10_to_v11, 11: v11_to_v12}
 
 
 def migrate(doc, to_version):

@@ -1,10 +1,10 @@
-# Formato `.knsproj` — versão 11
+# Formato `.knsproj` — versão 12
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v11.schema.json`](../schema/knsproj-v11.schema.json) (JSON Schema draft 2020-12);
+- **Schema oficial:** [`schema/knsproj-v12.schema.json`](../schema/knsproj-v12.schema.json) (JSON Schema draft 2020-12);
   os das versões 1 a 5 continuam em [`schema/`](../schema)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
@@ -77,7 +77,7 @@ Com a câmera padrão, o plano `z = 0` coincide pixel a pixel com a composição
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `format` | `"knsproj"` | obrigatório |
-| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `11` (documentos das versões `1` a `10` são migrados ao abrir) |
+| `formatVersion` | inteiro | obrigatório; esta especificação é a versão `12` (documentos das versões `1` a `11` são migrados ao abrir) |
 | `generator` | string | quem gerou o arquivo |
 | `meta` | objeto | `title`, `description`, `author`, `createdAt`, `modifiedAt` (ISO-8601) |
 | `composition` | objeto | `width`, `height` (16–8192, pares para MP4), `fps` (1–120; o app oferece 12–60 num controle deslizante, sem predefinições), `duration` (s), `background`, `motionBlur`, `environment` (seção 5.13) |
@@ -496,7 +496,8 @@ e composta como uma imagem.
 ## 7. Efeitos
 
 Lista em `effects`, aplicada **em ordem** sobre a imagem da camada já transformada (em pixels da composição).
-Todo efeito tem `type` e `enabled` (padrão `true`); os demais campos são os parâmetros abaixo, e os omitidos valem o
+Todo efeito tem `type`, `enabled` (padrão `true`) e, desde o formato v12, um `name` opcional (texto livre; é como as
+expressões o chamam: `effect("nome")`; sem `name`, vale o nome padrão do efeito, ex. `"Slider Control"`); os demais campos são os parâmetros abaixo, e os omitidos valem o
 padrão. Todos os efeitos são procedurais e determinísticos (shaders, sem IA nem modelos de ML): o mesmo projeto
 sempre gera o mesmo quadro.
 
@@ -517,6 +518,14 @@ Texto · Utilitário e expressão. As categorias "Fosco, máscara e chave", "Tem
 
 Comportamentos especiais:
 
+- **`sliderControl`** (formato v12, Controle deslizante / *Slider Control*): não desenha nada; guarda o número `slider`
+  (animável, sem limites) para as expressões lerem com `effect("nome")("Slider")` (o parâmetro também aceita o nome em
+  português, `"Controle"`, ou o índice `1`). Costuma ficar numa camada `null`. A expressão enxerga o valor com os
+  keyframes aplicados; expressões do próprio parâmetro ainda não são avaliadas nessa leitura. O botão **Converter áudio
+  em keyframes** (painel de áudio) cria as camadas `null` "Audio Amplitude" (sliders "Left Channel", "Right Channel",
+  "Both Channels") e "Audio Bands" ("Low", "Mid", "High") com um keyframe por quadro, normalizados de 0 (silêncio) a 100
+  (o ponto mais alto do trecho); a escala do AE não é documentada, então use `linear()` para ajustar a faixa. Exemplo:
+  `thisComp.layer("Audio Amplitude").effect("Both Channels")("Slider")`. Ver [`expressoes.md`](expressoes.md).
 - **Movimentar e transformar** (`autoShake`, `spin`, `oscillate`, `float`, `pulse`): movem a imagem já renderizada
   da camada em torno da origem dela (ou de `center`); não alteram `transform`.
 - **Procedimental** (`fractalNoise`, `gradientRamp`, `checkerboard`, `grid`): ignoram as cores da camada e combinam
@@ -842,6 +851,7 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `alpha` | `"alpha"` | `red`, `green`, `blue`, `alpha`, `luma`, `zero`, `one` (estático) |
 | `alphaFromLuma` (Alfa pela luminância) | Utilitário e expressão | `invert` | `false` | `true`/`false` (estático) |
 | `copyBackground` (Copiar fundo) | Utilitário e expressão | `amount` | `1` | 0..1 % |
+| `sliderControl` (Controle deslizante) | Utilitário e expressão | `slider` | `0` | −∞..∞ |
 <!-- END effects-table -->
 
 ## 8. Máscaras e track mattes
@@ -885,7 +895,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v11.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v12.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -930,6 +940,7 @@ Erros da versão 6 e 7: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeigh
   **v9** → `editorView` na raiz (seção 2), o efeito `timeSlice` (seção 7, efeitos de tempo) e os recortes do Roto Brush (seção 5.4; só campos novos, documentos v8 abrem sem mudança).
   **v10** → efeitos de estilo e glitch retrô: `eightBit`, `pixDither`, `pixelEncoder`, `kernel`, `signalAnalog`, `glitchify` e `dissolveShake` (seção 7; só efeitos novos, documentos v9 abrem sem mudança).
   **v11** → o efeito `copyBackground` (Copiar fundo, seção 7; só um efeito novo, documentos v10 abrem sem mudança).
+  **v12** → o campo opcional `name` dos efeitos e o efeito `sliderControl` (Controle deslizante, seção 7; só campos e um efeito novos, documentos v11 abrem sem mudança).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.

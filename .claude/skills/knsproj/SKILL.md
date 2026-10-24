@@ -13,7 +13,7 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
-- Schema oficial: `schema/knsproj-v11.schema.json` (formato versão 11; arquivos v1 a v10 ainda abrem e são migrados). Escreva sempre `"formatVersion": 11`.
+- Schema oficial: `schema/knsproj-v12.schema.json` (formato versão 12; arquivos v1 a v11 ainda abrem e são migrados). Escreva sempre `"formatVersion": 12`.
   Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`; v7 `cyclic.offset` = assimetria (skew) de cada ciclo, `phase` = deslocamento; v8 `markers` (marcadores da timeline) e `eq` (equalizador) em clipes de áudio/vídeo; v9 `editorView` (câmera livre da prévia, não renderizada: exemplo `basicos/vista-do-editor`) o efeito `timeSlice` (exemplo `basicos/fatias-de-tempo`) e `video.roto` (receita do Roto Brush: vídeo de origem e pinceladas; exemplo `basicos/recorte-roto-brush`); v10 os efeitos retrô e de glitch `eightBit`, `pixDither`, `pixelEncoder`, `kernel`, `signalAnalog`, `glitchify` e `dissolveShake` (exemplos `basicos/efeito-*`); v11 o efeito `copyBackground` (Copiar fundo = camada de ajuste: copia o que está embaixo e os efeitos seguintes atuam só onde a camada é opaca; exemplo `basicos/efeito-copiar-fundo`);
   v6 texto 3D (`primitive: "text"`), `material.shading`, sombras (`light.castShadows`), profundidade de campo (`camera.dof`),
   ambiente HDRI (`composition.environment`) e vídeo com transparência (`video.alphaPacked`).

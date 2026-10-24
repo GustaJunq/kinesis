@@ -480,6 +480,12 @@
     <string name="eq_treble_boost">Treble Boost</string>
     <string name="eq_vocal">Vocal</string>
     <string name="eq_reset">Restore defaults</string>
+    <string name="audio_reactive">Reactive audio</string>
+    <string name="audio_reactive_hint">Creates the layers “Audio Amplitude” (Left, Right and Both Channels) and “Audio Bands” (Low, Mid, High) with a Slider Control keyframed to the loudness, 0 to 100. Read it in an expression: thisComp.layer(\"Audio Amplitude\").effect(\"Both Channels\")(\"Slider\"). Converting again replaces those layers.</string>
+    <string name="audio_convert">Convert audio to keyframes</string>
+    <string name="audio_convert_working">Analysing the audio…</string>
+    <string name="audio_convert_done">Done: “Audio Amplitude” and “Audio Bands” layers created.</string>
+    <string name="audio_convert_no_audio">This clip has no audio to analyse.</string>
     <string name="add_marker">Add marker at the playhead</string>
     <string name="marker">Marker</string>
     <string name="marker_name">Name</string>

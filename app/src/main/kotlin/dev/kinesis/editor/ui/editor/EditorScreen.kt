@@ -385,7 +385,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 active = activeTool,
                 enabled = { tool ->
                     when (tool) {
-                        EditorTool.EFFECTS -> selectedLayer?.type?.isVisual == true
+                        EditorTool.EFFECTS -> selectedLayer?.type?.let { it.isVisual || it == LayerType.NULL } == true
                         EditorTool.MOTION -> selectedLayer != null
                         else -> true
                     }

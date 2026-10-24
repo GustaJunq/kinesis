@@ -4,7 +4,12 @@ Todas as versões do Kinesis Editor. As notas completas de cada release ficam em
 
 ## Não lançado
 
+Formato `.knsproj` **v12** (abre v1 a v11; só campos e um efeito novos — projetos antigos ficam idênticos).
+
 ### Adicionado
+- **Controle deslizante (Slider Control)** (`sliderControl`, em *Utilitário e expressão*): efeito sem desenho que guarda um número animável para as expressões. Camadas `null` agora mostram a aba **Efeitos**, e o título de um efeito pode ser tocado para dar-lhe um **nome** (campo `name` dos efeitos, formato v12).
+- **`effect("nome")("Slider")` nas expressões:** lê parâmetros de efeitos da própria camada ou de outra (`thisComp.layer("Controles").effect("Amp")("Slider")`), por nome ou índice, como no After Effects.
+- **Áudio reativo — botão "Converter áudio em keyframes"** (painel de áudio de um clipe de áudio ou vídeo): analisa o áudio uma vez e cria as camadas `null` "Audio Amplitude" (Left Channel, Right Channel, Both Channels) e "Audio Bands" (Low, Mid, High) com um Slider Control em keyframes, de 0 a 100. Uma expressão copiada do AE como `thisComp.layer("Audio Amplitude").effect("Both Channels")("Slider")` funciona sem mudança.
 - CLI: `knsproj preview` desenha quadros aproximados de um projeto (contact sheet, PNGs por tempo ou GIF) para o agente
   da skill `/knsproj` conferir o resultado antes de entregar. Reimplementa em Python a avaliação de cena do core
   (tempos, easings, loops, pais, grupos, transições, animadores de texto, máscaras, mattes, câmera e luzes) com um

@@ -65,8 +65,16 @@ object AudioAnalyzer {
      * with more than two channels only the first two are used. [rate] is the output values per second.
      */
     fun analyze(pcm: FloatArray, channels: Int, sampleRate: Int, rate: Int = 60): AudioAnalysis {
-        require(channels >= 1 && sampleRate > 0 && rate > 0) { "invalid audio parameters" }
-        val frames = pcm.size / channels
+        require(channels >= 1) { "invalid audio parameters" }
+        return analyze(pcm.size / channels, sampleRate, rate) { frame, ch -> pcm[frame * channels + min(ch, channels - 1)] }
+    }
+
+    /**
+     * Analyses [frames] sample frames of any source: [read] returns the sample (-1..1) of `frame` (0 until [frames]) for
+     * channel 0 (left) or 1 (right), so long audio does not have to be copied into memory.
+     */
+    fun analyze(frames: Int, sampleRate: Int, rate: Int = 60, read: (frame: Int, channel: Int) -> Float): AudioAnalysis {
+        require(sampleRate > 0 && rate > 0 && frames >= 0) { "invalid audio parameters" }
         val n = if (frames == 0) 0 else ((frames.toDouble() / sampleRate) * rate).toInt() + 1
         val left = FloatArray(n); val right = FloatArray(n); val both = FloatArray(n)
         val low = FloatArray(n); val mid = FloatArray(n); val high = FloatArray(n)
@@ -74,7 +82,7 @@ object AudioAnalyzer {
 
         fun sample(frame: Int, ch: Int): Float {
             if (frame < 0 || frame >= frames) return 0f
-            return pcm[frame * channels + min(ch, channels - 1)]
+            return read(frame, ch)
         }
 
         val half = max(1, (sampleRate * RMS_WINDOW_SECONDS / 2).toInt())

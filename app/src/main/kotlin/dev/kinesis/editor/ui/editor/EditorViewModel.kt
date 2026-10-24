@@ -44,6 +44,7 @@ import dev.kinesis.editor.media.ExportResolution
 import dev.kinesis.editor.media.ExportQuality
 import dev.kinesis.editor.media.ExportFailure
 import dev.kinesis.editor.media.ExportSettings
+import dev.kinesis.editor.media.MIX_RATE
 import dev.kinesis.editor.media.PcmCache
 import dev.kinesis.editor.media.PreviewAudio
 import dev.kinesis.editor.media.VideoExporter
@@ -463,6 +464,35 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     private fun notify(text: String, error: Boolean = false) {
         _notices.tryEmit(Notice(text, error))
     }
+
+    /**
+     * "Convert audio to keyframes": analyses the audio of the clip [layerId] (the part it plays) off the main thread and writes
+     * Slider Control keyframes on the null layers "Audio Amplitude" and "Audio Bands" (see `AudioKeyframes` in the core).
+     * Converting again replaces those layers.
+     */
+    fun convertAudioToKeyframes(layerId: String) {
+        val layer = dev.kinesis.core.model.LayerTree.find(current, layerId) ?: return
+        val media = layer.media ?: return
+        if (audioConversion?.isActive == true) return
+        notify(text(R.string.audio_convert_working))
+        audioConversion = viewModelScope.launch(Dispatchers.Default) {
+            val data = pcm.ensure(media.asset)
+            if (data == null) {
+                notify(text(R.string.audio_convert_no_audio), true)
+                return@launch
+            }
+            val total = data.limit() / 2
+            val from = (media.sourceStart * MIX_RATE).toInt().coerceIn(0, total)
+            val frames = ((layer.duration * media.speed) * MIX_RATE).toInt().coerceIn(0, total - from)
+            val analysis = dev.kinesis.core.audio.AudioAnalyzer.analyze(frames, MIX_RATE) { f, ch -> data.get((from + f) * 2 + ch) / 32768f }
+            withContext(Dispatchers.Main) {
+                edit { p -> dev.kinesis.core.edit.AudioKeyframes.apply(p, layerId, analysis) }
+                notify(text(R.string.audio_convert_done))
+            }
+        }
+    }
+
+    private var audioConversion: Job? = null
 
     /** Decoded 48 kHz stereo PCM of an asset, or null while it is not ready. */
     fun pcmOf(assetId: String): java.nio.ShortBuffer? = pcm.get(assetId)

@@ -480,8 +480,19 @@ class FormatV11Tests(unittest.TestCase):
         migrated = kns_migrate.migrate(minimal(formatVersion=10), 11)
         self.assertEqual(11, migrated["formatVersion"])
 
-    def test_current_version_is_11(self):
-        self.assertEqual(11, cli.FORMAT_VERSION)
+    def test_current_version_is_at_least_11(self):
+        self.assertTrue(cli.FORMAT_VERSION >= 11)
+
+
+class FormatV12Tests(unittest.TestCase):
+    """Format v12: the `name` of an effect and the Slider Control effect. Only optional fields were added."""
+
+    def test_version_11_documents_migrate_to_12(self):
+        migrated = kns_migrate.migrate(minimal(formatVersion=11), 12)
+        self.assertEqual(12, migrated["formatVersion"])
+
+    def test_current_version_is_12(self):
+        self.assertEqual(12, cli.FORMAT_VERSION)
 
 
 class ExampleTests(unittest.TestCase):

@@ -28,6 +28,11 @@ class ExprLayerInfo(
     val scale: DoubleArray,
     val rotation: Double,
     val opacity: Double,
+    /**
+     * `effect(effect)(param)`: the value of a parameter of one of the layer's effects at the evaluated time.
+     * [effect] is a name or a 1-based index, [param] a name or a 1-based index. Null when it does not exist.
+     */
+    val effectValue: (effect: Any, param: Any) -> DoubleArray? = { _, _ -> null },
 )
 
 class ExprComp(val width: Double, val height: Double, val duration: Double, val frameDuration: Double, val numLayers: Int)
@@ -229,6 +234,17 @@ object ExpressionEngine : ExpressionBackend {
                 if (i < 1 || i > input.keys.size) throw org.mozilla.javascript.EvaluatorException("Keyframe index $i is out of range (1..${input.keys.size})")
                 val k = input.keys[i - 1]
                 cx.newArray(scope, Array<Any>(k.value.size + 1) { if (it == 0) k.time else k.value[it - 1] })
+            }
+            fn("__effectValue") { a ->
+                val layerRef = a.getOrNull(0)
+                val info = if (layerRef is Number && layerRef.toInt() == input.ownLayer.index) input.ownLayer
+                else input.layerLookup(if (layerRef is Number) layerRef.toInt() else Context.toString(layerRef ?: ""))
+                    ?: throw org.mozilla.javascript.EvaluatorException("The layer was not found")
+                fun ref(x: Any?): Any = if (x is Number) x.toInt() else Context.toString(x ?: "")
+                val effectRef = ref(a.getOrNull(1)); val paramRef = ref(a.getOrNull(2))
+                val v = info.effectValue(effectRef, paramRef)
+                    ?: throw org.mozilla.javascript.EvaluatorException("Effect \"$effectRef\" or its parameter \"$paramRef\" was not found on layer \"${info.name}\"")
+                if (v.size == 1) v[0] else cx.newArray(scope, Array<Any>(v.size) { v[it] })
             }
             fn("__layerInfo") { a ->
                 val ref = a.getOrNull(0)

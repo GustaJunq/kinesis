@@ -36,10 +36,10 @@ Documento interno consultado: `docs/expressoes.md` (matriz anterior do Kinesis);
 2. **`position`, `scale`, `rotation`, `opacity`, `anchorPoint` soltos ou via `thisLayer.position` não existem.** Só há `thisLayer.transform.position`
    (valor, não propriedade). Isso quebra `position.wiggle(5,20)`, `thisComp.layer("x").position.valueAtTime(...)`, e "seguir com atraso".
 3. **`numKeys`, `nearestKey()`, `velocity`, `speed`, `name` soltos não existem** (só em `thisProperty.`). O **inertial bounce** clássico usa `numKeys` e `nearestKey` soltos e **falha**.
-4. **`effect("X")("Y")` e Expression Controls não existem** (não há sequer os efeitos de controle). Bloqueia o fluxo mais comum do AE (sliders numa camada nula).
+4. ~~`effect("X")("Y")` e Expression Controls não existem~~ **Atualizado:** `effect()` e o Slider Control existem desde o formato v12; faltam Checkbox, Color, Point, Angle, Dropdown e Layer Control.
 5. **Camadas de outras camadas só devolvem a transformação como número** (sem expressions delas, sem `valueAtTime`, sem efeitos).
 6. **Só propriedades numéricas/vetoriais/cor aceitam expression** (e o `amount` do seletor). Texto (`sourceText`), caminhos, booleanos, escolhas e campos estáticos (ex.: `lineHeight`, `align`, `maxWidth`) não.
-7. **Não há áudio acessível** (nem `Audio Amplitude`, nem análise de bandas). Não existe análise de áudio no projeto (nenhum código de amplitude/pico).
+7. ~~Não há áudio acessível~~ **Atualizado:** o botão "Converter áudio em keyframes" cria `Audio Amplitude` e `Audio Bands`.
 8. **`toComp/fromComp/toWorld/fromWorld`, `sourceRectAtTime`, `lookAt`, `parent`** ausentes.
 9. **`gaussRandom`, `noise`, `smooth`, `temporalWiggle`, `hexToRgb`/`rgbToHsl`/`hslToRgb`, `timeToFrames`/`framesToTime`** ausentes.
 10. **Sem autocompletar** no app; erros de sintaxe só ao aplicar/validar, não em tempo real.
@@ -171,8 +171,10 @@ Documento interno consultado: `docs/expressoes.md` (matriz anterior do Kinesis);
 
 | Item AE | Status | Observação |
 |---|---|---|
-| `effect(name\|index)`, `.param()`, `effect("X")("Y")`, `.active` | Não | Os efeitos existem (`Layer.effects`, `EffectRegistry`), e seus parâmetros numéricos/cor/ponto **aceitam** expression (`Props.effectProps`), mas não há como lê-los de outra expression |
-| Slider, Checkbox, Color, Point, Angle, Dropdown, Layer Control | Não | Nenhum efeito de controle existe no registro (a categoria `UTILITY` "Utilitário e expressão" só tem Depth Map, Channel Shuffle, Alpha from Luma, Copy Background). Existem camadas `null` (`LayerType.NULL`) para hospedá-los |
+| `effect(name\|index)`, `.param()`, `effect("X")("Y")` | **Parcial** (atualizado: formato v12) | `ExpressionResolver.effectParamValue` + Prelude `__mkEffect`. Por nome (campo `name` do efeito, ou o nome padrão do efeito sem nome) ou índice; devolve o valor com keyframes, **não** um objeto Property; expressões do próprio parâmetro não são avaliadas nessa leitura. Teste: `SliderControlTest` |
+| `.active` | Não | — |
+| Slider Control | **Sim** (v12) | `sliderControl` em `model/EffectRegistry.kt`; só o parâmetro `slider` |
+| Checkbox, Color, Point, Angle, Dropdown, Layer Control | Não | Ainda não existem no registro. Camadas `null` agora mostram a aba Efeitos para hospedá-los |
 | `Effect.param` por índice | Não | — |
 
 ## 12. Path e Mask
@@ -238,7 +240,7 @@ O que é uma "propriedade animável com expression" hoje (`Animatable<T>`; `Laye
 | Entre duas camadas (`(a.position + b.position)/2`) | **Não** | Operadores em arrays |
 | Círculo (`[w/2,h/2] + [sin*50, -cos*50]`) | **Não** | Operador `+` em arrays |
 | Wiggle com janela de tempo (`if … wiggle(3,25) else value`) | Sim | — |
-| Slider de controle / audio reativo (`effect("…")("Slider")`) | **Não** | Sem `effect()` nem controles nem áudio |
+| Slider de controle / audio reativo (`effect("…")("Slider")`) | **Sim** (v12) | `effect()`, Slider Control e o botão de áudio (`SliderControlTest`) |
 | Marcadores (`marker.key("Start").time`) | **Não** | — |
 | Flash por keyframe (`easeOut(Math.abs(time - nearestKey(time).time), …)`) | **Não** | `nearestKey` solto |
 | Texto: cascata com `textIndex`/`textTotal` + `ease`/`linear` | Sim | Veja `.claude/skills/knsproj/examples/basicos/texto-bounce` e os presets em `ExpressionUi.kt` |
@@ -258,5 +260,5 @@ O que é uma "propriedade animável com expression" hoje (`Animatable<T>`; `Laye
 | Resultado | Número ou array de 1 a 4 números. Texto/booleano/caminho como resultado → erro |
 | Validação | `ProjectValidator` (`expression.length`, `expression.syntax`); app usa `diagnose` |
 | Autocompletar / snippets | Não há. Há 3 presets de texto (`TEXT_PRESETS`) e destaque de sintaxe com lista de palavras (`BUILTINS` em `ExpressionUi.kt`) |
-| Áudio | Não há análise: `scene/AudioPlan.kt` só planeja clipes de reprodução; nenhum código calcula amplitude/bandas |
+| Áudio | **Feito (v12):** `audio/AudioAnalyzer.kt` (amplitude esquerda/direita/ambos e bandas grave/médio/agudo) e `edit/AudioKeyframes.kt` (camadas "Audio Amplitude" e "Audio Bands" com Slider Controls em keyframes); botão no painel de áudio (`ui/editor/AudioUi.kt`, `EditorViewModel.convertAudioToKeyframes`) |
 | Formato | `Animatable` grava `"expression"` e `"expressionEnabled"` (`Serializers.kt`); só propriedades `Animatable` |

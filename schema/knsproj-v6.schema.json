@@ -537,6 +537,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "stops": {
               "type": "array",
               "minItems": 2,
@@ -574,6 +578,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "exposure": {
               "$ref": "#/$defs/animFloat"
             },
@@ -597,6 +605,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "brightness": {
               "$ref": "#/$defs/animFloat"
             },
@@ -617,6 +629,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "saturation": {
               "$ref": "#/$defs/animFloat"
             }
@@ -633,6 +649,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "hue": {
               "$ref": "#/$defs/animFloat"
@@ -651,6 +671,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "amount": {
               "$ref": "#/$defs/animFloat"
             }
@@ -667,6 +691,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "color": {
               "$ref": "#/$defs/animColor"
@@ -687,6 +715,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "threshold": {
               "$ref": "#/$defs/animFloat"
@@ -717,6 +749,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "position": {
               "$ref": "#/$defs/animVec2"
             },
@@ -743,6 +779,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "color": {
               "$ref": "#/$defs/animColor"
             },
@@ -762,6 +802,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "color": {
               "$ref": "#/$defs/animColor"
@@ -785,6 +829,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "shadows": {
               "$ref": "#/$defs/animColor"
@@ -812,6 +860,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "vibrance": {
               "$ref": "#/$defs/animFloat"
             }
@@ -829,6 +881,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "radius": {
               "$ref": "#/$defs/animFloat"
             }
@@ -845,6 +901,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "amount": {
               "$ref": "#/$defs/animFloat"
@@ -865,6 +925,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "radius": {
               "$ref": "#/$defs/animFloat"
@@ -892,6 +956,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "angle": {
               "$ref": "#/$defs/animFloat"
             },
@@ -911,6 +979,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "mode": {
               "type": "string",
@@ -935,6 +1007,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "amount": {
               "$ref": "#/$defs/animFloat"
@@ -961,6 +1037,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "refraction": {
               "$ref": "#/$defs/animFloat"
@@ -1002,6 +1082,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "mode": {
               "type": "string",
@@ -1048,6 +1132,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "axis": {
               "type": "string",
               "enum": ["horizontal", "vertical", "both"]
@@ -1072,6 +1160,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "angle": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1094,6 +1186,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "amplitude": {
               "$ref": "#/$defs/animFloat"
@@ -1123,6 +1219,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "amplitude": {
               "$ref": "#/$defs/animFloat"
@@ -1154,6 +1254,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "speed": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1173,6 +1277,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "frequency": {
               "$ref": "#/$defs/animFloat"
@@ -1203,6 +1311,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "amplitude": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1225,6 +1337,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "amount": {
               "$ref": "#/$defs/animFloat"
@@ -1249,6 +1365,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "size": {
               "$ref": "#/$defs/animFloat"
             }
@@ -1265,6 +1385,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "color": {
               "$ref": "#/$defs/animColor"
@@ -1295,6 +1419,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "amount": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1314,6 +1442,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "dotSize": {
               "$ref": "#/$defs/animFloat"
@@ -1338,6 +1470,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "levels": {
               "$ref": "#/$defs/animFloat"
             }
@@ -1354,6 +1490,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "amount": {
               "$ref": "#/$defs/animFloat"
@@ -1378,6 +1518,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "spacing": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1400,6 +1544,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "pixelSize": {
               "$ref": "#/$defs/animFloat"
@@ -1424,6 +1572,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "matrixSize": {
               "type": "string",
@@ -1458,6 +1610,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "cellSize": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1490,6 +1646,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "preset": {
               "type": "string",
@@ -1539,6 +1699,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "blockSize": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1564,6 +1728,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "lineHeight": {
               "$ref": "#/$defs/animFloat"
@@ -1593,6 +1761,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "tracking": {
               "$ref": "#/$defs/animFloat"
@@ -1626,6 +1798,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "amount": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1645,6 +1821,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "amount": {
               "$ref": "#/$defs/animFloat"
@@ -1672,6 +1852,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "amount": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1697,6 +1881,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "amount": {
               "$ref": "#/$defs/animFloat"
@@ -1736,6 +1924,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "intensity": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1771,6 +1963,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "progress": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1797,6 +1993,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "strength": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1816,6 +2016,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "color": {
               "$ref": "#/$defs/animColor"
@@ -1844,6 +2048,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "angle": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1867,6 +2075,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "strength": {
               "$ref": "#/$defs/animFloat"
             },
@@ -1886,6 +2098,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "scale": {
               "$ref": "#/$defs/animFloat"
@@ -1932,6 +2148,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "shape": {
               "type": "string",
               "enum": ["linear", "radial"]
@@ -1969,6 +2189,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "size": {
               "$ref": "#/$defs/animFloat"
             },
@@ -2004,6 +2228,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "spacing": {
               "$ref": "#/$defs/animFloat"
@@ -2041,6 +2269,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "color": {
               "$ref": "#/$defs/animColor"
             },
@@ -2070,6 +2302,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "threshold": {
               "$ref": "#/$defs/animFloat"
             },
@@ -2096,6 +2332,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "color": {
               "$ref": "#/$defs/animColor"
             },
@@ -2116,6 +2356,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "choke": {
               "$ref": "#/$defs/animFloat"
             },
@@ -2135,6 +2379,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "delay": {
               "$ref": "#/$defs/animFloat"
@@ -2159,6 +2407,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "fps": {
               "$ref": "#/$defs/animFloat"
             }
@@ -2175,6 +2427,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "frequency": {
               "$ref": "#/$defs/animFloat"
@@ -2202,6 +2458,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "slices": {
               "$ref": "#/$defs/animFloat"
@@ -2233,6 +2493,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "near": {
               "$ref": "#/$defs/animFloat"
             },
@@ -2258,6 +2522,10 @@
             },
             "enabled": {
               "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
             },
             "red": {
               "type": "string",
@@ -2289,6 +2557,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "invert": {
               "type": "boolean"
             }
@@ -2306,6 +2578,10 @@
             "enabled": {
               "type": "boolean"
             },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
             "amount": {
               "$ref": "#/$defs/animFloat"
             }
@@ -2313,6 +2589,27 @@
           "additionalProperties": false,
           "required": ["type"],
           "description": "Copy Background (Utility & expression). Copies the background (the layers below) into the layer, which turns it into an adjustment layer: the effects after it act on the background pixels covered by the opaque parts of the layer. The layer's masks, feather and opacity cut out the region."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "sliderControl"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name used by effect(\"name\") in expressions (format v12)"
+            },
+            "slider": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Slider Control (Utility & expression). Draws nothing: holds a number (animatable) that expressions read with effect(\"name\")(\"Slider\"). Give the effect a name to reference it. It is the control that reactive audio fills in."
         }
       ]
     },

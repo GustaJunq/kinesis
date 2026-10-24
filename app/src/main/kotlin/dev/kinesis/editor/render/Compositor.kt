@@ -890,7 +890,7 @@ class Compositor(private val res: RenderResources) {
                     "timeSlice" -> timeSlice(cur, e, slices++, ctx)
                     "pixelEncoder" -> pixelEncoder(cur, e, spec, ctx)
                     "copyBackground" -> copyBackground(cur, e, spec, ctx, ctx.backdrop ?: below)
-                    "posterizeTime", "depthMap" -> cur // handled by scene evaluation / 3D drawing
+                    "posterizeTime", "depthMap", "sliderControl" -> cur // handled by scene evaluation / 3D drawing; sliderControl only holds a value for expressions
                     else -> generic(spec, e, cur, ctx)
                 }
             }

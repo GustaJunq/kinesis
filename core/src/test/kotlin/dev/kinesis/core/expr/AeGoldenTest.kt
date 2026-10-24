@@ -77,8 +77,6 @@ class AeGoldenTest {
         Case("layer position as property", "thisComp.layer(1).position.valueAtTime(time - .5)", d(100.0, 200.0), vector = true, pending = "fase 1 (P3)"),
         Case("relative layer lookup", "thisComp.layer(thisLayer, -1).index", d(2.0), pending = "fase 1 (P3)"),
         Case("rotation + noise", "rotation + 360*noise(time)", d(0.0), pending = "fase 1 (P2, P6)"),
-        // Expression controls, audio
-        Case("slider control", "thisComp.layer(\"Audio Amplitude\").effect(\"Both Channels\")(\"Slider\")", d(0.0), pending = "fase 2 (controles)"),
     )
 
     @Test

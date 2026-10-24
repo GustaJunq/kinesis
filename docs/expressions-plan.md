@@ -295,7 +295,7 @@ Frequência vem de §16 da referência (receitas) e do que cada tutorial lido us
 - **Fase 0 — fundação (sem API nova, sem mudar o formato)**: interface `ExpressionBackend` (Rhino como única implementação); suíte de testes **golden** com os exemplos
   da referência oficial (`AeGoldenTest`: o que funciona é asserção; o que é lacuna fica "pending" por fase e vira regressão quando implementado); medição de custo antes/depois
   com `CoreBench`; **avaliação da subida do Rhino para 1.8/1.9** (compatibilidade com Android).
-- **Fase A — áudio reativo** (P10 + o mínimo de P5): efeito `sliderControl` e `effect("Nome")("Slider")` (necessários porque a camada "Audio Amplitude" do AE é lida assim);
+- **Fase A — áudio reativo** (P10 + o mínimo de P5) — **feita** (formato v12; `AudioAnalyzer`, `AudioKeyframes`, `sliderControl`, `effect()`, botão no painel de áudio; veja `CHANGELOG.md`). Não feitos: `assets[].analysis` (a análise não é guardada no projeto; os keyframes são o resultado) e as funções `audioAmplitude()`/`audioBand()`. Escopo original: efeito `sliderControl` e `effect("Nome")("Slider")` (necessários porque a camada "Audio Amplitude" do AE é lida assim);
   análise de áudio (amplitude esquerda/direita/ambos + bandas grave/médio/agudo) no `core`; botão "converter áudio em keyframes"; camada nula "Audio Amplitude". **Formato v12.**
 - **Fase 1 — "colar e funcionar"** (P1, P2, P3, P4, P6, P7, P8): operadores em arrays, objetos Property/Layer, variáveis soltas, camadas relacionadas, funções pequenas,
   Prelude congelado, snippets e autocomplete básico. Sem mudar o formato.

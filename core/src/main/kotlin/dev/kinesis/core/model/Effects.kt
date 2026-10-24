@@ -54,8 +54,12 @@ data class Effect(
     val type: String,
     val enabled: Boolean = true,
     val params: Map<String, EffectValue> = emptyMap(),
+    /** Name given by the user (format v12), used by `effect("name")` in expressions; null = the effect's default name. */
+    val name: String? = null,
 ) {
     val spec: EffectSpec get() = EffectRegistry.require(type)
+
+    fun withName(name: String?) = copy(name = name?.takeIf { it.isNotBlank() })
 
     fun withEnabled(enabled: Boolean) = copy(enabled = enabled)
 
@@ -118,6 +122,7 @@ object EffectSerializer : KSerializer<Effect> {
         val obj = buildJsonObject {
             put("type", JsonPrimitive(value.type))
             if (!value.enabled) put("enabled", JsonPrimitive(false))
+            value.name?.let { put("name", JsonPrimitive(it)) }
             for (p in spec.params) {
                 val v = value.params[p.name] ?: continue
                 if (v == EffectValue.default(p)) continue
@@ -146,6 +151,8 @@ object EffectSerializer : KSerializer<Effect> {
         val spec = EffectRegistry.get(type)
             ?: throw SerializationException("unknown effect type '$type'. Valid types: ${EffectRegistry.all.joinToString { it.id }}")
         val enabled = obj["enabled"]?.let { (it as? JsonPrimitive)?.booleanOrNull ?: throw SerializationException("$type.enabled must be true or false") } ?: true
+        val name = obj["name"]?.let { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content ?: throw SerializationException("$type.name must be a string") }
+            ?.trim()?.takeIf { it.isNotEmpty() }
         val params = LinkedHashMap<String, EffectValue>()
         for (p in spec.params) {
             val e = obj[p.name] ?: continue
@@ -168,6 +175,6 @@ object EffectSerializer : KSerializer<Effect> {
                 throw SerializationException("$type.${p.name}: ${ex.message}", ex)
             }
         }
-        return Effect(type, enabled, params)
+        return Effect(type, enabled, params, name)
     }
 }

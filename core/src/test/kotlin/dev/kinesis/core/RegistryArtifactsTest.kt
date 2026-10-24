@@ -31,6 +31,7 @@ import java.io.File
  * - `schema/knsproj-v9.schema.json` — the v8 schema plus the `editorView` of the viewport (and the TimeSlice effect);
  * - `schema/knsproj-v10.schema.json` — the v9 schema plus the retro and glitch effects of 0.1.8 (8-bit, PixDither, Pixel Encoder, Kernel, Signal Analog, Glitchify, Dissolve Shake);
  * - `schema/knsproj-v11.schema.json` — the v10 schema plus the Copy Background effect;
+ * - `schema/knsproj-v12.schema.json` — the v11 schema plus the `name` of an effect (and the Slider Control effect);
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -74,6 +75,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV11() = check(File(root, "schema/knsproj-v11.schema.json"), JsonPretty.print(buildSchemaV11()) + "\n")
+
+    @Test
+    fun schemaV12() = check(File(root, "schema/knsproj-v12.schema.json"), JsonPretty.print(buildSchemaV12()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -510,8 +514,20 @@ class RegistryArtifactsTest {
         return JsonObject(m)
     }
 
+    /** Version 12 adds the effect name and an effect, which come from the registry: the schema differs from v11 in the version only. */
+    private fun buildSchemaV12(): JsonObject {
+        val v11 = buildSchemaV11()
+        val props = LinkedHashMap<String, JsonElement>()
+        for ((k, v) in v11.getValue("properties").jsonObject) props[k] = if (k == "formatVersion") obj("const" to JsonPrimitive(12)) else v
+        val m = LinkedHashMap(v11)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v12.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 12")
+        m["properties"] = JsonObject(props)
+        return JsonObject(m)
+    }
+
     private fun effectSchema(s: EffectSpec): JsonObject {
-        val props = linkedMapOf<String, JsonElement>("type" to obj("const" to str(s.id)), "enabled" to obj("type" to str("boolean")))
+        val props = linkedMapOf<String, JsonElement>("type" to obj("const" to str(s.id)), "enabled" to obj("type" to str("boolean")), "name" to obj("type" to str("string"), "description" to str("Name used by effect(\"name\") in expressions (format v12)")))
         for (p in s.params) {
             props[p.name] = when (p.type) {
                 ParamType.NUMBER, ParamType.INTEGER -> ref("animFloat")

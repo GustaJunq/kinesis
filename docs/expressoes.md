@@ -95,7 +95,10 @@ descritas; **Não** = não existe (a expressão falha com "... is not defined" e
 | `normalize(v)` | Sim | |
 | `add`, `sub`, `mul`, `div`, `dot`, `cross`, `degreesToRadians`, `radiansToDegrees` | Sim | operações vetoriais do AE |
 | `gaussRandom`, `noise`, `timeToFrames`, `framesToTime`, `rgbToHsl`, `hslToRgb`, `smooth`, `lookAt`, `toComp`, `fromComp`... | Não | |
-| `effect()`, `mask()`, `footage()`, `comp()`, `sourceText`, `createPath`, marcadores, controles de expressão | Não | |
+| `mask()`, `footage()`, `comp()`, `sourceText`, `createPath`, marcadores | Não | |
+| `effect(nome)(param)` / `.param()` | Parcial | formato v12. Lê um parâmetro de um efeito da própria camada (`effect(...)`, `thisLayer.effect(...)`) ou de outra (`thisComp.layer("X").effect(...)`). `nome` é o nome dado ao efeito (toque no título do efeito para nomear), ou o nome padrão em inglês/português do efeito sem nome (`"Slider Control"`), ou o índice (a partir de 1); `param` é o nome (`"Slider"`) ou o índice. Devolve o **valor** com os keyframes (não um objeto Property): número, `[x, y]` (ponto), `[r, g, b, a]` (cor), 0/1 (liga/desliga), índice a partir de 1 (escolha). Expressões do próprio parâmetro ainda não são avaliadas nessa leitura. Efeito ou parâmetro inexistente: erro com o nome |
+| Slider Control (`sliderControl`) | Sim | efeito sem desenho com o número `slider`; em camadas `null` (que agora mostram a aba Efeitos). Os demais controles (Checkbox, Color, Point, Angle, Dropdown, Layer) ainda não existem |
+| Áudio reativo | Parcial | botão **Converter áudio em keyframes** (painel de áudio do clipe): cria as camadas `null` "Audio Amplitude" (sliders "Left Channel", "Right Channel", "Both Channels") e "Audio Bands" ("Low", "Mid", "High") com keyframes por quadro, de 0 a 100 (normalizado ao pico do trecho; a escala do AE não é documentada). `thisComp.layer("Audio Amplitude").effect("Both Channels")("Slider")` funciona como no AE. Veja `AudioAnalyzer` e `AudioKeyframes` no core |
 
 ### Texto
 

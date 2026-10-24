@@ -141,9 +141,16 @@ var thisProperty = {
   loopOut: loopOut, loopIn: loopIn, wiggle: wiggle
 };
 
+function __mkEffect(layerIndex, ref) {
+  var f = function (param) { return __effectValue(layerIndex, ref, param); };
+  f.param = f;
+  return f;
+}
+
 function __mkLayer(i) {
   return {
     name: i[0], index: i[1], inPoint: i[2], outPoint: i[3], startTime: i[2],
+    effect: function (ref) { return __mkEffect(i[1], ref); },
     transform: { position: [i[4], i[5]], scale: [i[6], i[7]], rotation: i[8], opacity: i[9] }
   };
 }
@@ -157,5 +164,6 @@ var thisComp = {
     return __mkLayer(i);
   }
 };
+function effect(ref) { return thisLayer.effect(ref); }
 var textSelectorValue = selectorValue;
 """

@@ -12,7 +12,10 @@ import dev.kinesis.core.math.Color
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.math.Vec3
 import dev.kinesis.core.model.Composition
+import dev.kinesis.core.model.Effect
+import dev.kinesis.core.model.EffectValue
 import dev.kinesis.core.model.Layer
+import dev.kinesis.core.model.ParamType
 import java.util.IdentityHashMap
 
 /** The composition being evaluated on this thread; set by the scene evaluator so helper calls can resolve expressions. */
@@ -103,8 +106,50 @@ object ExpressionResolver {
             pos = doubleArrayOf(p.x + cx, p.y + cy); scale = doubleArrayOf(s.x * 100.0, s.y * 100.0)
             rot = sample(tr.rotation, t).toDouble(); opacity = sample(tr.opacity, t) * 100.0
         }
-        return ExprLayerInfo(displayName(layer), aeIndex(layer, siblings), layer.start, layer.end, pos, scale, rot, opacity)
+        return ExprLayerInfo(
+            displayName(layer), aeIndex(layer, siblings), layer.start, layer.end, pos, scale, rot, opacity,
+            effectValue = { eff, par -> effectParamValue(layer, eff, par, t) },
+        )
     }
+
+    /**
+     * Value of parameter [param] (name or 1-based index) of the effect [effect] (name or 1-based index) of [layer] at
+     * layer-local time [t], in the units an expression sees (percent parameters as shown, colours as 0..1 RGBA,
+     * switches as 0/1, choices as their 1-based index). Keyframes apply; expressions on the parameter do not (yet).
+     * Null when the effect or parameter does not exist.
+     */
+    fun effectParamValue(layer: Layer, effect: Any, param: Any, t: Double): DoubleArray? {
+        val e = findEffect(layer.effects, effect) ?: return null
+        val spec = e.spec
+        val p = when (param) {
+            is Int -> spec.params.getOrNull(param - 1)
+            else -> spec.params.firstOrNull { sameName(it.name, param.toString()) || sameName(it.labelEn, param.toString()) || sameName(it.labelPt, param.toString()) }
+        } ?: return null
+        val lerp1 = { x: Float, y: Float, u: Float -> x + (y - x) * u }
+        return when (val v = e.value(p.name)) {
+            is EffectValue.Num -> {
+                val x = v.anim.copy(expression = null).sample(t, lerp1)
+                doubleArrayOf((if (p.type == ParamType.INTEGER) Math.round(x).toFloat() else x).toDouble() * p.unit.display)
+            }
+            is EffectValue.Point -> sample(v.anim, t).let { doubleArrayOf(it.x.toDouble(), it.y.toDouble()) }
+            is EffectValue.Col -> v.anim.copy(expression = null).sample(t) { a, b, u ->
+                Color(a.r + (b.r - a.r) * u, a.g + (b.g - a.g) * u, a.b + (b.b - a.b) * u, a.a + (b.a - a.a) * u)
+            }.let { doubleArrayOf(it.r.toDouble(), it.g.toDouble(), it.b.toDouble(), it.a.toDouble()) }
+            is EffectValue.Flag -> doubleArrayOf(if (v.value) 1.0 else 0.0)
+            is EffectValue.Choice -> doubleArrayOf((p.choices.indexOfFirst { it.id == v.value } + 1).toDouble())
+            is EffectValue.Stops -> null
+        }
+    }
+
+    /** The effect called [ref] on [effects]: a 1-based index, a user name, or (when unnamed) its default name or id. */
+    fun findEffect(effects: List<Effect>, ref: Any): Effect? {
+        if (ref is Int) return effects.getOrNull(ref - 1)
+        val n = ref.toString()
+        effects.firstOrNull { it.name != null && sameName(it.name, n) }?.let { return it }
+        return effects.firstOrNull { it.name == null && (sameName(it.type, n) || sameName(it.spec.nameEn, n) || sameName(it.spec.namePt, n)) }
+    }
+
+    private fun sameName(a: String?, b: String) = a != null && a.trim().equals(b.trim(), ignoreCase = true)
 
     private fun sample(a: Animatable<Float>, t: Double): Float = a.copy(expression = null).sample(t) { x, y, u -> x + (y - x) * u }
     private fun sample(a: Animatable<Vec2>, t: Double): Vec2 = a.copy(expression = null).sample(t) { x, y, u -> Vec2(x.x + (y.x - x.x) * u, x.y + (y.y - x.y) * u) }

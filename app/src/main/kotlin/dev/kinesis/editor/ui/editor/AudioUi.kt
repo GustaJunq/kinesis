@@ -170,6 +170,15 @@ fun AudioSheet(vm: EditorViewModel, project: KnsProject, layer: Layer, onDismiss
             item {
                 TextButton(onClick = { vm.updateMedia(layer.id) { it.copy(eq = emptyList()) } }, enabled = media.eq.isNotEmpty()) { Text(stringResource(R.string.eq_reset)) }
             }
+
+            // ---- reactive audio: loudness as Slider Control keyframes for expressions
+            item { OverlineLabel(stringResource(R.string.audio_reactive)) }
+            item {
+                Text(stringResource(R.string.audio_reactive_hint), color = KColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
+            item {
+                SecondaryButton(stringResource(R.string.audio_convert), { vm.convertAudioToKeyframes(layer.id) }, pill = true)
+            }
             item { androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 24.dp)) }
         }
     }
