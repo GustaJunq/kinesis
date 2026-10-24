@@ -1,5 +1,8 @@
 name: CI
 
+# Runners are pinned to ubuntu-24.04: on the newer ubuntu-latest image bindgen (whisper-rs-sys) generates empty types and the
+# native build fails (E0080 on the layout tests), and the emulator job does not find a device.
+
 on:
   push:
   pull_request:
@@ -8,7 +11,7 @@ on:
 jobs:
   android:
     name: Build APK and run tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +53,7 @@ jobs:
 
   native:
     name: Rust core (tests, parity with Kotlin, benchmark)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -101,7 +104,7 @@ jobs:
 
   cli:
     name: CLI and shader checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -117,7 +120,7 @@ jobs:
 
   emulator:
     name: Instrumented tests (emulator)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4

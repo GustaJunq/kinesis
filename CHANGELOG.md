@@ -27,6 +27,9 @@ de expressions com o After Effects (plano em [`docs/expressions-plan.md`](docs/e
   conhecidas ficam listadas por fase e viram teste de regressão quando forem implementadas.
 - Interface `ExpressionBackend` entre o app e o motor de expressions (Rhino continua sendo a única implementação).
 
+### Corrigido
+- **CI e release:** os workflows passam a usar `ubuntu-24.04` em vez de `ubuntu-latest`. Na imagem nova o `bindgen` do `whisper-rs-sys` gerava tipos vazios e a biblioteca nativa (Rust) não compilava, o que derrubava também o APK e os testes no emulador.
+
 ## 0.1.8-hotfix-2 — 2026-10-20
 
 Formato `.knsproj` **v11** (abre v1 a v10; só um efeito novo — projetos antigos ficam idênticos).
