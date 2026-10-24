@@ -11,6 +11,22 @@ Todas as versões do Kinesis Editor. As notas completas de cada release ficam em
   renderizador em software (Pillow + numpy; ffmpeg opcional para vídeo) — funciona igual no desktop e em sandbox.
   Lista no fim o que não foi simulado (expressões, sombras, DOF, a maioria dos efeitos de shader…).
 
+## 0.1.85 — 2026-10-24
+
+Sem mudança de formato (`.knsproj` continua na **v11**) e sem mudança visível no app: esta versão prepara o terreno para a compatibilidade
+de expressions com o After Effects (plano em [`docs/expressions-plan.md`](docs/expressions-plan.md)).
+
+### Adicionado
+- **Documentação de expressions do AE:** [`expressions-ae-reference.md`](docs/expressions-ae-reference.md) (referência com fontes),
+  [`expressions-compat.md`](docs/expressions-compat.md) (tabela item a item do que o Kinesis suporta, com o arquivo onde está) e
+  [`expressions-plan.md`](docs/expressions-plan.md) (plano priorizado: áudio primeiro, formato v12 único, motor Rhino mantido).
+- **Análise de áudio no `core`** (`AudioAnalyzer`/`AudioAnalysis`): amplitude (esquerdo, direito, ambos) e três bandas (grave 20–250 Hz,
+  médio 250–4000 Hz, agudo 4–16 kHz) calculadas uma vez a partir de PCM, com leitura interpolada por tempo. Ainda **não** está ligada
+  ao app nem às expressions (próximos passos do plano: efeito Slider Control, `effect()` e o botão "converter áudio em keyframes").
+- **Testes de referência (`AeGoldenTest`):** expressions copiadas da referência do AE. As que funcionam são verificadas; as lacunas
+  conhecidas ficam listadas por fase e viram teste de regressão quando forem implementadas.
+- Interface `ExpressionBackend` entre o app e o motor de expressions (Rhino continua sendo a única implementação).
+
 ## 0.1.8-hotfix-2 — 2026-10-20
 
 Formato `.knsproj` **v11** (abre v1 a v10; só um efeito novo — projetos antigos ficam idênticos).

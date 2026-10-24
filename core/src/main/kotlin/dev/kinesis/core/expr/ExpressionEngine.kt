@@ -71,7 +71,7 @@ private class BudgetContext(factory: ContextFactory) : Context(factory) {
  *   what an expression can allocate.
  * - Compiled scripts are cached by source text.
  */
-object ExpressionEngine {
+object ExpressionEngine : ExpressionBackend {
     const val MAX_SOURCE = 20_000
     const val MAX_INSTRUCTIONS = 400_000L
     private const val CHECK_EVERY = 1_000
@@ -129,7 +129,7 @@ object ExpressionEngine {
     }
 
     /** Returns the error of [source] (syntax or a failing run against a neutral sample), or null when it is valid. */
-    fun check(source: String, sample: ExprInput? = null): ExpressionError? {
+    override fun check(source: String, sample: ExprInput?): ExpressionError? {
         if (source.length > MAX_SOURCE) return ExpressionError(0, "The expression is too long (limit $MAX_SOURCE characters)")
         return try {
             val cx = enter()
@@ -147,7 +147,7 @@ object ExpressionEngine {
     }
 
     /** Evaluates [source]; throws [ExpressionError]. The result is the value of the last evaluated statement. */
-    fun evaluate(source: String, input: ExprInput): ExprResult {
+    override fun evaluate(source: String, input: ExprInput): ExprResult {
         if (source.length > MAX_SOURCE) throw ExpressionError(0, "The expression is too long (limit $MAX_SOURCE characters)")
         val cx = enter()
         try {

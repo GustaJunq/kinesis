@@ -14,6 +14,15 @@ Adicionais para a avaliação de motores:
 
 ---
 
+## Decisões aprovadas (2026-10-24)
+
+Respostas do responsável do projeto ao plano; elas **prevalecem** sobre o resto do documento quando houver diferença.
+
+1. **Uma versão só do formato**: tudo o que muda o `.knsproj` (efeitos de Expression Controls, nome de efeito, análise de áudio, e depois texto/booleano/caminho com expression) vai numa única versão nova, **v12**. O texto abaixo que fala em "v13" passa a valer como "v12".
+2. **Áudio primeiro**: a ordem de execução é Fase 0 → **Áudio (com os Expression Controls mínimos que ele exige)** → Fase 1 ("colar e funcionar": operadores, objetos Property, variáveis soltas) → controles e espaço restantes → texto → caminhos. Veja a §10 atualizada.
+3. **Rhino**: a avaliação de subir para 1.8/1.9 (com verificação de compatibilidade com Android) entra na Fase 0.
+4. **`wiggle`/`random`**: manter o gerador próprio do Kinesis e documentar que os números não coincidem com os do AE (determinístico, mesma frequência/amplitude/distribuição, sequência diferente).
+
 ## 0. Resumo executivo
 
 1. **O Kinesis já embute um engine JS (Rhino), não um parser próprio.** A pergunta "QuickJS vs parser próprio" portanto é na verdade
@@ -167,7 +176,7 @@ O `ExpressionEngine.convert` hoje só aceita número/array: precisa ser generali
 ## 7. Mudanças propostas no schema `.knsproj` (retrocompatibilidade)
 
 Regra do projeto (`docs/knsproj.md` §12): **qualquer** mudança incrementa `formatVersion`; leitores **recusam** versões mais novas; versões antigas migram em cadeia.
-Por isso: **agrupar** tudo numa única versão por lançamento para não gerar um formato novo por recurso. Proposta: **v12** (Fases 1–3 abaixo) e **v13** (texto/caminho, Fases C–F), se aprovado.
+Por isso: **agrupar** tudo numa única versão por lançamento para não gerar um formato novo por recurso. **Aprovado: uma única versão, v12**, com tudo da §7.1 e da §7.2 (a §7.2 chega depois, mas já na v12 se a v12 ainda não tiver sido publicada; se a v12 sair antes, os campos da §7.2 entram numa versão seguinte, e não antes de ela estar fechada).
 
 ### 7.1 v12 (só campos novos, v11 abre sem mudança → `Migrations.v11ToV12` é a identidade)
 
@@ -183,7 +192,7 @@ Como converter áudio em keyframes sem campo novo: o botão cria uma camada `nul
 "Both Channels") **com keyframes** — isso usa só o que já existe (+ os efeitos novos). A análise (`assets[].analysis`) serve de cache para
 "Rebuild" e para o acesso por banda sem keyframes.
 
-### 7.2 v13 (Fases C–F)
+### 7.2 Texto, booleano e caminho (Fases C–F; antes chamados "v13", agora na mesma linha de versão v12)
 
 | Campo | Mudança | Compatibilidade |
 |---|---|---|
@@ -195,7 +204,7 @@ Como converter áudio em keyframes sem campo novo: o botão cria uma camada `nul
 ### 7.3 Impacto (lista de arquivos e processos)
 
 - `core/.../model/Project.kt` (`FORMAT_VERSION`), `core/.../format/KnsprojJson.kt` (`Migrations`, nova etapa identidade), `Serializers.kt` (`AnimatableSerializer` para String/Boolean/Path), `ProjectValidator.kt` (novos erros `expression.*`).
-- Novo `schema/knsproj-v12.schema.json` (e v13): estrito, como as anteriores; manter as antigas.
+- Novo `schema/knsproj-v12.schema.json`: estrito, como as anteriores; manter as antigas.
 - `docs/knsproj.md` (versão, seções 4.1, 5.2, 7 e histórico), `docs/expressoes.md` (matriz).
 - `tools/knsproj/` (`kns_migrate.py`, `kns_semantic.py`, `kns_eval.py`, `effects.json`) e a skill `.claude/skills/knsproj/` (exemplos e SKILL.md), porque validam contra o schema oficial.
 - Pontos que copiam `Animatable` e precisam carregar os campos novos: `edit/MediaSwap.kt` (já copia `expression`), `edit/KeyframeClipboard.kt`, `edit/AnimTraversal.kt`, histórico/undo.
@@ -275,25 +284,27 @@ Frequência vem de §16 da referência (receitas) e do que cada tutorial lido us
 | P9 | `marker`/`thisComp.marker`, `sourceRectAtTime`, `toComp`/`fromComp`/`toWorld`/`fromWorld`, `activeCamera`, 3D (`orientation`, `rotationX/Y/Z`) | 3 | 3 | L | 2 |
 | P10 | Áudio reativo: análise + camada "Audio Amplitude" + bandas + botão | 4 | 1 | L | 3 |
 | P11 | Text animator completo: Range/Wiggly/Random selectors, `selectorValue` encadeado, propriedades de cor/tracking/blur/skew, `textIndex` por palavras/linhas com quebra automática | 3 | 2 | L | 4 |
-| P12 | `sourceText` com expression + `text.sourceText.style.*` | 3 | 3 | L | 4 (v13) |
-| P13 | Booleano/escolha animáveis (Checkbox/Dropdown) | 2 | 2 | M | 4 (v13) |
-| P14 | Caminhos (`createPath`, `points`, `pointOnPath`…) | 2 | 1 | L | 5 (v13) |
+| P12 | `sourceText` com expression + `text.sourceText.style.*` | 3 | 3 | L | 4 (v12) |
+| P13 | Booleano/escolha animáveis (Checkbox/Dropdown) | 2 | 2 | M | 4 (v12) |
+| P14 | Caminhos (`createPath`, `points`, `pointOnPath`…) | 2 | 1 | L | 5 (v12) |
 | P15 | Máscaras, `sampleImage`, `footage()` (JSON/MGJSON), `comp()`, `thisProject` | 1 | 1 | L | 6 (opcional) |
 | P16 | Spike QuickJS atrás de `ExpressionBackend` | — | — | M | só se justificar |
 
-### Fases (ordem de execução)
+### Fases (ordem de execução atualizada: áudio primeiro)
 
-- **Fase 0 — fundação (sem API nova)**: interface `ExpressionBackend`; suíte de testes **golden** com cada exemplo da referência oficial (copiados literalmente: círculo,
-  entre duas camadas, trail, wiggle com janela, flash por keyframe, bounce de texto…); medir `CoreBench` antes/depois; **sem mudar o formato**.
-- **Fase 1 — "colar e funcionar"** (P1, P2, P3, P4, P6, P7, P8): operadores, objetos Property/Layer, variáveis soltas, camadas relacionadas, funções pequenas,
-  Prelude congelado, snippets e autocomplete básico. **Sem mudar o formato.** Resultado esperado: as 4 receitas "Não" do §16 da compatibilidade que não dependem de efeitos passam a funcionar.
-- **Fase 2 — controles e espaço** (P5, P9): Expression Controls + `effect()`; marcadores; transformações de espaço; `sourceRectAtTime`. **v12**.
-- **Fase 3 — áudio** (P10): análise + camada "Audio Amplitude" + botão + bandas. Usa v12 (se `analysis` for aprovado).
-- **Fase 4 — texto** (P11, P12, P13). **v13**.
-- **Fase 5 — caminhos** (P14). v13.
+- **Fase 0 — fundação (sem API nova, sem mudar o formato)**: interface `ExpressionBackend` (Rhino como única implementação); suíte de testes **golden** com os exemplos
+  da referência oficial (`AeGoldenTest`: o que funciona é asserção; o que é lacuna fica "pending" por fase e vira regressão quando implementado); medição de custo antes/depois
+  com `CoreBench`; **avaliação da subida do Rhino para 1.8/1.9** (compatibilidade com Android).
+- **Fase A — áudio reativo** (P10 + o mínimo de P5): efeito `sliderControl` e `effect("Nome")("Slider")` (necessários porque a camada "Audio Amplitude" do AE é lida assim);
+  análise de áudio (amplitude esquerda/direita/ambos + bandas grave/médio/agudo) no `core`; botão "converter áudio em keyframes"; camada nula "Audio Amplitude". **Formato v12.**
+- **Fase 1 — "colar e funcionar"** (P1, P2, P3, P4, P6, P7, P8): operadores em arrays, objetos Property/Layer, variáveis soltas, camadas relacionadas, funções pequenas,
+  Prelude congelado, snippets e autocomplete básico. Sem mudar o formato.
+- **Fase 2 — controles restantes e espaço** (resto de P5, P9): Checkbox/Color/Point/Angle/Dropdown/Layer Control; marcadores; transformações de espaço; `sourceRectAtTime`.
+- **Fase 4 — texto** (P11, P12, P13). Formato: mesma linha v12 (ou a versão seguinte, se a v12 já tiver sido publicada).
+- **Fase 5 — caminhos** (P14).
 - **Fase 6 — opcional**: máscaras, `sampleImage`, `footage()`, `comp()`.
 
-Cada fase termina com: testes golden novos, atualização de `expressions-compat.md`, e do `docs/expressoes.md`.
+Cada fase termina com: testes golden novos, atualização de `expressions-compat.md` e de `docs/expressoes.md`.
 
 ---
 
@@ -301,7 +312,7 @@ Cada fase termina com: testes golden novos, atualização de `expressions-compat
 
 1. **Semântica do `wiggle`/`random` ≠ AE**: os números nunca vão coincidir (o gerador do AE não é público; o próprio AE mudou entre motores). Sugestão: manter e documentar.
 2. **Escala do "Audio Amplitude" do AE**: não encontrei documentação oficial; o botão precisa de uma escala configurável.
-3. **Bumps de formato**: v12 e v13 deixam apps antigos sem abrir os projetos. Posso agrupar tudo em uma versão só.
+3. **Bumps de formato**: resolvido — uma única versão (v12), conforme as decisões aprovadas.
 4. **`Proxy` no Rhino**: se existir na versão escolhida, simplifica Property; se não, a abordagem "Number/Array com extras" cobre quase tudo, mas `typeof position` seria `object`.
 5. **Rhino 1.8/1.9 em Android**: precisa de verificação de compatibilidade antes de subir de versão.
 6. **Custo por quadro em aparelhos lentos**: o benchmark atual é de desktop JVM; falta medir num Android real.
