@@ -1,0 +1,38 @@
+{
+  "presets": [
+    {
+      "id": "subirSurgindo",
+      "name": "Subir surgindo",
+      "kind": "animation",
+      "properties": {
+        "opacity": [ { "t": 0, "v": 0, "easing": "easeOutCubic" }, { "t": 0.5, "v": 1 } ],
+        "position": [ { "t": 0, "v": [0, 80], "easing": "easeOutBack" }, { "t": 0.6, "v": [0, 0] } ]
+      }
+    },
+    {
+      "id": "pulsar",
+      "name": "Pulsar",
+      "kind": "animation",
+      "properties": {
+        "scale": [
+          { "t": 0, "v": [1, 1], "easing": "easeInOutSine" },
+          { "t": 0.25, "v": [1.15, 1.15], "easing": "easeInOutSine" },
+          { "t": 0.5, "v": [1, 1] }
+        ]
+      }
+    },
+    {
+      "id": "tituloAmarelo",
+      "name": "Título amarelo",
+      "kind": "textStyle",
+      "style": { "fontSize": 140, "color": "#FFD23F", "letterSpacing": 0.04 }
+    },
+    {
+      "id": "entraESaiDeslizando",
+      "name": "Entra e sai deslizando",
+      "kind": "transition",
+      "in": { "type": "slideUp", "duration": 0.4 },
+      "out": { "type": "fade", "duration": 0.3 }
+    }
+  ]
+}

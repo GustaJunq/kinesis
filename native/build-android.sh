@@ -31,6 +31,10 @@ libdir_of() { # directory of libc++_shared.so inside the NDK sysroot
   esac
 }
 
+# bindgen (whisper-rs-sys) parses the headers with libclang; pin LLVM 18 when present (a newer libclang on CI runners
+# produced empty structs and the build failed).
+if [ -z "${LIBCLANG_PATH:-}" ] && [ -d /usr/lib/llvm-18/lib ]; then export LIBCLANG_PATH=/usr/lib/llvm-18/lib; fi
+
 cd "$HERE"
 for abi in $ABIS; do
   triple="$(triple_of "$abi")"

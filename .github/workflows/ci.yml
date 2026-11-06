@@ -82,6 +82,10 @@ jobs:
       - name: Build the library (with and without Whisper)
         working-directory: native
         run: |
+          # bindgen (whisper-rs-sys) reads the C headers through libclang; a newer libclang on the runner image
+          # produced empty structs, so it is pinned to LLVM 18 when present.
+          if [ -d /usr/lib/llvm-18/lib ]; then export LIBCLANG_PATH=/usr/lib/llvm-18/lib; fi
+          ls -d /usr/lib/llvm-* || true
           cargo build --release --locked --features whisper,stabilize
           cargo build --release --locked
 

@@ -1,0 +1,23 @@
+{
+  "format": "kinesis-plugin",
+  "formatVersion": 1,
+  "id": "dev.kinesis.exemplos.escalonar",
+  "name": "Escalonar camadas",
+  "version": "1.0.0",
+  "author": "Kinesis",
+  "description": "Exemplo de plugin de script: desloca o início das camadas selecionadas, uma depois da outra.",
+  "type": "script",
+  "minKinesisVersion": "0.2.0",
+  "permissions": ["project.read", "project.write"],
+  "script": "main.js",
+  "commands": [
+    {
+      "id": "escalonar",
+      "title": "Escalonar seleção",
+      "function": "escalonar",
+      "params": [
+        { "id": "intervalo", "type": "number", "label": "Intervalo (s)", "default": 0.2, "min": 0, "max": 5 }
+      ]
+    }
+  ]
+}
