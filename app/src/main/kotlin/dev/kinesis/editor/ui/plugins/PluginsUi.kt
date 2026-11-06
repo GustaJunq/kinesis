@@ -198,7 +198,7 @@ fun PluginsScreen(onDismiss: () -> Unit) {
         Box(Modifier.fillMaxSize().background(KColors.Background).safeDrawingPadding()) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(KDims.Gutter), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onDismiss) { Icon(Lucide.ArrowLeft, stringResource(R.string.close), tint = KColors.Text) }
+                    IconButton(onClick = onDismiss) { Icon(Lucide.ArrowLeft, stringResource(R.string.close), tint = KColors.TextPrimary) }
                     Text(stringResource(R.string.plugins), style = MaterialTheme.typography.titleLarge)
                 }
                 Text(stringResource(R.string.plugins_hint), color = KColors.TextSecondary, style = MaterialTheme.typography.bodySmall)

@@ -106,6 +106,7 @@ import dev.kinesis.core.model.LightKind
 import dev.kinesis.core.model.Primitive
 import dev.kinesis.core.model.ShapeKind
 import dev.kinesis.editor.R
+import dev.kinesis.editor.media.ExportFormat
 import dev.kinesis.editor.media.ExportQuality
 import dev.kinesis.editor.media.ExportResolution
 import dev.kinesis.editor.media.ExportSettings
@@ -528,7 +529,7 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
     var resolution by remember { mutableStateOf(ExportResolution.ORIGINAL) }
     var quality by remember { mutableStateOf(ExportQuality.HIGH) }
     var audio by remember { mutableStateOf(true) }
-    var format by remember { mutableStateOf(dev.kinesis.editor.media.ExportFormat.MP4) }
+    var format by remember { mutableStateOf(ExportFormat.MP4) }
     var fps by remember { mutableStateOf<Double?>(null) }
     var transparent by remember { mutableStateOf(true) }
     var gifColors by remember { mutableStateOf(256) }
@@ -567,32 +568,31 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
                 when (state) {
                     is ExportUiState.Idle -> Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         val comp = project.composition
-                        val F = dev.kinesis.editor.media.ExportFormat
                         Text(stringResource(R.string.export_format), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
                         ChoiceChips(
-                            listOf(F.MP4 to "MP4", F.GIF to "GIF", F.WEBM to "WebM", F.MOV to "MOV", F.PNG_SEQUENCE to "PNG"),
+                            listOf(ExportFormat.MP4 to "MP4", ExportFormat.GIF to "GIF", ExportFormat.WEBM to "WebM", ExportFormat.MOV to "MOV", ExportFormat.PNG_SEQUENCE to "PNG"),
                             format, { f ->
                                 format = f
-                                if (f == F.GIF && resolution == ExportResolution.ORIGINAL && minOf(comp.width, comp.height) > 480) resolution = ExportResolution.P480
-                                if (f == F.GIF && fps == null && comp.fps > 15) fps = 15.0
-                                if (f == F.MP4) fps = null
+                                if (f == ExportFormat.GIF && resolution == ExportResolution.ORIGINAL && minOf(comp.width, comp.height) > 480) resolution = ExportResolution.P480
+                                if (f == ExportFormat.GIF && fps == null && comp.fps > 15) fps = 15.0
+                                if (f == ExportFormat.MP4) fps = null
                             },
                         )
                         Text(
                             stringResource(
                                 when (format) {
-                                    F.MP4 -> R.string.export_format_mp4
-                                    F.GIF -> R.string.export_format_gif
-                                    F.WEBM -> R.string.export_format_webm
-                                    F.MOV -> R.string.export_format_mov
-                                    F.PNG_SEQUENCE -> R.string.export_format_png
+                                    ExportFormat.MP4 -> R.string.export_format_mp4
+                                    ExportFormat.GIF -> R.string.export_format_gif
+                                    ExportFormat.WEBM -> R.string.export_format_webm
+                                    ExportFormat.MOV -> R.string.export_format_mov
+                                    ExportFormat.PNG_SEQUENCE -> R.string.export_format_png
                                 },
                             ),
                             fontSize = 12.sp, color = KColors.TextSecondary,
                         )
                         Text(stringResource(R.string.resolution), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
                         ChoiceChips(
-                            if (format == F.GIF) listOf(
+                            if (format == ExportFormat.GIF) listOf(
                                 ExportResolution.P360 to "360p", ExportResolution.P480 to "480p", ExportResolution.P720 to "720p",
                                 ExportResolution.ORIGINAL to "${comp.width}×${comp.height}",
                             ) else listOf(
@@ -601,22 +601,22 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
                             ),
                             resolution, { resolution = it },
                         )
-                        if (format != F.MP4) {
+                        if (format != ExportFormat.MP4) {
                             Text(stringResource(R.string.export_fps), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
-                            val rates = if (format == F.GIF) listOf(10.0, 12.0, 15.0, 24.0) else listOf(24.0, 30.0, 60.0)
+                            val rates = if (format == ExportFormat.GIF) listOf(10.0, 12.0, 15.0, 24.0) else listOf(24.0, 30.0, 60.0)
                             ChoiceChips(
                                 listOf<Pair<Double?, String>>(null to stringResource(R.string.export_fps_project, comp.fps.roundToInt())) + rates.map { it to "${it.roundToInt()}" },
                                 fps, { fps = it },
                             )
                         }
-                        if (format == F.MP4 || format == F.WEBM) {
+                        if (format == ExportFormat.MP4 || format == ExportFormat.WEBM) {
                             Text(stringResource(R.string.quality), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
                             ChoiceChips(
                                 listOf(ExportQuality.STANDARD to stringResource(R.string.quality_standard), ExportQuality.HIGH to stringResource(R.string.quality_high), ExportQuality.MAXIMUM to stringResource(R.string.quality_max)),
                                 quality, { quality = it },
                             )
                         }
-                        if (format == F.GIF) {
+                        if (format == ExportFormat.GIF) {
                             Text(stringResource(R.string.export_gif_colors), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
                             ChoiceChips(listOf(256 to "256", 128 to "128", 64 to "64", 32 to "32"), gifColors, { gifColors = it })
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -633,7 +633,7 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
                                 Switch(checked = transparent, onCheckedChange = { transparent = it })
                             }
                         }
-                        if (hasAudio && format == F.MP4) {
+                        if (hasAudio && format == ExportFormat.MP4) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.include_audio), modifier = Modifier.weight(1f))
                                 Switch(checked = audio, onCheckedChange = { audio = it })

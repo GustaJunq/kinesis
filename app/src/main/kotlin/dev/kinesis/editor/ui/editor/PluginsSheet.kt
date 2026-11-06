@@ -250,7 +250,7 @@ fun TtsDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
                                 Modifier.fillMaxWidth().background(if (v == voice) KColors.Field else KColors.Sheet).clickable { voice = v }.padding(10.dp),
                             ) {
                                 Column {
-                                    Text(v.label, style = MaterialTheme.typography.bodyMedium, color = if (v == voice) KColors.Accent else KColors.Text)
+                                    Text(v.label, style = MaterialTheme.typography.bodyMedium, color = if (v == voice) KColors.Accent else KColors.TextPrimary)
                                     Text(engine.name, style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
                                 }
                             }
