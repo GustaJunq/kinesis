@@ -2,6 +2,26 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.2.0
+
+### Adicionado
+- **Importação completa de .aureaproj do Aurea 0.4 (seção de camadas v55):** composições, pré-composições (viram grupos
+  recortados), pais, keyframes e curvas, blur, marcadores, modelos 3D (GLB) e a mídia do arquivo. O que não tem
+  equivalente (efeitos desconhecidos, máscaras, canais não identificados, mídia ausente) aparece como aviso.
+  Documentação em [docs/aureaproj.md](docs/aureaproj.md).
+- **Plugins:** manifesto, presets JSON (animações, estilos de texto, transições), scripts JavaScript (Rhino) em processo
+  isolado com limites, pacote `.knsplugin` com validação e permissões mostradas antes de instalar, tela de plugins.
+  Guia em [docs/plugins.md](docs/plugins.md).
+- **Plugin oficial Texto para fala** com as vozes offline do aparelho.
+- **Elementos:** salve um projeto como elemento (fundo transparente, verde, azul, preto ou branco) e insira em outros.
+- **Exportação** em GIF, WebM (VP8 com alfa), MOV (quadros PNG com alfa) e sequência PNG, com resolução, FPS e qualidade.
+
+### Corrigido
+- CI: o build nativo fixa o libclang no LLVM 18 (o bindgen gerava structs vazias).
+
+### Ainda não incluído
+- Integração do motor Kokoro (ONNX) no plugin de voz.
+
 ## Não lançado
 
 ### Adicionado
