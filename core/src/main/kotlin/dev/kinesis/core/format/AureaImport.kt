@@ -63,16 +63,25 @@ object AureaImport {
      */
     private const val TEXT_UNIT = 3.45f
 
-    class Result(val project: KnsProject, val warnings: List<String>)
+    /**
+     * [media] maps the path of each imported asset (`assets/...`) to the zip entry that holds it, for the caller to copy
+     * the files it received through the media sink of [read].
+     */
+    class Result(val project: KnsProject, val warnings: List<String>, val media: Map<String, String> = emptyMap())
 
     class Section(val type: Int, val version: Int, val body: ByteArray)
 
     /** True when [firstEntryName], the name of the first zip entry, belongs to an `.aureaproj`. */
     fun isAureaEntry(firstEntryName: String?): Boolean = firstEntryName == PROJECT_ENTRY || firstEntryName == MANIFEST_ENTRY
 
-    /** Reads an `.aureaproj` archive. Media inside the archive is not imported yet. */
-    fun read(input: InputStream, generator: String = "Kinesis Editor"): Result {
+    /**
+     * Reads an `.aureaproj` archive. Every media entry (`media/...`) is handed to [media] as it is read, so the caller
+     * can store it; [Result.media] then says which asset each stored entry became. Without a sink the media files are
+     * skipped (the project still references them).
+     */
+    fun read(input: InputStream, generator: String = "Kinesis Editor", media: ((entry: String, data: InputStream) -> Unit)? = null): Result {
         var data: ByteArray? = null
+        var manifest: String? = null
         val others = mutableListOf<String>()
         try {
             ZipInputStream(input).use { zip ->
@@ -81,7 +90,11 @@ object AureaImport {
                     when {
                         e.isDirectory -> Unit
                         e.name == PROJECT_ENTRY -> data = readLimited(zip)
-                        e.name != MANIFEST_ENTRY -> others += e.name
+                        e.name == MANIFEST_ENTRY -> manifest = String(readLimited(zip), Charsets.UTF_8)
+                        else -> {
+                            others += e.name
+                            if (media != null && isSafeEntry(e.name)) media(e.name, NonClosing(zip))
+                        }
                     }
                 }
             }
@@ -89,10 +102,25 @@ object AureaImport {
             throw AureaFormatException("pacote zip inválido: ${e.message}")
         }
         val bytes = data ?: throw AureaFormatException("não é um projeto do Aurea (falta $PROJECT_ENTRY)")
-        val result = convert(parseSections(bytes), generator)
+        val sections = parseSections(bytes)
+        val layersVersion = sections.firstOrNull { it.type == SECTION_COMPOSITIONS }?.version
+            ?: throw AureaFormatException("projeto sem composição")
+        if (layersVersion >= 50) {
+            val meta = sections.firstOrNull { it.type == SECTION_PROJECT }?.let { readProjectMeta(it.body) }
+            val r = AureaV55.convert(sections, manifest, others.toSet(), generator, meta?.let { Triple(it.title, it.createdAt, it.modifiedAt) })
+            return Result(r.project, r.warnings, r.media)
+        }
+        val result = convert(sections, generator)
         val warnings = result.warnings.toMutableList()
         if (others.isNotEmpty()) warnings += "${others.size} arquivo(s) de mídia do projeto ainda não são importados"
         return Result(result.project, warnings)
+    }
+
+    private fun isSafeEntry(name: String) = name.startsWith("media/") && !name.contains("..") && !name.startsWith("/") && !name.contains('\\')
+
+    /** Hands a zip entry to a sink without letting it close the archive. */
+    private class NonClosing(input: InputStream) : java.io.FilterInputStream(input) {
+        override fun close() = Unit
     }
 
     fun read(bytes: ByteArray, generator: String = "Kinesis Editor"): Result = read(ByteArrayInputStream(bytes), generator)

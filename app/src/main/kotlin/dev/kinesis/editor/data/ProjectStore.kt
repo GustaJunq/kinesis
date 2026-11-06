@@ -137,16 +137,45 @@ class ProjectStore(private val context: Context) {
     }
 
     private fun importAurea(input: InputStream): ImportResult {
-        val result = try {
-            AureaImport.read(input, "Kinesis Editor ${BuildConfig.VERSION_NAME}")
-        } catch (e: AureaFormatException) {
-            throw ProjectImportException(e.message ?: "Invalid Aurea project")
+        val tmp = File(root, ".import-${UUID.randomUUID()}")
+        val media = File(tmp, ".media").apply { mkdirs() }
+        try {
+            val stored = HashMap<String, File>()
+            val result = try {
+                AureaImport.read(input, "Kinesis Editor ${BuildConfig.VERSION_NAME}") { entry, data ->
+                    val f = File(media, "${stored.size}")
+                    f.outputStream().use { data.copyTo(it, 64 * 1024) }
+                    stored[entry] = f
+                }
+            } catch (e: AureaFormatException) {
+                throw ProjectImportException(e.message ?: "Invalid Aurea project")
+            }
+            val warnings = result.warnings.toMutableList()
+            // Move each media file into place and read what the pool did not say (duration, audio track).
+            val assets = result.project.assets.mapNotNull { asset ->
+                val src = stored[result.media[asset.path]] ?: return@mapNotNull asset
+                val target = File(tmp, asset.path)
+                target.parentFile?.mkdirs()
+                if (!src.renameTo(target)) src.copyTo(target, overwrite = true)
+                runCatching { probe(asset, target) }.getOrElse {
+                    warnings += "\"${asset.name ?: asset.path}\": o arquivo de mídia não pôde ser lido"
+                    asset
+                }
+            }
+            val project = result.project.copy(assets = assets)
+            val report = ProjectValidator.validate(project)
+            if (!report.isValid) {
+                throw ProjectImportException(report.errors.take(5).joinToString("\n") { "${it.path}: ${it.message}" }, report.errors)
+            }
+            media.deleteRecursively()
+            File(tmp, "assets").mkdirs()
+            SafeFile.writeText(File(tmp, KnsprojArchive.PROJECT_ENTRY), KnsprojJson.encode(project), keepBackup = false)
+            val id = UUID.randomUUID().toString()
+            if (!tmp.renameTo(dir(id))) throw IOException("Cannot move imported project into place")
+            return ImportResult(id, warnings)
+        } finally {
+            if (tmp.exists()) tmp.deleteRecursively()
         }
-        val report = ProjectValidator.validate(result.project)
-        if (!report.isValid) {
-            throw ProjectImportException(report.errors.take(5).joinToString("\n") { "${it.path}: ${it.message}" }, report.errors)
-        }
-        return ImportResult(create(result.project), result.warnings)
     }
 
     /** Name of the first local file entry of a zip, read from its header, or null. */
