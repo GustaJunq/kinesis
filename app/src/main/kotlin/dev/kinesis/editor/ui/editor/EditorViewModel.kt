@@ -85,7 +85,7 @@ sealed class ExportUiState {
     data object Idle : ExportUiState()
     /** [etaSeconds]: estimated time left, once known. [preRender]: rendering one layer instead of the video. */
     data class Running(val progress: Float, val etaSeconds: Double? = null, val preRender: Boolean = false) : ExportUiState()
-    data class Done(val file: File, val galleryUri: Uri?) : ExportUiState()
+    data class Done(val file: File, val galleryUri: Uri?, val mime: String = "video/mp4") : ExportUiState()
     /** Where it stopped ([time], [layerId]) when known; the finished blocks are kept for the next try. */
     data class Failed(
         val message: String,
@@ -986,16 +986,23 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
                 val dir = File(app.getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES) ?: app.filesDir, "Kinesis").apply { mkdirs() }
                 val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
                 val safeTitle = snapshot.meta.title.replace(Regex("[^A-Za-z0-9_-]+"), "_").trim('_').ifEmpty { "kinesis" }.take(40)
-                val out = File(dir, "$safeTitle-$stamp.mp4")
+                val format = settings.format
+                val out = File(dir, "$safeTitle-$stamp.${format.extension}")
                 val eta = Eta()
                 withContext(exportDispatcher) {
-                    VideoExporter(app.assets, files, pcm).export(
-                        snapshot, settings, out, { p -> _export.value = ExportUiState.Running(p, eta.update(p)) }, { exportCancelled },
-                        workDir = File(app.cacheDir, "export/$projectId"),
-                    )
+                    if (format == dev.kinesis.editor.media.ExportFormat.MP4) {
+                        VideoExporter(app.assets, files, pcm).export(
+                            snapshot, settings, out, { p -> _export.value = ExportUiState.Running(p, eta.update(p)) }, { exportCancelled },
+                            workDir = File(app.cacheDir, "export/$projectId"),
+                        )
+                    } else {
+                        dev.kinesis.editor.media.FrameExporter(app.assets, files).export(
+                            snapshot, settings, out, { p -> _export.value = ExportUiState.Running(p, eta.update(p)) }, { exportCancelled },
+                        )
+                    }
                 }
-                val uri = withContext(Dispatchers.IO) { VideoGallery.save(app, out, out.name) }
-                _export.value = ExportUiState.Done(out, uri)
+                val uri = withContext(Dispatchers.IO) { VideoGallery.save(app, out, out.name, format.mime) }
+                _export.value = ExportUiState.Done(out, uri, format.mime)
             } catch (e: ExportCancelled) {
                 _export.value = ExportUiState.Idle
             } catch (e: Throwable) {

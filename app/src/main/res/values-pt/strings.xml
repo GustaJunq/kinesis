@@ -648,4 +648,16 @@
     <string name="tts_generate">Gerar áudio</string>
     <string name="tts_generating">Gerando…</string>
     <string name="tts_layer_name">Fala: %1$s</string>
+    <string name="export_format">Formato</string>
+    <string name="export_format_mp4">Vídeo H.264 com som. Para redes sociais e players.</string>
+    <string name="export_format_gif">GIF animado, sem som. Tamanhos e taxas menores deixam o arquivo leve.</string>
+    <string name="export_format_webm">WebM (VP8) com transparência, sem som. Abre em navegadores, DaVinci Resolve e no After Effects/Premiere com o plug-in de WebM.</string>
+    <string name="export_format_mov">QuickTime MOV com quadros PNG: sem perdas e com transparência, sem som. Abre no After Effects, Premiere, Final Cut e DaVinci Resolve. Arquivos grandes.</string>
+    <string name="export_format_png">Sequência PNG em um .zip (uma imagem por quadro, com transparência). Descompacte e importe como sequência de imagens.</string>
+    <string name="export_fps">Quadros por segundo</string>
+    <string name="export_fps_project">Do projeto (%1$d)</string>
+    <string name="export_gif_colors">Cores</string>
+    <string name="export_gif_dither">Pontilhado (degradês mais suaves)</string>
+    <string name="export_transparent">Fundo transparente</string>
+    <string name="export_transparent_hint">Deixa de fora o fundo da composição e mantém o canal alfa.</string>
 </resources>

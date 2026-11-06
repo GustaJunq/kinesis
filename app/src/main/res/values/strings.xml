@@ -648,4 +648,16 @@
     <string name="tts_generate">Generate audio</string>
     <string name="tts_generating">Generating…</string>
     <string name="tts_layer_name">Speech: %1$s</string>
+    <string name="export_format">Format</string>
+    <string name="export_format_mp4">H.264 video with sound. For social networks and players.</string>
+    <string name="export_format_gif">Animated GIF, no sound. Smaller sizes and frame rates keep the file light.</string>
+    <string name="export_format_webm">WebM (VP8) with transparency, no sound. Opens in browsers, DaVinci Resolve and in After Effects/Premiere with the WebM plug-in.</string>
+    <string name="export_format_mov">QuickTime MOV with PNG frames: lossless with transparency, no sound. Opens in After Effects, Premiere, Final Cut and DaVinci Resolve. Large files.</string>
+    <string name="export_format_png">PNG sequence in a .zip (one picture per frame, with transparency). Unzip and import as an image sequence.</string>
+    <string name="export_fps">Frames per second</string>
+    <string name="export_fps_project">Project (%1$d)</string>
+    <string name="export_gif_colors">Colours</string>
+    <string name="export_gif_dither">Dithering (smoother gradients)</string>
+    <string name="export_transparent">Transparent background</string>
+    <string name="export_transparent_hint">Leaves the composition background out and keeps the alpha channel.</string>
 </resources>

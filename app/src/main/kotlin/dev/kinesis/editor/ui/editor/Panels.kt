@@ -14,6 +14,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -526,18 +528,25 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
     var resolution by remember { mutableStateOf(ExportResolution.ORIGINAL) }
     var quality by remember { mutableStateOf(ExportQuality.HIGH) }
     var audio by remember { mutableStateOf(true) }
+    var format by remember { mutableStateOf(dev.kinesis.editor.media.ExportFormat.MP4) }
+    var fps by remember { mutableStateOf<Double?>(null) }
+    var transparent by remember { mutableStateOf(true) }
+    var gifColors by remember { mutableStateOf(256) }
+    var gifDither by remember { mutableStateOf(true) }
     val hasAudio = remember(project) { dev.kinesis.core.scene.AudioPlan.clips(project).isNotEmpty() }
     AlertDialog(
         onDismissRequest = { if (state !is ExportUiState.Running) onDismiss() },
         title = { Text(stringResource(R.string.export_video)) },
         confirmButton = {
             when (state) {
-                is ExportUiState.Idle -> Button(onClick = { vm.startExport(ExportSettings(resolution, quality, audio && hasAudio)) }) { Text(stringResource(R.string.export)) }
+                is ExportUiState.Idle -> Button(onClick = {
+                    vm.startExport(ExportSettings(resolution, quality, audio && hasAudio, format, fps, transparent, gifColors, gifDither))
+                }) { Text(stringResource(R.string.export)) }
                 is ExportUiState.Running -> TextButton(onClick = { vm.cancelExport() }) { Text(stringResource(R.string.cancel)) }
                 is ExportUiState.Done -> Button(onClick = {
                     val uri = state.galleryUri ?: FileProvider.getUriForFile(context, context.packageName + ".files", state.file)
                     val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "video/mp4"
+                        type = state.mime
                         putExtra(Intent.EXTRA_STREAM, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
@@ -556,22 +565,75 @@ fun ExportDialog(vm: EditorViewModel, project: KnsProject, state: ExportUiState,
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 when (state) {
-                    is ExportUiState.Idle -> {
+                    is ExportUiState.Idle -> Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         val comp = project.composition
+                        val F = dev.kinesis.editor.media.ExportFormat
+                        Text(stringResource(R.string.export_format), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
+                        ChoiceChips(
+                            listOf(F.MP4 to "MP4", F.GIF to "GIF", F.WEBM to "WebM", F.MOV to "MOV", F.PNG_SEQUENCE to "PNG"),
+                            format, { f ->
+                                format = f
+                                if (f == F.GIF && resolution == ExportResolution.ORIGINAL && minOf(comp.width, comp.height) > 480) resolution = ExportResolution.P480
+                                if (f == F.GIF && fps == null && comp.fps > 15) fps = 15.0
+                                if (f == F.MP4) fps = null
+                            },
+                        )
+                        Text(
+                            stringResource(
+                                when (format) {
+                                    F.MP4 -> R.string.export_format_mp4
+                                    F.GIF -> R.string.export_format_gif
+                                    F.WEBM -> R.string.export_format_webm
+                                    F.MOV -> R.string.export_format_mov
+                                    F.PNG_SEQUENCE -> R.string.export_format_png
+                                },
+                            ),
+                            fontSize = 12.sp, color = KColors.TextSecondary,
+                        )
                         Text(stringResource(R.string.resolution), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
                         ChoiceChips(
-                            listOf(
+                            if (format == F.GIF) listOf(
+                                ExportResolution.P360 to "360p", ExportResolution.P480 to "480p", ExportResolution.P720 to "720p",
+                                ExportResolution.ORIGINAL to "${comp.width}×${comp.height}",
+                            ) else listOf(
                                 ExportResolution.ORIGINAL to "${comp.width}×${comp.height}",
                                 ExportResolution.P720 to "720p", ExportResolution.P1080 to "1080p", ExportResolution.P2160 to "4K",
                             ),
                             resolution, { resolution = it },
                         )
-                        Text(stringResource(R.string.quality), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
-                        ChoiceChips(
-                            listOf(ExportQuality.STANDARD to stringResource(R.string.quality_standard), ExportQuality.HIGH to stringResource(R.string.quality_high), ExportQuality.MAXIMUM to stringResource(R.string.quality_max)),
-                            quality, { quality = it },
-                        )
-                        if (hasAudio) {
+                        if (format != F.MP4) {
+                            Text(stringResource(R.string.export_fps), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
+                            val rates = if (format == F.GIF) listOf(10.0, 12.0, 15.0, 24.0) else listOf(24.0, 30.0, 60.0)
+                            ChoiceChips(
+                                listOf<Pair<Double?, String>>(null to stringResource(R.string.export_fps_project, comp.fps.roundToInt())) + rates.map { it to "${it.roundToInt()}" },
+                                fps, { fps = it },
+                            )
+                        }
+                        if (format == F.MP4 || format == F.WEBM) {
+                            Text(stringResource(R.string.quality), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
+                            ChoiceChips(
+                                listOf(ExportQuality.STANDARD to stringResource(R.string.quality_standard), ExportQuality.HIGH to stringResource(R.string.quality_high), ExportQuality.MAXIMUM to stringResource(R.string.quality_max)),
+                                quality, { quality = it },
+                            )
+                        }
+                        if (format == F.GIF) {
+                            Text(stringResource(R.string.export_gif_colors), style = MaterialTheme.typography.labelMedium, color = KColors.TextSecondary)
+                            ChoiceChips(listOf(256 to "256", 128 to "128", 64 to "64", 32 to "32"), gifColors, { gifColors = it })
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.export_gif_dither), modifier = Modifier.weight(1f))
+                                Switch(checked = gifDither, onCheckedChange = { gifDither = it })
+                            }
+                        }
+                        if (format.supportsAlpha) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(stringResource(R.string.export_transparent))
+                                    Text(stringResource(R.string.export_transparent_hint), fontSize = 12.sp, color = KColors.TextSecondary)
+                                }
+                                Switch(checked = transparent, onCheckedChange = { transparent = it })
+                            }
+                        }
+                        if (hasAudio && format == F.MP4) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.include_audio), modifier = Modifier.weight(1f))
                                 Switch(checked = audio, onCheckedChange = { audio = it })
