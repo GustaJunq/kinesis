@@ -1,0 +1,13 @@
+{
+  "format": "kinesis-plugin",
+  "formatVersion": 1,
+  "id": "dev.kinesis.exemplos.presets",
+  "name": "Presets básicos",
+  "version": "1.0.0",
+  "author": "Kinesis",
+  "description": "Exemplo de plugin só de presets: uma animação de entrada, um estilo de texto e uma transição.",
+  "type": "presets",
+  "minKinesisVersion": "0.2.0",
+  "permissions": [],
+  "presets": ["presets/basicos.json"]
+}

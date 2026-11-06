@@ -67,6 +67,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -105,6 +106,10 @@ import dev.kinesis.editor.ui.common.PillChip
 import dev.kinesis.editor.ui.onboarding.LanguageChoices
 import dev.kinesis.editor.ui.onboarding.ThemeChoices
 import dev.kinesis.editor.ui.settings.AppSettings
+import dev.kinesis.editor.ui.plugins.PluginInstaller
+import dev.kinesis.editor.ui.plugins.PluginsScreen
+import dev.kinesis.editor.ui.plugins.isPluginPackage
+import dev.kinesis.editor.ui.common.Lucide
 import dev.kinesis.editor.ui.common.PrimaryButton
 import dev.kinesis.editor.ui.common.SecondaryButton
 import dev.kinesis.editor.ui.theme.DEFAULT_COMPOSITION_BACKGROUND
@@ -263,16 +268,23 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) { vm.refresh() }
+    var pluginUri by remember { mutableStateOf<Uri?>(null) }
+    var showPlugins by remember { mutableStateOf(false) }
+    val resolver = LocalContext.current.contentResolver
     LaunchedEffect(incoming) {
         if (incoming != null) {
-            vm.import(incoming, onOpen)
+            // A .knsplugin opened from the file manager goes to the plugin installer, anything else is a project.
+            if (withContext(Dispatchers.IO) { isPluginPackage(resolver, incoming) }) pluginUri = incoming else vm.import(incoming, onOpen)
             onIncomingHandled()
         }
     }
     LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
 
+    val scope = rememberCoroutineScope()
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) vm.import(uri, onOpen)
+        if (uri != null) scope.launch {
+            if (withContext(Dispatchers.IO) { isPluginPackage(resolver, uri) }) pluginUri = uri else vm.import(uri, onOpen)
+        }
     }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         val id = exportId
@@ -304,12 +316,19 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
                     val (w, h) = dimensions(r, 1080)
                     vm.create(r.label, w, h, 30.0, 10.0, DEFAULT_BACKGROUND, onOpen)
                 }
-                HomeTab.SETTINGS -> SettingsTab()
+                HomeTab.SETTINGS -> SettingsTab(onPlugins = { showPlugins = true })
             }
             if (busy) CircularProgressIndicator(Modifier.align(Alignment.Center), color = KColors.Accent)
         }
     }
 
+    pluginUri?.let { uri ->
+        PluginInstaller(uri) { msg ->
+            pluginUri = null
+            if (msg != null) vm.messages.tryEmit(msg)
+        }
+    }
+    if (showPlugins) PluginsScreen(onDismiss = { showPlugins = false })
     if (showNew) {
         NewProjectDialog(onDismiss = { showNew = false }) { title, w, h, fps, duration, bg ->
             showNew = false
@@ -556,7 +575,7 @@ private fun PresetsTab(onPick: (Ratio) -> Unit) {
 }
 
 @Composable
-private fun SettingsTab() {
+private fun SettingsTab(onPlugins: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(KDims.Gutter), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(R.string.nav_settings), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(4.dp))
@@ -593,6 +612,7 @@ private fun SettingsTab() {
             }
             Text(stringResource(R.string.settings_snapshots_hint), style = MaterialTheme.typography.bodySmall, color = KColors.TextSecondary)
         }
+        SecondaryButton(stringResource(R.string.plugins), onPlugins, Modifier.fillMaxWidth(), icon = Lucide.Plug, pill = true)
         SecondaryButton(stringResource(R.string.settings_welcome), { AppSettings.setOnboardingDone(context, false) }, Modifier.fillMaxWidth(), pill = true)
         var showLicenses by remember { mutableStateOf(false) }
         SecondaryButton(stringResource(R.string.third_party_licenses), { showLicenses = true }, Modifier.fillMaxWidth(), pill = true)

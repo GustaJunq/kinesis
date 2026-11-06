@@ -36,6 +36,24 @@
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
+            <!-- Plugin packages (.knsplugin) opened from a file manager. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.knsplugin" />
+                <data android:pathPattern=".*\\..*\\.knsplugin" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/vnd.kinesis.plugin+zip" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -44,6 +62,13 @@
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
+
+        <!-- Plugin scripts run here, in their own process: a script that hangs or runs out of memory cannot take the
+             editor down. -->
+        <service
+            android:name=".plugins.PluginScriptService"
+            android:exported="false"
+            android:process=":plugins" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

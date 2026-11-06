@@ -93,13 +93,20 @@ class EglCore {
     }
 }
 
-enum class ExportResolution(val shortSide: Int?) { ORIGINAL(null), P720(720), P1080(1080), P2160(2160) }
+enum class ExportResolution(val shortSide: Int?) { ORIGINAL(null), P360(360), P480(480), P720(720), P1080(1080), P2160(2160) }
 enum class ExportQuality(val bitsPerPixel: Float) { STANDARD(0.08f), HIGH(0.14f), MAXIMUM(0.24f) }
 
 data class ExportSettings(
     val resolution: ExportResolution = ExportResolution.ORIGINAL,
     val quality: ExportQuality = ExportQuality.HIGH,
     val includeAudio: Boolean = true,
+    val format: ExportFormat = ExportFormat.MP4,
+    /** Frames per second of the output; null keeps the composition's (frame formats only). */
+    val fps: Double? = null,
+    /** Leave the background out and keep the alpha channel (GIF, WebM, MOV, PNG). */
+    val transparent: Boolean = true,
+    val gifColors: Int = 256,
+    val gifDither: Boolean = true,
 )
 
 class ExportCancelled : Exception("Export cancelled")
@@ -526,31 +533,38 @@ class VideoExporter(
     }
 }
 
-/** Publishes an exported MP4 to the gallery (Movies/Kinesis). */
+/**
+ * Publishes an export where the user finds it: videos in Movies/Kinesis, GIFs in Pictures/Kinesis and PNG sequences
+ * (zip) in Download/Kinesis.
+ */
 object VideoGallery {
-    fun save(context: Context, file: File, displayName: String): Uri? {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val values = ContentValues().apply {
-                put(MediaStore.Video.Media.DISPLAY_NAME, displayName)
-                put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                put(MediaStore.Video.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MOVIES}/Kinesis")
-                put(MediaStore.Video.Media.IS_PENDING, 1)
-            }
-            val resolver = context.contentResolver
-            val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return null
-            try {
-                resolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
-                values.clear()
-                values.put(MediaStore.Video.Media.IS_PENDING, 0)
-                resolver.update(uri, values, null, null)
-                uri
-            } catch (e: Exception) {
-                Log.w(TAG, "cannot publish video", e)
-                resolver.delete(uri, null, null)
-                null
-            }
-        } else {
-            // Before Android 10 the video stays in the app's Movies folder; it is shared from there.
+    fun save(context: Context, file: File, displayName: String, mime: String = "video/mp4"): Uri? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            // Before Android 10 the file stays in the app's folder; it is shared from there.
+            return null
+        }
+        val (collection, folder) = when {
+            mime.startsWith("video/") -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI to Environment.DIRECTORY_MOVIES
+            mime.startsWith("image/") -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI to Environment.DIRECTORY_PICTURES
+            else -> MediaStore.Downloads.EXTERNAL_CONTENT_URI to Environment.DIRECTORY_DOWNLOADS
+        }
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mime)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "$folder/Kinesis")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val resolver = context.contentResolver
+        val uri = runCatching { resolver.insert(collection, values) }.getOrNull() ?: return null
+        return try {
+            resolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
+            values.clear()
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            uri
+        } catch (e: Exception) {
+            Log.w(TAG, "cannot publish export", e)
+            resolver.delete(uri, null, null)
             null
         }
     }

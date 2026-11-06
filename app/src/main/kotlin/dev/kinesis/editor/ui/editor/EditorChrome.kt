@@ -154,7 +154,7 @@ fun EditorControls(
     }
 }
 
-enum class EditorTool { LAYERS, SHAPES, TEXT, MEDIA, MODEL3D, EFFECTS, MOTION, AUDIO, CAMERA, CAPTIONS }
+enum class EditorTool { LAYERS, SHAPES, TEXT, MEDIA, MODEL3D, EFFECTS, MOTION, AUDIO, CAMERA, CAPTIONS, ELEMENTS, PLUGINS }
 
 private class ToolSpec(val tool: EditorTool, val icon: ImageVector, val label: Int)
 
@@ -169,6 +169,8 @@ private val TOOLS = listOf(
     ToolSpec(EditorTool.AUDIO, Lucide.Music, R.string.tool_audio),
     ToolSpec(EditorTool.CAMERA, Lucide.Camera, R.string.tool_camera),
     ToolSpec(EditorTool.CAPTIONS, Lucide.Captions, R.string.captions),
+    ToolSpec(EditorTool.ELEMENTS, Lucide.Component, R.string.elements),
+    ToolSpec(EditorTool.PLUGINS, Lucide.Plug, R.string.plugins),
 )
 
 private val TRANSPORT_HEIGHT = 56.dp
