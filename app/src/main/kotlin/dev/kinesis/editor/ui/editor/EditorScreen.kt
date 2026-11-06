@@ -148,6 +148,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var propsFocus by remember { mutableStateOf<String?>(null) }
     var showExport by remember { mutableStateOf(false) }
     var showCaptions by remember { mutableStateOf(false) }
+    var showPlugins by remember { mutableStateOf(false) }
+    var showElements by remember { mutableStateOf(false) }
     var showAudio by remember { mutableStateOf(false) }
     var stabilizeTarget by remember { mutableStateOf<String?>(null) }
     var showRealCamera by remember { mutableStateOf(false) }
@@ -377,6 +379,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 showProps -> EditorTool.MOTION
                 showAudio -> EditorTool.AUDIO
                 showCaptions -> EditorTool.CAPTIONS
+                showElements -> EditorTool.ELEMENTS
+                showPlugins -> EditorTool.PLUGINS
                 else -> EditorTool.LAYERS
             }
             EditorBottomBar(
@@ -417,6 +421,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                         EditorTool.EFFECTS -> showEffects = true
                         EditorTool.MOTION -> { propsFocus = null; showProps = true }
                         EditorTool.CAPTIONS -> showCaptions = true
+                        EditorTool.ELEMENTS -> showElements = true
+                        EditorTool.PLUGINS -> showPlugins = true
                     }
                 },
             )
@@ -513,6 +519,8 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     if (showRealCamera) RealCameraSheet(vm, project, onDismiss = { showRealCamera = false })
     mediaJob?.let { MediaJobDialog(it, onCancel = { vm.cancelMediaJob() }) }
     if (showCaptions) CaptionsSheet(vm, project, onDismiss = { showCaptions = false })
+    if (showPlugins) PluginsSheet(vm, project, selection, onDismiss = { showPlugins = false })
+    if (showElements) ElementsSheet(vm, project, onDismiss = { showElements = false })
     editingMarker?.let { id ->
         val marker = project.markers.firstOrNull { it.id == id }
         if (marker == null) editingMarker = null else MarkerDialog(vm, marker, project.composition.fps, time, onDismiss = { editingMarker = null })

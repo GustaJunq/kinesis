@@ -242,7 +242,7 @@ class ProjectStore(private val context: Context) {
      */
     fun importMedia(id: String, project: KnsProject, uri: Uri, type: AssetType): Asset {
         val resolver = context.contentResolver
-        val name = displayName(resolver, uri)
+        val name = displayName(resolver, uri) ?: uri.lastPathSegment.takeIf { uri.scheme == "file" }
         val mime = resolver.getType(uri)
         val ext = name?.substringAfterLast('.', "")?.takeIf { it.isNotBlank() && it.length <= 5 }
             ?: MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: defaultExtension(type)

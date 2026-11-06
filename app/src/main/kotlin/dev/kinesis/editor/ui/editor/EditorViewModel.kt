@@ -546,6 +546,116 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     fun localTime(layer: Layer, p: KnsProject = current): Double =
         _time.value - LayerTree.containerOffset(p, layer.id) - layer.start
 
+    // ------------------------------------------------------------------ plugins
+
+    /** The selected layers, in selection order (the single selection when there is no multiple selection). */
+    val selectionIds: List<String> get() = _multiSelection.value.toList().ifEmpty { listOfNotNull(_selection.value) }
+
+    /** Applies a plugin preset to the selected layer; animations start at the playhead. One undo step. */
+    fun applyPreset(preset: dev.kinesis.core.plugin.Preset) {
+        val layer = selectedLayer() ?: return notify(text(R.string.plugin_select_layer), true)
+        if (!dev.kinesis.core.plugin.Presets.appliesTo(preset, layer)) return notify(text(R.string.plugin_preset_not_here, preset.name), true)
+        val at = localTime(layer).coerceIn(0.0, layer.duration)
+        updateLayer(layer.id) { dev.kinesis.core.plugin.Presets.apply(preset, it, at) }
+    }
+
+    /**
+     * Runs a script command in the isolated plugin process and applies what it returned, after checking it, as one
+     * undo step. Errors (including time-outs and crashes of the script) only produce a message.
+     */
+    fun runPluginCommand(plugin: dev.kinesis.editor.plugins.InstalledPlugin, command: dev.kinesis.core.plugin.PluginCommand, params: Map<String, kotlinx.serialization.json.JsonElement>) {
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            _busy.value = true
+            try {
+                val store = dev.kinesis.editor.plugins.PluginStore(app)
+                val (script, texts) = withContext(Dispatchers.IO) { store.script(plugin) to store.texts(plugin) }
+                val before = current
+                val input = withContext(Dispatchers.Default) { dev.kinesis.core.plugin.PluginHost.input(plugin.manifest, before, selectionIds, _time.value, params) }
+                val out = dev.kinesis.editor.plugins.PluginRunner.run(app, script, command.function, input, texts)
+                out.log.forEach { Log.i("KinesisPlugin", "${plugin.id}: $it") }
+                val outcome = withContext(Dispatchers.Default) { dev.kinesis.core.plugin.PluginHost.outcome(plugin.manifest, before, out.json, out.log) }
+                outcome.project?.let { changed ->
+                    if (current !== before) {
+                        notify(text(R.string.plugin_project_changed), true)
+                        return@launch
+                    }
+                    edit { changed.copy(editorView = it.editorView, meta = it.meta) }
+                }
+                notify(outcome.message ?: text(R.string.plugin_command_done, command.title))
+            } catch (e: Exception) {
+                Log.w("Kinesis", "plugin command failed", e)
+                notify(text(R.string.plugin_command_failed, e.message ?: e.javaClass.simpleName), true)
+            } finally {
+                _busy.value = false
+            }
+        }
+    }
+
+    /** Adds a synthesized speech file (WAV) to the project as an audio layer at the playhead. */
+    fun addSpeech(file: java.io.File, name: String, onDone: () -> Unit = {}) {
+        val at = _time.value
+        importMedia(Uri.fromFile(file), AssetType.AUDIO, onImported = { file.delete(); onDone() }) { p, asset ->
+            dev.kinesis.core.edit.Factory.audio(p, at, asset, name)
+        }
+    }
+
+    // ------------------------------------------------------------------ elements
+
+    /** Saves the whole project as a reusable element with [background]. */
+    fun saveAsElement(name: String, background: dev.kinesis.core.elements.ElementBackground, onDone: (Boolean) -> Unit = {}) {
+        val app = getApplication<Application>()
+        val snapshot = current
+        viewModelScope.launch {
+            val ok = runCatching {
+                withContext(Dispatchers.IO) {
+                    dev.kinesis.editor.data.ElementStore(app).save(snapshot, name, background, { a -> files.file(a.id) }, store.thumbnailFile(projectId))
+                }
+            }.onFailure { Log.w("Kinesis", "save element failed", it) }.isSuccess
+            notify(text(if (ok) R.string.element_saved else R.string.element_save_failed, name), !ok)
+            onDone(ok)
+        }
+    }
+
+    /** Inserts element [elementId] at the playhead as a group layer, copying its media into the project. One undo step. */
+    fun insertElement(elementId: String) {
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            _busy.value = true
+            try {
+                val elements = dev.kinesis.editor.data.ElementStore(app)
+                val element = withContext(Dispatchers.IO) { elements.load(elementId) }
+                val sel = selectedLayer()
+                val container = sel?.let { LayerTree.locate(current, it.id)?.containerId }
+                val offset = if (container != null && sel != null) LayerTree.containerOffset(current, sel.id) else 0.0
+                val at = (_time.value - offset).coerceAtLeast(0.0)
+                val r = dev.kinesis.core.elements.Elements.insert(current, element, element.meta.title.ifBlank { "Elemento" }, at, container)
+                withContext(Dispatchers.IO) {
+                    r.copiedAssets.forEach { (copy, original) ->
+                        val src = elements.assetFile(elementId, original)
+                        val dst = store.assetFile(projectId, copy)
+                        dst.parentFile?.mkdirs()
+                        if (src.isFile) src.copyTo(dst, overwrite = true)
+                    }
+                }
+                val inserted = r.project
+                edit { p -> inserted.copy(editorView = p.editorView, meta = p.meta) }
+                select(r.layer.id)
+                _mediaRevision.value++
+                if (r.copiedAssets.keys.any { it.type == AssetType.VIDEO }) buildProxies()
+                if (r.copiedAssets.keys.any { it.type == AssetType.VIDEO || it.type == AssetType.AUDIO }) {
+                    withContext(Dispatchers.IO) { r.copiedAssets.keys.forEach { runCatching { pcm.ensure(it.id) } } }
+                    _audioRevision.value++
+                }
+            } catch (e: Exception) {
+                Log.w("Kinesis", "insert element failed", e)
+                notify(text(R.string.element_insert_failed, e.message ?: e.javaClass.simpleName), true)
+            } finally {
+                _busy.value = false
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ layer operations
 
     fun addLayer(layer: Layer) {
