@@ -660,4 +660,8 @@
     <string name="export_gif_dither">Pontilhado (degradês mais suaves)</string>
     <string name="export_transparent">Fundo transparente</string>
     <string name="export_transparent_hint">Deixa de fora o fundo da composição e mantém o canal alfa.</string>
+    <string name="perm_download">Baixar o modelo de voz uma vez (internet), do Hugging Face</string>
+    <string name="kokoro_download">Baixar as vozes Kokoro</string>
+    <string name="kokoro_download_hint">Vozes naturais em português do Brasil. Baixa %1$d MB uma vez do Hugging Face (só agora precisa de internet); depois funciona offline. Gerar é mais lento que a voz do sistema.</string>
+    <string name="kokoro_download_failed">O download falhou: %1$s. Dá para tentar de novo; ele continua de onde parou.</string>
 </resources>

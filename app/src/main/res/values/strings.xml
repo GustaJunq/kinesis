@@ -660,4 +660,8 @@
     <string name="export_gif_dither">Dithering (smoother gradients)</string>
     <string name="export_transparent">Transparent background</string>
     <string name="export_transparent_hint">Leaves the composition background out and keeps the alpha channel.</string>
+    <string name="perm_download">Download its voice model once (internet), from Hugging Face</string>
+    <string name="kokoro_download">Download Kokoro voices</string>
+    <string name="kokoro_download_hint">Natural Brazilian Portuguese voices. Downloads %1$d MB once from Hugging Face (needs internet only now); after that it works offline. Generating is slower than the system voice.</string>
+    <string name="kokoro_download_failed">Download failed: %1$s. You can try again; it resumes.</string>
 </resources>

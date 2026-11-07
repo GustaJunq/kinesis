@@ -2,6 +2,19 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.2.0-hotfix
+
+### Adicionado
+- **Vozes Kokoro no Texto para fala:** vozes neurais em português do Brasil (Dora, Alex e Santa) rodando no aparelho com
+  ONNX Runtime. O modelo (cerca de 93 MB) é baixado uma vez do Hugging Face, a pedido do usuário (é o único momento que
+  precisa de internet); depois funciona offline. O texto vira fonemas com um fonetizador pt-BR próprio (números são lidos
+  por extenso). Aparece na lista de plugins como "Vozes Kokoro", que pode ser desinstalada e baixada de novo.
+
+### Corrigido
+- Importar `.aureaproj` falhava com "project.json not found in archive": o app decidia o formato pelo primeiro arquivo
+  do zip, e o Aurea grava a mídia antes do `project.aurea`. Agora o zip inteiro é examinado.
+- O reconhecimento de pacotes `.knsplugin` pelo conteúdo olha as primeiras entradas, não só a primeira.
+
 ## 0.2.0
 
 ### Adicionado
@@ -18,9 +31,6 @@ Todas as versões do Kinesis Editor. As notas completas de cada release ficam em
 
 ### Corrigido
 - CI: o build nativo fixa o libclang no LLVM 18 (o bindgen gerava structs vazias).
-
-### Ainda não incluído
-- Integração do motor Kokoro (ONNX) no plugin de voz.
 
 ## Não lançado
 

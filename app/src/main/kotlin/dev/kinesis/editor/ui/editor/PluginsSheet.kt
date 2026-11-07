@@ -51,6 +51,7 @@ import dev.kinesis.core.plugin.PresetKind
 import dev.kinesis.core.plugin.Presets
 import dev.kinesis.editor.R
 import dev.kinesis.editor.plugins.InstalledPlugin
+import dev.kinesis.editor.plugins.KokoroFiles
 import dev.kinesis.editor.plugins.KokoroTts
 import dev.kinesis.editor.plugins.OfficialPlugins
 import dev.kinesis.editor.plugins.PluginStore
@@ -63,6 +64,7 @@ import dev.kinesis.editor.ui.common.OverlineLabel
 import dev.kinesis.editor.ui.common.PillChip
 import dev.kinesis.editor.ui.common.PrimaryButton
 import dev.kinesis.editor.ui.common.SecondaryButton
+import dev.kinesis.editor.ui.plugins.KokoroDownloader
 import dev.kinesis.editor.ui.plugins.PluginsScreen
 import dev.kinesis.editor.ui.theme.KColors
 import dev.kinesis.editor.ui.theme.KDims
@@ -215,20 +217,23 @@ fun TtsDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val engines = remember {
-        val store = PluginStore(context)
-        listOfNotNull<TtsEngine>(KokoroTts.fromStore(context, store), SystemTts(context))
+        androidx.compose.runtime.mutableStateListOf<TtsEngine>().apply {
+            if (KokoroFiles.isInstalled(context)) add(KokoroTts(context))
+            add(SystemTts(context))
+        }
     }
     DisposableEffect(Unit) { onDispose { engines.forEach { runCatching { it.close() } } } }
+    var kokoroRevision by remember { mutableStateOf(0) }
     var voices by remember { mutableStateOf<List<TtsVoice>?>(null) }
     var voice by remember { mutableStateOf<TtsVoice?>(null) }
     var text by remember { mutableStateOf("") }
     var speed by remember { mutableStateOf(1f) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(kokoroRevision) {
         val all = engines.flatMap { e -> runCatching { e.voices() }.getOrDefault(emptyList()) }
         voices = all
-        voice = all.firstOrNull { it.locale.language == "pt" } ?: all.firstOrNull()
+        voice = voice?.takeIf { it in all } ?: all.firstOrNull { it.engine == "kokoro" } ?: all.firstOrNull { it.locale.language == "pt" } ?: all.firstOrNull()
     }
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
@@ -256,6 +261,9 @@ fun TtsDialog(vm: EditorViewModel, onDismiss: () -> Unit) {
                             }
                         }
                     }
+                }
+                if (engines.none { it.id == "kokoro" }) {
+                    KokoroDownloader(onDone = { engines.add(0, KokoroTts(context)); kokoroRevision++ })
                 }
                 LabeledSlider(stringResource(R.string.tts_speed), speed, 0.5f..2f, { speed = (it * 20).toInt() / 20f }, {}, suffix = "×")
                 error?.let { Text(it, color = KColors.Danger, style = MaterialTheme.typography.bodySmall) }
