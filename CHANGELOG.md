@@ -2,7 +2,7 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
-## 0.2.1
+## 0.2.0-hotfix
 
 ### Adicionado
 - **Vozes Kokoro no Texto para fala:** vozes neurais em português do Brasil (Dora, Alex e Santa) rodando no aparelho com
