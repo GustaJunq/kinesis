@@ -46,6 +46,9 @@ enum class PluginPermission(val id: String, val nativeOnly: Boolean = false) {
 
     /** Use the speech synthesis of the device (offline voices). Official plugins only. */
     SPEECH("speech", nativeOnly = true),
+
+    /** Download the plugin's own model files once, from a fixed address shown to the user. Official plugins only. */
+    DOWNLOAD("network.download", nativeOnly = true),
     ;
 
     companion object {

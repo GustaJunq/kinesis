@@ -39,7 +39,7 @@ class StagedPlugin(val pkg: PluginArchive.Package, internal val dir: File, val r
  * Plugins on the device: `files/plugins/<id>/` holds each package as it came (manifest, presets, script, assets);
  * `files/plugins/state.json` holds which are disabled and which official plugins were uninstalled.
  */
-class PluginStore(context: Context) {
+class PluginStore(private val context: Context) {
     private val root = File(context.filesDir, "plugins").apply { mkdirs() }
     private val stateFile = File(root, "state.json")
     private val json = Json { prettyPrint = true }
@@ -73,7 +73,8 @@ class PluginStore(context: Context) {
     fun list(): List<InstalledPlugin> {
         val s = state()
         val official = OfficialPlugins.all.map { m ->
-            InstalledPlugin(m, official = true, installed = m.id !in s.removedOfficial, enabled = m.id !in s.disabled)
+            val installed = if (m.id == OfficialPlugins.KOKORO_ID) KokoroFiles.isInstalled(context) else m.id !in s.removedOfficial
+            InstalledPlugin(m, official = true, installed = installed, enabled = m.id !in s.disabled, sizeBytes = if (m.id == OfficialPlugins.KOKORO_ID && installed) KokoroFiles.totalBytes else 0)
         }
         val packages = root.listFiles { f -> f.isDirectory && !f.name.startsWith(".") }.orEmpty().mapNotNull { d ->
             val m = readManifest(d) ?: return@mapNotNull null
@@ -135,7 +136,9 @@ class PluginStore(context: Context) {
 
     /** Removes a package, or marks an official plugin as uninstalled (it can be reinstalled from the list). */
     fun uninstall(id: String) {
-        if (OfficialPlugins.all.any { it.id == id }) {
+        if (id == OfficialPlugins.KOKORO_ID) {
+            KokoroFiles.delete(context)
+        } else if (OfficialPlugins.all.any { it.id == id }) {
             val s = state()
             save(s.copy(removedOfficial = s.removedOfficial + id))
         } else {
@@ -184,6 +187,7 @@ class PluginStore(context: Context) {
             PluginPermission.PROJECT_WRITE -> dev.kinesis.editor.R.string.perm_project_write
             PluginPermission.MEDIA_WRITE -> dev.kinesis.editor.R.string.perm_media_write
             PluginPermission.SPEECH -> dev.kinesis.editor.R.string.perm_speech
+            PluginPermission.DOWNLOAD -> dev.kinesis.editor.R.string.perm_download
         }
     }
 }

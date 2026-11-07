@@ -94,6 +94,11 @@ Exemplos completos: `plugins/examples/presets-basicos` e `plugins/examples/escal
 ## Texto para fala (plugin oficial) e Kokoro
 
 Vem instalado; usa as vozes **offline** do Android (pt-BR primeiro). Aba Plugins → Texto para fala: texto, voz,
-velocidade; o áudio vira uma camada de áudio na agulha. Pacote Kokoro (vozes pf_dora, pm_alex, pm_santa; Apache-2.0,
-modelo ~90 MB): é um plugin `data` com `extends: "dev.kinesis.tts"`; a integração com o motor ONNX ainda não está
-nesta versão (o app procura o pacote, mas sem o motor ele não é usado).
+velocidade; o áudio vira uma camada de áudio na agulha.
+
+**Vozes Kokoro** (plugin oficial, pode ser desinstalado): modelo Kokoro-82M (Apache-2.0) com ONNX Runtime, vozes pt-BR
+`pf_dora`, `pm_alex` e `pm_santa`. O modelo int8 (cerca de 93 MB) e as vozes são baixados do Hugging Face quando o usuário
+toca em "Baixar as vozes Kokoro" (permissão `network.download`, só de plugins oficiais); depois tudo roda offline. O
+texto vira fonemas com um fonetizador pt-BR próprio (`PortuguesePhonemizer`, regras ajustadas contra o espeak-ng) e o
+modelo gera áudio de 24 kHz. Em testes com transcrição automática, ~94% das palavras voltam corretas. A geração é mais
+lenta que a voz do sistema, e mais ainda em aparelhos fracos.

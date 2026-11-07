@@ -14,8 +14,8 @@ android {
         applicationId = "io.github.gustajunq.kinesis"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.2.0"
+        versionCode = 16
+        versionName = "0.2.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // The native libraries (ours and MediaPipe's) are built for these ABIs only.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
@@ -100,6 +100,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     // On-device person segmentation (Apache-2.0) for background removal; the model is in assets/models.
     implementation(libs.mediapipe.tasks.vision)
+    // Runs the Kokoro voice model (MIT) on the phone; the model itself is downloaded on request.
+    implementation(libs.onnxruntime.android)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

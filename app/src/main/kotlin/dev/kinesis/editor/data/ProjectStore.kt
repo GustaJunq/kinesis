@@ -129,11 +129,22 @@ class ProjectStore(private val context: Context) {
      * project lost in the conversion (always empty for `.knsproj`).
      */
     fun import(input: InputStream): ImportResult {
-        val buffered = BufferedInputStream(input, 64 * 1024)
-        buffered.mark(64 * 1024)
-        val first = firstZipEntryName(buffered)
-        buffered.reset()
-        return if (AureaImport.isAureaEntry(first)) importAurea(buffered) else ImportResult(importKnsproj(buffered), emptyList())
+        // The format is decided by the entries of the whole zip, not by the first one: the `.aureaproj` of the Aurea app
+        // lists its media before `project.aurea`. The stream is kept in a file so it can be read twice.
+        val tmp = File(root, ".import-src-${UUID.randomUUID()}")
+        try {
+            tmp.outputStream().use { input.copyTo(it, 64 * 1024) }
+            val aurea = try {
+                java.util.zip.ZipFile(tmp).use { z -> z.getEntry(AureaImport.PROJECT_ENTRY) != null && z.getEntry(KnsprojArchive.PROJECT_ENTRY) == null }
+            } catch (e: java.util.zip.ZipException) {
+                throw ProjectImportException("not a zip archive")
+            }
+            return tmp.inputStream().buffered(64 * 1024).use { s ->
+                if (aurea) importAurea(s) else ImportResult(importKnsproj(s), emptyList())
+            }
+        } finally {
+            tmp.delete()
+        }
     }
 
     private fun importAurea(input: InputStream): ImportResult {
@@ -176,29 +187,6 @@ class ProjectStore(private val context: Context) {
         } finally {
             if (tmp.exists()) tmp.deleteRecursively()
         }
-    }
-
-    /** Name of the first local file entry of a zip, read from its header, or null. */
-    private fun firstZipEntryName(input: InputStream): String? {
-        val header = ByteArray(30)
-        if (readFully(input, header) < 30) return null
-        if (header[0] != 0x50.toByte() || header[1] != 0x4b.toByte() || header[2] != 3.toByte() || header[3] != 4.toByte()) return null
-        val length = (header[26].toInt() and 0xff) or ((header[27].toInt() and 0xff) shl 8)
-        if (length !in 1..512) return null
-        val name = ByteArray(length)
-        if (readFully(input, name) < length) return null
-        return String(name, Charsets.UTF_8)
-    }
-
-    /** Reads until [buf] is full or the stream ends (InputStream.readNBytes needs API 33). */
-    private fun readFully(input: InputStream, buf: ByteArray): Int {
-        var n = 0
-        while (n < buf.size) {
-            val r = input.read(buf, n, buf.size - n)
-            if (r < 0) break
-            n += r
-        }
-        return n
     }
 
     private fun importKnsproj(input: InputStream): String {

@@ -65,14 +65,18 @@ import java.util.Locale
 /** True when [uri] is a plugin package: its name ends in `.knsplugin` or its first zip entry is `manifest.json`. */
 fun isPluginPackage(resolver: ContentResolver, uri: Uri): Boolean {
     if (uri.lastPathSegment?.lowercase(Locale.ROOT)?.endsWith(".knsplugin") == true) return true
+    // A package is recognised by `manifest.json` among the first entries (it is usually the first or second).
     return runCatching {
         resolver.openInputStream(uri)?.use { raw ->
-            val input = BufferedInputStream(raw)
-            val header = ByteArray(30)
-            if (input.read(header) < 30 || header[0] != 0x50.toByte() || header[1] != 0x4b.toByte()) return@use false
-            val n = (header[26].toInt() and 0xff) or ((header[27].toInt() and 0xff) shl 8)
-            val name = ByteArray(n)
-            input.read(name) == n && String(name, Charsets.UTF_8) == "manifest.json"
+            java.util.zip.ZipInputStream(BufferedInputStream(raw)).use { z ->
+                var n = 0
+                var found = false
+                while (n++ < 16) {
+                    val e = z.nextEntry ?: break
+                    if (e.name == "manifest.json") { found = true; break }
+                }
+                found
+            }
         } ?: false
     }.getOrDefault(false)
 }
@@ -275,8 +279,49 @@ private fun PluginCard(p: InstalledPlugin, onToggle: (Boolean) -> Unit, onRemove
             if (p.installed) {
                 SecondaryButton(stringResource(R.string.plugin_uninstall), onRemove, pill = true)
             } else {
-                SecondaryButton(stringResource(R.string.plugin_reinstall), onReinstall, pill = true)
+                if (p.id == dev.kinesis.editor.plugins.OfficialPlugins.KOKORO_ID) KokoroDownloader(onDone = onReinstall)
+                else SecondaryButton(stringResource(R.string.plugin_reinstall), onReinstall, pill = true)
             }
         }
+    }
+}
+
+/**
+ * Downloads the Kokoro voices (model and voices, [KokoroFiles.totalBytes] bytes) from Hugging Face. This is the only
+ * place that goes online for them; it says so, shows progress and can be tried again after a failure (the download
+ * resumes). [onDone] runs when everything is in place.
+ */
+@Composable
+fun KokoroDownloader(onDone: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var progress by remember { mutableStateOf<Float?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var cancel by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        val p = progress
+        if (p == null) {
+            Text(stringResource(R.string.kokoro_download_hint, (dev.kinesis.editor.plugins.KokoroFiles.totalBytes / 1_000_000).toInt()), color = KColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+            SecondaryButton(stringResource(R.string.kokoro_download), {
+                error = null; cancel = false; progress = 0f
+                scope.launch {
+                    try {
+                        dev.kinesis.editor.plugins.KokoroFiles.download(context, { f -> progress = f }, { cancel })
+                        progress = null
+                        onDone()
+                    } catch (e: Exception) {
+                        progress = null
+                        error = if (cancel) null else context.getString(R.string.kokoro_download_failed, e.message ?: e.javaClass.simpleName)
+                    }
+                }
+            }, Modifier.fillMaxWidth(), pill = true)
+        } else {
+            androidx.compose.material3.LinearProgressIndicator(progress = { p }, modifier = Modifier.fillMaxWidth(), color = KColors.Accent)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("${(p * 100).toInt()}%", color = KColors.TextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                TextButton(onClick = { cancel = true }) { Text(stringResource(R.string.cancel), color = KColors.TextSoft) }
+            }
+        }
+        error?.let { Text(it, color = KColors.Danger, style = MaterialTheme.typography.bodySmall) }
     }
 }
