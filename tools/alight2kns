@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Alight Motion .xml -> Kinesis .knsproj. Usage: tools/alight2kns scan|convert ... (see docs/alight-import.md)
+# Uses core/build/libs/alight2kns.jar, building it first when it is missing.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+jar="$root/core/build/libs/alight2kns.jar"
+if [ ! -f "$jar" ]; then (cd "$root" && ./gradlew -q :core:alight2knsJar); fi
+exec java -jar "$jar" "$@"

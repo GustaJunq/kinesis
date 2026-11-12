@@ -2,6 +2,16 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## Não lançado
+
+### Adicionado
+- **Importar do Alight Motion (.xml):** converte o projeto exportado pelo Alight (camadas, keyframes e easing, pré-composições,
+  vídeo e áudio com retime e ganho, sombras e efeitos) em um projeto novo. O app procura as mídias sozinho (endereço original,
+  depois nome, tamanho e resolução no MediaStore), mostra uma tela de mídia não encontrada (com placeholders) e um relatório
+  do que foi convertido, aproximado ou não suportado. Também há a linha de comando `tools/alight2kns`. Veja
+  [docs/alight-import.md](docs/alight-import.md).
+- **Efeito Dobrar (`bendWarp`):** dobra o conteúdo em arco ao longo de um eixo (ângulo, eixo, comprimento, deslocamento).
+
 ## 0.2.0-hotfix
 
 ### Adicionado
