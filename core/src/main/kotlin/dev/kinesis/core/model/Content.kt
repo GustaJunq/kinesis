@@ -49,7 +49,7 @@ data class TextContent(
     val maxWidth: Float = 0f,
     val stroke: StrokeSpec? = null,
     val animators: List<TextAnimator> = emptyList(),
-    /** After Effects style animators: per-character properties weighted by an expression selector. */
+    /** motion-graphics style animators: per-character properties weighted by an expression selector. */
     val propertyAnimators: List<TextPropertyAnimator> = emptyList(),
 )
 
@@ -108,7 +108,7 @@ data class TextAnimator(
 )
 
 /**
- * A text animator in the After Effects sense: it holds properties (any subset of position, scale, rotation, opacity)
+ * A text animator in the usual motion-graphics sense: it holds properties (any subset of position, scale, rotation, opacity)
  * and an Expression Selector whose [amount] (percent) says how strongly each character receives them.
  *
  * Per character, with `a = amount / 100` (each axis for position and scale when the expression returns an array):
@@ -125,7 +125,7 @@ data class TextAnimator(
 data class TextPropertyAnimator(
     val name: String = "Animator 1",
     val enabled: Boolean = true,
-    /** What `textIndex` counts: characters (spaces included, as in After Effects), words or lines. */
+    /** What `textIndex` counts: characters (spaces included, as in common motion-graphics tools), words or lines. */
     val unit: TextUnit = TextUnit.CHARACTER,
     /** Pixels, added to the character position. */
     val position: AnimVec2? = null,
@@ -275,7 +275,7 @@ enum class RotoMode {
     @SerialName("remove") REMOVE,
 }
 
-/** One brush stroke of the Roto Brush: [points] are normalised (0..1) in the upright frame, [size] is the brush diameter as a fraction of the frame's shorter side. */
+/** One brush stroke of the Cut-out Brush: [points] are normalised (0..1) in the upright frame, [size] is the brush diameter as a fraction of the frame's shorter side. */
 @Serializable
 data class RotoStroke(
     val mode: RotoMode = RotoMode.ADD,
@@ -283,17 +283,17 @@ data class RotoStroke(
     val points: List<Vec2> = emptyList(),
 )
 
-/** The strokes painted on one frame, [time] seconds after [RotoBrush.sourceStart]. */
+/** The strokes painted on one frame, [time] seconds after [CutoutBrush.sourceStart]. */
 @Serializable
 data class RotoFrame(val time: Double, val strokes: List<RotoStroke> = emptyList())
 
 /**
- * The recipe of a Roto Brush cut-out: the video it was made from and the strokes the person painted. The object is
+ * The recipe of a Cut-out Brush cut-out: the video it was made from and the strokes the person painted. The object is
  * followed from each painted frame to the next; painting a frame again corrects the following ones. The packed-alpha
  * video of the layer is the result; this is what is needed to make it again.
  */
 @Serializable
-data class RotoBrush(
+data class CutoutBrush(
     /** Asset id of the source video. */
     val source: String,
     /** Seconds into the source where the cut-out starts. */
@@ -331,8 +331,13 @@ data class MediaContent(
     val alphaPacked: Boolean = false,
     /** Parametric equalizer (format v8), applied after the volume of the clip; empty = off. */
     val eq: List<EqBand> = emptyList(),
-    /** Roto Brush (format v9): how this packed-alpha video was cut out, so it can be edited again. */
-    val roto: RotoBrush? = null,
+    /**
+     * Cut-out Brush (format v9; called `roto` up to v11, which is still read): how this packed-alpha video was cut out,
+     * so it can be edited again.
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.json.JsonNames("roto")
+    val cutout: CutoutBrush? = null,
 ) {
     /** Media time (seconds) shown at layer-local time [local]. */
     fun sourceTime(local: Double): Double = sourceStart + local * speed

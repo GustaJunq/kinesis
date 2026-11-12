@@ -35,7 +35,7 @@ object ExprScope {
 
 /**
  * Replaces every property of a layer that has an active expression by its value at the evaluated time, so the rest of
- * the evaluator keeps sampling plain static properties. Units follow After Effects inside expressions: percentages for
+ * the evaluator keeps sampling plain static properties. Units follow the usual motion-graphics conventions inside expressions: percentages for
  * scale and opacity (100 = full), position measured from the top-left corner of the composition, colours as 0..1 RGBA.
  */
 object ExpressionResolver {
@@ -75,7 +75,7 @@ object ExpressionResolver {
         return out
     }
 
-    /** After Effects layer index: 1 is the top layer of the container (the last in paint order). */
+    /** 1-based layer index: 1 is the top layer of the container (the last in paint order). */
     fun aeIndex(layer: Layer, siblings: Map<String, Layer>): Int {
         val ids = siblings.keys.toList()
         val i = ids.indexOf(layer.id)
@@ -119,7 +119,7 @@ object ExpressionResolver {
         layer?.let { layerInfo(it, siblings, containerTime, comp) }
     }
 
-    /** Converts values between the stored form of a property and the After Effects form seen by expressions. */
+    /** Converts values between the stored form of a property and the form seen by expressions. */
     private class Codec(val kind: Any, val propId: String, val comp: Composition) {
         private val center = if (propId == "transform.position") doubleArrayOf(comp.width / 2.0, comp.height / 2.0) else doubleArrayOf(0.0, 0.0)
         val isArray: Boolean get() = kind !is FloatKind

@@ -49,7 +49,7 @@ class ExpressionSceneTest {
 
     @Test
     fun positionIsMeasuredFromTheTopLeftCorner() {
-        // AE centre [w/2, h/2] is the origin of the Kinesis composition.
+        // top-left-origin centre [w/2, h/2] is the origin of the Kinesis composition.
         val p = project(shape("a", """{"position":{"value":[0,0],"expression":"[thisComp.width / 2 + 100, thisComp.height / 2]"}}"""), width = 1000, height = 600)
         val m = node(p, 0.0, "a").matrix
         assertEquals(100f, m.tx, 1e-3f)
@@ -163,7 +163,7 @@ class ExpressionSceneTest {
         val total = project(textLayer("t", "Hello", """{"position":[100,0],"amount":{"value":100,"expression":"textTotal"}}"""))
         assertEquals(listOf(5f, 5f, 5f, 5f, 5f), glyphs(total, 0.5).map { it.dx })
         val index = project(shape("low"), textLayer("t", "ab", """{"position":[100,0],"amount":{"value":100,"expression":"index"}}"""))
-        // AE layer index: the text layer is in the middle of three → 2 from the top... here two layers: it is the top one.
+        // 1-based layer index: the text layer is in the middle of three → 2 from the top... here two layers: it is the top one.
         assertEquals(listOf(1f, 1f), glyphs(index, 0.5).map { it.dx })
     }
 
@@ -239,7 +239,7 @@ class ExpressionSceneTest {
         assertEquals("Bounce", back.layers[1].text!!.propertyAnimators[0].name)
         // Valid against the official schema, and the format version is 8.
         val schema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
-            .getSchema(File(TestProjects.repoRoot, "schema/knsproj-v11.schema.json").readText())
+            .getSchema(File(TestProjects.repoRoot, "schema/knsproj-v12.schema.json").readText())
         val errors = schema.validate(ObjectMapper().readTree(json)).map { it.message }
         assertEquals(emptyList<String>(), errors)
         assertTrue(json.contains("\"formatVersion\": ${dev.kinesis.core.model.FORMAT_VERSION}"))

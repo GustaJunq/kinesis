@@ -127,7 +127,7 @@ object JsonPretty {
  * version N and returns one of version N + 1.
  */
 object Migrations {
-    private val steps: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to ::v1ToV2, 2 to ::v2ToV3, 3 to ::v3ToV4, 4 to ::v4ToV5, 5 to ::v5ToV6, 6 to ::v6ToV7, 7 to ::v7ToV8, 8 to ::v8ToV9, 9 to ::v9ToV10, 10 to ::v10ToV11)
+    private val steps: Map<Int, (JsonObject) -> JsonObject> = mapOf(1 to ::v1ToV2, 2 to ::v2ToV3, 3 to ::v3ToV4, 4 to ::v4ToV5, 5 to ::v5ToV6, 6 to ::v6ToV7, 7 to ::v7ToV8, 8 to ::v8ToV9, 9 to ::v9ToV10, 10 to ::v10ToV11, 11 to ::v11ToV12)
 
     fun migrate(root: JsonObject, fromVersion: Int): JsonObject {
         var doc = root
@@ -143,13 +143,34 @@ object Migrations {
     /** Version 3 only adds optional fields (expressions, text property animators), so version 2 documents are valid as they are. */
     fun v2ToV3(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(3)))
 
+    /**
+     * Version 12 renames the cut-out recipe of a packed-alpha clip from `roto` to `cutout` (a neutral name). The old key
+     * is moved, so a v11 project keeps its strokes; the reader also still accepts `roto`.
+     */
+    fun v11ToV12(doc: JsonObject): JsonObject {
+        fun walk(e: JsonElement): JsonElement = when (e) {
+            is JsonObject -> {
+                val m = LinkedHashMap<String, JsonElement>()
+                // Only media contents (they have an `asset`) carry the recipe.
+                val isMedia = e.containsKey("asset") && e.containsKey("roto")
+                for ((k, v) in e) {
+                    if (isMedia && k == "roto") { if (!e.containsKey("cutout")) m["cutout"] = v } else m[k] = walk(v)
+                }
+                JsonObject(m)
+            }
+            is JsonArray -> JsonArray(e.map(::walk))
+            else -> e
+        }
+        return JsonObject((walk(doc) as JsonObject) + ("formatVersion" to JsonPrimitive(12)))
+    }
+
     /** Version 11 only adds an effect (Copy Background), so version 10 documents are valid as they are. */
     fun v10ToV11(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(11)))
 
     /** Version 10 only adds effects (8-bit, PixDither, Pixel Encoder, Kernel, Signal Analog, Glitchify, Dissolve Shake), so version 9 documents are valid as they are. */
     fun v9ToV10(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(10)))
 
-    /** Version 9 only adds optional fields (`editorView`, the TimeSlice effect, Roto Brush strokes), so version 8 documents are valid as they are. */
+    /** Version 9 only adds optional fields (`editorView`, the TimeSlice effect, Cut-out Brush strokes), so version 8 documents are valid as they are. */
     fun v8ToV9(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(9)))
 
     /** Version 8 only adds optional fields (`markers`, the `eq` of audio and video clips), so version 7 documents are valid as they are. */

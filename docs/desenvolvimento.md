@@ -134,7 +134,7 @@ põe o resultado como nova camada acima da original, que fica oculta (um passo d
   (matriz dispositivo→mundo) vira a rotação da câmera Kinesis por `C·(R0ᵀ·R)·C` com `C = diag(1,−1,−1)`; intensidade escala o ângulo
   do eixo-ângulo; travas zeram componentes do Euler relativo. A pose ao vivo só alimenta a prévia; o projeto muda uma vez, ao parar.
   Suavização gaussiana sem atraso e simplificação Ramer–Douglas–Peucker entram antes dos keyframes (`splice` troca só o trecho gravado).
-- **Roto Brush** (`core/video/RotoOps.kt`, `RotoPropagator.kt`, `media/RotoBrushSession.kt`, `ui/editor/RotoBrushUi.kt`): os quadros do
+- **Pincel de recorte** (`core/video/RotoOps.kt`, `RotoPropagator.kt`, `media/RotoBrushSession.kt`, `ui/editor/RotoBrushUi.kt`): os quadros do
   trecho são decodificados uma vez (pequenos, em pé) para um arquivo, e as máscaras ficam em outro, para o app não encher a memória; o
   `RotoPropagator` (testado no core com um segmentador de mentira) pergunta ao modelo no ponto mais interno da máscara anterior,
   limita a resposta ao lugar onde o objeto pode ter ido e mantém a máscara anterior (marcando o quadro) quando a resposta não parece
@@ -208,7 +208,7 @@ No CI eles rodam num emulador Android 14 e imprimem miniaturas dos quadros no lo
 
 Funcionalidades fora desta beta, documentadas em vez de simuladas:
 
-- **Expressões:** só as APIs da [matriz](expressoes.md) existem; `wiggle`/`random` não reproduzem os números do After Effects,
+- **Expressões:** só as APIs da [matriz](expressoes.md) existem; `wiggle`/`random` não reproduzem os números de outros editores,
   não há `effect()`/`sourceText`/seletor de intervalo de texto, o motor (Rhino) não tem limite rígido de memória e a
   CLI Python só confere a estrutura do código (a checagem exata de sintaxe é do app).
 - **3D:** uma única luz projeta sombra por quadro; o panorama de ambiente ilumina e reflete, mas não é desenhado como

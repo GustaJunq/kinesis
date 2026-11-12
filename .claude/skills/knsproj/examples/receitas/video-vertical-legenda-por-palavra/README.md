@@ -5,7 +5,7 @@
 - Barra de progresso (escala em x com pivô à esquerda) e tópico no topo, tudo dentro da área segura.
 
 ## Quando usar
-- Shorts, Reels e TikTok. Para legendar um vídeo real, coloque a camada `video` entre `backdrop` e as legendas e sincronize `start` com a fala.
+- Vídeos verticais para redes sociais. Para legendar um vídeo real, coloque a camada `video` entre `backdrop` e as legendas e sincronize `start` com a fala.
 
 ## Armadilhas
 - Legendas ficam dentro de ±470 px em x e ±820 px em y; o app de destino cobre a parte de baixo com a interface, por isso a legenda está em y = 480.

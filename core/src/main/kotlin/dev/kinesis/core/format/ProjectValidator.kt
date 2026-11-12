@@ -11,7 +11,7 @@ import dev.kinesis.core.model.KnsProject
 import dev.kinesis.core.model.Layer
 import dev.kinesis.core.model.LayerType
 import dev.kinesis.core.model.LightContent
-import dev.kinesis.core.model.RotoBrush
+import dev.kinesis.core.model.CutoutBrush
 import dev.kinesis.core.model.LightKind
 import dev.kinesis.core.model.Primitive
 import dev.kinesis.core.model.Mask
@@ -277,22 +277,22 @@ object ProjectValidator {
                         }
                     }
                 }
-                layer.video?.roto?.let { r ->
-                    val rp = "$p.video.roto"
+                layer.video?.cutout?.let { r ->
+                    val rp = "$p.video.cutout"
                     if (layer.type != LayerType.VIDEO || !layer.video.alphaPacked) warn("roto.layer", rp, "roto only describes packed-alpha video layers")
                     val src = project.asset(r.source)
                     if (src == null || src.type != AssetType.VIDEO) err("roto.source", "$rp.source", "source '${r.source}' is not a video asset of the project")
                     if (!(r.duration > 0.0 && r.duration <= 3600.0) || r.sourceStart < 0.0) err("roto.range", rp, "sourceStart must be >= 0 and duration between 0 and 3600 seconds")
-                    if (r.frames.size > RotoBrush.MAX_FRAMES) err("roto.frames", "$rp.frames", "at most ${RotoBrush.MAX_FRAMES} painted frames")
+                    if (r.frames.size > CutoutBrush.MAX_FRAMES) err("roto.frames", "$rp.frames", "at most ${CutoutBrush.MAX_FRAMES} painted frames")
                     r.frames.forEachIndexed { fi, f ->
                         val fp = "$rp.frames[$fi]"
                         if (!(f.time >= 0.0 && f.time <= r.duration)) err("roto.time", "$fp.time", "frame time must be inside the cut-out (0..duration)")
-                        if (f.strokes.size > RotoBrush.MAX_STROKES) err("roto.stroke", "$fp.strokes", "at most ${RotoBrush.MAX_STROKES} strokes per frame")
+                        if (f.strokes.size > CutoutBrush.MAX_STROKES) err("roto.stroke", "$fp.strokes", "at most ${CutoutBrush.MAX_STROKES} strokes per frame")
                         f.strokes.forEachIndexed { si, st ->
                             val sp = "$fp.strokes[$si]"
-                            if (st.points.isEmpty() || st.points.size > RotoBrush.MAX_POINTS) err("roto.stroke", "$sp.points", "a stroke needs 1 to ${RotoBrush.MAX_POINTS} points")
+                            if (st.points.isEmpty() || st.points.size > CutoutBrush.MAX_POINTS) err("roto.stroke", "$sp.points", "a stroke needs 1 to ${CutoutBrush.MAX_POINTS} points")
                             else if (st.points.any { it.x !in 0f..1f || it.y !in 0f..1f }) err("roto.stroke", "$sp.points", "stroke points are normalised: 0..1")
-                            if (st.size !in RotoBrush.MIN_SIZE..RotoBrush.MAX_SIZE) err("roto.stroke", "$sp.size", "brush size must be between ${RotoBrush.MIN_SIZE} and ${RotoBrush.MAX_SIZE}")
+                            if (st.size !in CutoutBrush.MIN_SIZE..CutoutBrush.MAX_SIZE) err("roto.stroke", "$sp.size", "brush size must be between ${CutoutBrush.MIN_SIZE} and ${CutoutBrush.MAX_SIZE}")
                         }
                     }
                 }

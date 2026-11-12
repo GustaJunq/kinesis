@@ -308,7 +308,7 @@ fun SelectionActions(
     /** Shown for camera layers on phones with a motion sensor: the phone drives the camera. */
     onRealCamera: (() -> Unit)? = null,
     /** Shown for video layers: cut out any object by painting over it. */
-    onRotoBrush: (() -> Unit)? = null,
+    onCutoutBrush: (() -> Unit)? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
@@ -322,7 +322,7 @@ fun SelectionActions(
         if (onAudio != null) ActionChip(Icons.Outlined.GraphicEq, R.string.audio_panel, onAudio)
         if (onExtractAudio != null) ActionChip(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
         if (onRemoveBackground != null) ActionChip(Icons.Outlined.PersonOff, R.string.remove_background, onRemoveBackground)
-        if (onRotoBrush != null) ActionChip(Icons.Outlined.Brush, R.string.roto_brush, onRotoBrush)
+        if (onCutoutBrush != null) ActionChip(Icons.Outlined.Brush, R.string.cutout_brush, onCutoutBrush)
         if (onStabilize != null) ActionChip(Icons.Outlined.CenterFocusStrong, R.string.stabilize, onStabilize)
         if (onRealCamera != null) ActionChip(Icons.Outlined.CameraAlt, R.string.real_camera, onRealCamera)
         ActionChip(Icons.Outlined.Delete, R.string.delete, onDelete, danger = true)

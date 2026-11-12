@@ -1,4 +1,4 @@
-# Tempo e transição: Echo, Posterize Time e Strobe
+# Tempo e transição: eco, redução de quadros e strobe
 
 ## O que demonstra
 - A bola deixa um rastro de 6 cópias (`echo`).

@@ -66,12 +66,12 @@
     <string name="expr_error_line">Line %1$d: %2$s</string>
     <string name="expr_off">Switched off: the property uses its keyframes.</string>
     <string name="expr_open">Expression</string>
-    <string name="expr_p_bounce">Bounce text</string>
+    <string name="expr_p_bounce">Letter bounce</string>
     <string name="expr_p_cascade">Cascade fade</string>
     <string name="expr_p_jitter">Random jitter</string>
     <string name="expr_p_loop_cycle">Loop cycle</string>
     <string name="expr_p_loop_pingpong">Loop ping-pong</string>
-    <string name="expr_p_posterize">Posterize time</string>
+    <string name="expr_p_posterize">Limit frame rate</string>
     <string name="expr_p_ramp">Ramp over time</string>
     <string name="expr_p_wiggle">Wiggle</string>
     <string name="expr_placeholder">JavaScript, e.g. wiggle(2, 30). The last value is the result.</string>
@@ -171,7 +171,7 @@
     <string name="ok">OK</string>
     <string name="onb_body_1">Layers, keyframes, curves, effects and 3D on one timeline. Free, open source and offline.</string>
     <string name="onb_body_2">Tap the diamond to add a keyframe, shape the motion with Bézier curves and watch it play in real time.</string>
-    <string name="onb_body_3">Paste After Effects style expressions such as wiggle() or loopOut(), or animate text one character at a time.</string>
+    <string name="onb_body_3">Paste motion-graphics style expressions such as wiggle() or loopOut(), or animate text one character at a time.</string>
     <string name="onb_body_4">Choose the language and the look. You can change them later in Settings.</string>
     <string name="onb_next">Next</string>
     <string name="onb_skip">Skip</string>
@@ -552,17 +552,17 @@
     <string name="real_camera_discard">Discard</string>
     <string name="real_camera_again">Record again</string>
     <string name="real_camera_keep">Keep</string>
-    <!-- 0.1.6: Roto Brush -->
-    <string name="roto_brush">Roto Brush</string>
+    <!-- 0.1.6: Cut-out Brush -->
+    <string name="cutout_brush">Cut-out Brush</string>
     <string name="roto_apply">Apply</string>
     <string name="roto_preparing">Preparing frames…</string>
     <string name="roto_propagating">Following the object…</string>
     <string name="roto_rendering">Making the video with transparency…</string>
     <string name="roto_painting">Cutting out…</string>
     <string name="roto_hint">Runs on this device. Keep the app open; you can cancel at any time.</string>
-    <string name="roto_open_failed">This video could not be opened for the Roto Brush.</string>
+    <string name="roto_open_failed">This video could not be opened for the Cut-out Brush.</string>
     <string name="roto_nothing">Nothing is cut out yet. Paint over the object first.</string>
-    <string name="roto_failed">The Roto Brush failed: %1$s</string>
+    <string name="roto_failed">The Cut-out Brush failed: %1$s</string>
     <string name="roto_done">Cut-out done. The original layer is hidden, with the cut-out right above it.</string>
     <string name="roto_view_final">Final</string>
     <string name="roto_view_overlay">Overlay</string>
@@ -570,7 +570,7 @@
     <string name="roto_frame_info">Frame %1$d of %2$d · %3$d with a cut-out</string>
     <string name="roto_add">Add</string>
     <string name="roto_remove">Remove</string>
-    <string name="roto_brush_size">Brush</string>
+    <string name="cutout_brush_size">Brush</string>
     <string name="roto_undo_stroke">Undo stroke</string>
     <string name="roto_clear_frame">Clear frame</string>
     <string name="roto_follow">Follow forward</string>
@@ -651,8 +651,8 @@
     <string name="export_format">Format</string>
     <string name="export_format_mp4">H.264 video with sound. For social networks and players.</string>
     <string name="export_format_gif">Animated GIF, no sound. Smaller sizes and frame rates keep the file light.</string>
-    <string name="export_format_webm">WebM (VP8) with transparency, no sound. Opens in browsers, DaVinci Resolve and in After Effects/Premiere with the WebM plug-in.</string>
-    <string name="export_format_mov">QuickTime MOV with PNG frames: lossless with transparency, no sound. Opens in After Effects, Premiere, Final Cut and DaVinci Resolve. Large files.</string>
+    <string name="export_format_webm">WebM (VP8) with transparency, no sound. Opens in browsers and in many video editors (some need a WebM plug-in).</string>
+    <string name="export_format_mov">QuickTime MOV with PNG frames: lossless with transparency, no sound. Opens in the main professional video editors. Large files.</string>
     <string name="export_format_png">PNG sequence in a .zip (one picture per frame, with transparency). Unzip and import as an image sequence.</string>
     <string name="export_fps">Frames per second</string>
     <string name="export_fps_project">Project (%1$d)</string>

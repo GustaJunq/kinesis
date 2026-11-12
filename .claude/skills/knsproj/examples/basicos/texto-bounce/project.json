@@ -3,7 +3,7 @@
   "formatVersion": 3,
   "generator": "knsproj skill examples",
   "meta": {
-    "title": "Texto com quique (Bounce Text)"
+    "title": "Texto com quique "
   },
   "composition": {
     "width": 1080,
@@ -19,7 +19,7 @@
       "start": 0,
       "duration": 3,
       "text": {
-        "content": "BOUNCE TEXT",
+        "content": "QUIQUE",
         "font": {
           "family": "sans-serif",
           "weight": 900

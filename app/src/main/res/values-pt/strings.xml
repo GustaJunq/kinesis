@@ -71,7 +71,7 @@
     <string name="expr_p_jitter">Aleatório por caractere</string>
     <string name="expr_p_loop_cycle">Loop em ciclo</string>
     <string name="expr_p_loop_pingpong">Loop vai e volta</string>
-    <string name="expr_p_posterize">Posterizar tempo</string>
+    <string name="expr_p_posterize">Limitar quadros/s</string>
     <string name="expr_p_ramp">Rampa no tempo</string>
     <string name="expr_p_wiggle">Tremer (wiggle)</string>
     <string name="expr_placeholder">JavaScript, por exemplo wiggle(2, 30). O último valor é o resultado.</string>
@@ -171,7 +171,7 @@
     <string name="ok">OK</string>
     <string name="onb_body_1">Camadas, keyframes, curvas, efeitos e 3D numa só timeline. Grátis, de código aberto e offline.</string>
     <string name="onb_body_2">Toque no diamante para criar um keyframe, molde o movimento com curvas Bézier e veja tudo em tempo real.</string>
-    <string name="onb_body_3">Cole expressões no estilo do After Effects, como wiggle() ou loopOut(), ou anime o texto caractere por caractere.</string>
+    <string name="onb_body_3">Cole expressões no estilo de motion graphics, como wiggle() ou loopOut(), ou anime o texto caractere por caractere.</string>
     <string name="onb_body_4">Escolha o idioma e o visual. Você pode mudar depois em Ajustes.</string>
     <string name="onb_next">Próximo</string>
     <string name="onb_skip">Pular</string>
@@ -552,17 +552,17 @@
     <string name="real_camera_discard">Descartar</string>
     <string name="real_camera_again">Gravar de novo</string>
     <string name="real_camera_keep">Manter</string>
-    <!-- 0.1.6: Roto Brush -->
-    <string name="roto_brush">Roto Brush</string>
+    <!-- 0.1.6: Pincel de recorte -->
+    <string name="cutout_brush">Pincel de recorte</string>
     <string name="roto_apply">Aplicar</string>
     <string name="roto_preparing">Preparando os quadros…</string>
     <string name="roto_propagating">Seguindo o objeto…</string>
     <string name="roto_rendering">Gerando o vídeo com transparência…</string>
     <string name="roto_painting">Recortando…</string>
     <string name="roto_hint">Roda neste aparelho. Mantenha o app aberto; você pode cancelar a qualquer momento.</string>
-    <string name="roto_open_failed">Não foi possível abrir este vídeo no Roto Brush.</string>
+    <string name="roto_open_failed">Não foi possível abrir este vídeo no Pincel de recorte.</string>
     <string name="roto_nothing">Ainda não há recorte. Pinte sobre o objeto primeiro.</string>
-    <string name="roto_failed">O Roto Brush falhou: %1$s</string>
+    <string name="roto_failed">O Pincel de recorte falhou: %1$s</string>
     <string name="roto_done">Recorte pronto. A camada original ficou oculta, com o recorte logo acima.</string>
     <string name="roto_view_final">Final</string>
     <string name="roto_view_overlay">Sobreposição</string>
@@ -570,7 +570,7 @@
     <string name="roto_frame_info">Quadro %1$d de %2$d · %3$d com recorte</string>
     <string name="roto_add">Adicionar</string>
     <string name="roto_remove">Remover</string>
-    <string name="roto_brush_size">Pincel</string>
+    <string name="cutout_brush_size">Pincel</string>
     <string name="roto_undo_stroke">Desfazer pincelada</string>
     <string name="roto_clear_frame">Limpar quadro</string>
     <string name="roto_follow">Seguir adiante</string>
@@ -651,8 +651,8 @@
     <string name="export_format">Formato</string>
     <string name="export_format_mp4">Vídeo H.264 com som. Para redes sociais e players.</string>
     <string name="export_format_gif">GIF animado, sem som. Tamanhos e taxas menores deixam o arquivo leve.</string>
-    <string name="export_format_webm">WebM (VP8) com transparência, sem som. Abre em navegadores, DaVinci Resolve e no After Effects/Premiere com o plug-in de WebM.</string>
-    <string name="export_format_mov">QuickTime MOV com quadros PNG: sem perdas e com transparência, sem som. Abre no After Effects, Premiere, Final Cut e DaVinci Resolve. Arquivos grandes.</string>
+    <string name="export_format_webm">WebM (VP8) com transparência, sem som. Abre em navegadores e em vários editores de vídeo (alguns precisam de plug-in para WebM).</string>
+    <string name="export_format_mov">QuickTime MOV com quadros PNG: sem perdas e com transparência, sem som. Abre nos principais editores de vídeo profissionais. Arquivos grandes.</string>
     <string name="export_format_png">Sequência PNG em um .zip (uma imagem por quadro, com transparência). Descompacte e importe como sequência de imagens.</string>
     <string name="export_fps">Quadros por segundo</string>
     <string name="export_fps_project">Do projeto (%1$d)</string>

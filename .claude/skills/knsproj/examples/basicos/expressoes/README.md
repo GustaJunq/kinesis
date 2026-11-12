@@ -10,7 +10,7 @@
 - A forma de uma propriedade com expressão é `{"value": ..., "expression": "..."}`; com keyframes: `{"keyframes": [...], "expression": "..."}`.
 
 ## Armadilhas
-- As expressões seguem as **unidades do After Effects**: escala e opacidade em %, posição medida do canto superior esquerdo da composição (`[w/2, h/2]` é o centro). O arquivo continua guardando os valores no formato do Kinesis.
+- As expressões seguem as **unidades de motion graphics**: escala e opacidade em %, posição medida do canto superior esquerdo da composição (`[w/2, h/2]` é o centro). O arquivo continua guardando os valores no formato do Kinesis.
 - O resultado é a **última expressão avaliada**; não use `return` fora de função.
 - `expressionEnabled: false` desliga a expressão sem apagá-la.
-- Nem toda função do After Effects existe: veja a matriz em `docs/expressoes.md`.
+- Nem toda função de expressões de outros editores existe: veja a matriz em `docs/expressoes.md`.

@@ -31,6 +31,7 @@ import java.io.File
  * - `schema/knsproj-v9.schema.json` — the v8 schema plus the `editorView` of the viewport (and the TimeSlice effect);
  * - `schema/knsproj-v10.schema.json` — the v9 schema plus the retro and glitch effects of 0.1.8 (8-bit, PixDither, Pixel Encoder, Kernel, Signal Analog, Glitchify, Dissolve Shake);
  * - `schema/knsproj-v11.schema.json` — the v10 schema plus the Copy Background effect;
+ * - `schema/knsproj-v12.schema.json` — the v11 schema with the cut-out recipe of a clip renamed from `roto` to `cutout`;
  * - `tools/knsproj/effects.json` — the registry for the Python validator;
  * - the effects table of `docs/knsproj.md`.
  *
@@ -74,6 +75,9 @@ class RegistryArtifactsTest {
 
     @Test
     fun schemaV11() = check(File(root, "schema/knsproj-v11.schema.json"), JsonPretty.print(buildSchemaV11()) + "\n")
+
+    @Test
+    fun schemaV12() = check(File(root, "schema/knsproj-v12.schema.json"), JsonPretty.print(buildSchemaV12()) + "\n")
 
     @Test
     fun pythonRegistry() = check(File(root, "tools/knsproj/effects.json"), JsonPretty.print(registryJson()) + "\n")
@@ -127,7 +131,7 @@ class RegistryArtifactsTest {
             props["value"] = plain
             props["expression"] = obj(
                 "type" to str("string"), "maxLength" to JsonPrimitive(20000),
-                "description" to str("JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."),
+                "description" to str("JavaScript (motion-graphics style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."),
             )
             props["expressionEnabled"] = obj("type" to str("boolean"), "description" to str("false switches the expression off without deleting it (default true)."))
             val object3 = LinkedHashMap(animated)
@@ -143,7 +147,7 @@ class RegistryArtifactsTest {
             defs[name] = JsonObject(d)
         }
         defs["textPropertyAnimator"] = obj(
-            "description" to str("After Effects style text animator: properties weighted per character by the Expression Selector `amount`."),
+            "description" to str("motion-graphics style text animator: properties weighted per character by the Expression Selector `amount`."),
             "type" to str("object"),
             "properties" to obj(
                 "name" to obj("type" to str("string")),
@@ -436,7 +440,7 @@ class RegistryArtifactsTest {
             "additionalProperties" to JsonPrimitive(false),
         )
         defs["rotoStroke"] = obj(
-            "description" to str("A brush stroke of the Roto Brush."),
+            "description" to str("A brush stroke of the Cut-out Brush."),
             "type" to str("object"),
             "properties" to obj(
                 "mode" to obj("enum" to JsonArray(listOf(str("add"), str("remove"))), "description" to str("add = part of the object (default); remove = not part of it.")),
@@ -461,7 +465,7 @@ class RegistryArtifactsTest {
             "additionalProperties" to JsonPrimitive(false),
         )
         defs["rotoBrush"] = obj(
-            "description" to str("How a packed-alpha video was cut out with the Roto Brush: the source video and the strokes, so it can be edited again."),
+            "description" to str("How a packed-alpha video was cut out with the Cut-out Brush: the source video and the strokes, so it can be edited again."),
             "type" to str("object"),
             "properties" to obj(
                 "source" to obj("type" to str("string"), "description" to str("Asset id of the source video.")),
@@ -506,6 +510,36 @@ class RegistryArtifactsTest {
         val m = LinkedHashMap(v10)
         m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v11.schema.json")
         m["title"] = str("Kinesis project (.knsproj) — project.json, format version 11")
+        m["properties"] = JsonObject(props)
+        return JsonObject(m)
+    }
+
+    /** Version 12 renames `mediaContent.roto` to `cutout` and its definitions to neutral names. */
+    private fun buildSchemaV12(): JsonObject {
+        val v11 = buildSchemaV11()
+        fun rename(e: JsonElement): JsonElement = when (e) {
+            is JsonObject -> JsonObject(e.entries.associate { (k, v) ->
+                val key = when (k) { "rotoBrush" -> "cutoutBrush"; "rotoFrame" -> "cutoutFrame"; "rotoStroke" -> "cutoutStroke"; else -> k }
+                key to rename(v)
+            })
+            is JsonArray -> JsonArray(e.map(::rename))
+            is JsonPrimitive -> if (e.isString) JsonPrimitive(
+                e.content.replace("#/\$defs/rotoBrush", "#/\$defs/cutoutBrush").replace("#/\$defs/rotoFrame", "#/\$defs/cutoutFrame")
+                    .replace("#/\$defs/rotoStroke", "#/\$defs/cutoutStroke").replace("roto.sourceStart", "cutout.sourceStart"),
+            ) else e
+            else -> e
+        }
+        val defs = LinkedHashMap((rename(v11.getValue("\$defs")) as JsonObject))
+        val media = defs.getValue("mediaContent").jsonObject
+        val mprops = LinkedHashMap<String, JsonElement>()
+        for ((k, v) in media.getValue("properties").jsonObject) mprops[if (k == "roto") "cutout" else k] = v
+        defs["mediaContent"] = JsonObject(media + ("properties" to JsonObject(mprops)))
+        val props = LinkedHashMap<String, JsonElement>()
+        for ((k, v) in v11.getValue("properties").jsonObject) props[k] = if (k == "formatVersion") obj("const" to JsonPrimitive(12)) else v
+        val m = LinkedHashMap(v11)
+        m["\$id"] = str("https://github.com/gustajunq/kinesis/schema/knsproj-v12.schema.json")
+        m["title"] = str("Kinesis project (.knsproj) — project.json, format version 12")
+        m["\$defs"] = JsonObject(defs)
         m["properties"] = JsonObject(props)
         return JsonObject(m)
     }

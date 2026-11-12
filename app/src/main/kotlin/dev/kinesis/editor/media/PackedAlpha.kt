@@ -11,7 +11,7 @@ import kotlin.math.max
 /**
  * Writes a video with transparency in the project's packed-alpha layout (colour on the left half of each frame, the mask
  * as grey on the right half), taking the mask of each frame from a [MaskSource]. Shared by background removal and the
- * Roto Brush. The sound of the source is copied without re-encoding.
+ * Cut-out Brush. The sound of the source is copied without re-encoding.
  */
 object PackedAlpha {
     /** What a new layer needs: how much to scale it to look as big as the original, and whether it has sound. */

@@ -362,7 +362,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     onExtractAudio = if (vm.canExtractAudio(selectedLayer)) ({ vm.extractAudio(selectedLayer.id) }) else null,
                     onRemoveBackground = if (vm.canRemoveBackground(selectedLayer)) ({ vm.removeBackground(selectedLayer.id) }) else null,
                     onStabilize = if (vm.canStabilize(selectedLayer)) ({ stabilizeTarget = selectedLayer.id }) else null,
-                    onRotoBrush = if (vm.canRotoBrush(selectedLayer)) ({
+                    onCutoutBrush = if (vm.canCutoutBrush(selectedLayer)) ({
                         vm.pause()
                         rotoRequest = vm.rotoRequest(selectedLayer.id) ?: run { vm.notifyUser(context.getString(R.string.roto_open_failed), true); null }
                     }) else null,
@@ -515,7 +515,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     stabilizeTarget?.let { id ->
         StabilizeDialog(onStart = { settings -> stabilizeTarget = null; vm.stabilize(id, settings) }, onDismiss = { stabilizeTarget = null })
     }
-    rotoRequest?.let { RotoBrushScreen(vm, it, onClose = { rotoRequest = null }) }
+    rotoRequest?.let { CutoutBrushScreen(vm, it, onClose = { rotoRequest = null }) }
     if (showRealCamera) RealCameraSheet(vm, project, onDismiss = { showRealCamera = false })
     mediaJob?.let { MediaJobDialog(it, onCancel = { vm.cancelMediaJob() }) }
     if (showCaptions) CaptionsSheet(vm, project, onDismiss = { showCaptions = false })

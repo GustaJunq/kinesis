@@ -1,8 +1,8 @@
-# Expressões (compatibilidade progressiva com o After Effects)
+# Expressões (compatibilidade progressiva com expressões de motion graphics)
 
 A versão 0.1.1 do Kinesis Editor adiciona **expressões JavaScript** às propriedades animáveis e **animadores de texto por
-caractere** no estilo do After Effects (AE). A meta é que expressões simples copiadas de tutoriais do AE funcionem sem
-alterações. **Isto não é compatibilidade completa com o AE**: só o que está marcado como implementado na matriz abaixo
+caractere** no estilo de motion graphics. A meta é que expressões simples copiadas de tutoriais de motion graphics funcionem sem
+alterações. **Isto não é compatibilidade completa com outros editores**: só o que está marcado como implementado na matriz abaixo
 existe, e cada item tem teste automatizado.
 
 - Formato: `formatVersion` 3 (seção 4.1 de [`knsproj.md`](knsproj.md)); schema `schema/knsproj-v3.schema.json`.
@@ -13,7 +13,7 @@ existe, e cada item tem teste automatizado.
 
 - Uma propriedade com expressão vale `{"value": <valor>, "expression": "<código>"}` (ou `{"keyframes": [...], "expression": "..."}`).
   `expressionEnabled: false` desliga sem apagar o código. O código é gravado **exatamente** como digitado.
-- O resultado da expressão é o **valor da última instrução avaliada**, como no AE (`[s, s]`, `value`, `a * 2`...). Pode ser
+- O resultado da expressão é o **valor da última instrução avaliada**, como nesses editores (`[s, s]`, `value`, `a * 2`...). Pode ser
   número ou array de números (1 a 4).
 - Dentro da expressão, `value` é o valor da propriedade **sem** a expressão (estático ou interpolado dos keyframes).
 - Em cada quadro a cena é calculada por uma função pura (`SceneEvaluator.evaluate(projeto, tempo)`): as expressões são
@@ -22,7 +22,7 @@ existe, e cada item tem teste automatizado.
 - Erro de sintaxe ou de execução: a propriedade usa o valor dos keyframes (como se a expressão estivesse desligada) e o
   editor mostra a linha e a mensagem. Nenhum erro derruba o preview.
 
-### Unidades (as do After Effects dentro da expressão)
+### Unidades (as de motion graphics dentro da expressão)
 
 | Propriedade | Na expressão | Guardada no arquivo |
 |---|---|---|
@@ -37,7 +37,7 @@ existe, e cada item tem teste automatizado.
 
 ## Animadores de texto (`text.propertyAnimators`)
 
-Modelo do AE: um animador tem **propriedades** (`position`, `scale`, `rotation`, `opacity`) e um **seletor de expressão**
+Modelo de referência: um animador tem **propriedades** (`position`, `scale`, `rotation`, `opacity`) e um **seletor de expressão**
 (`amount`, em %). Para cada caractere (ou palavra/linha, `unit`), com `a = amount / 100`:
 
 | Propriedade | Efeito no caractere |
@@ -49,16 +49,16 @@ Modelo do AE: um animador tem **propriedades** (`position`, `scale`, `rotation`,
 
 A expressão do `amount` roda **uma vez por caractere** e por quadro. Nela, `value` e `selectorValue` (também
 `textSelectorValue`) valem o `amount` base (100 por padrão; array de 2 posições se o animador tem `position` ou `scale`),
-`textIndex` começa em **1** e conta caracteres (espaços incluídos, como o AE em "Characters"), `textTotal` é o total e
+`textIndex` começa em **1** e conta caracteres (espaços incluídos, como em outros editores), `textTotal` é o total e
 `index` continua sendo o índice da **camada**. O resultado pode ser número ou array (`[s, s]`).
 
-O exemplo "Bounce Text" do tutorial funciona sem alterações: com `scale: [0, 0]` o caractere está colapsado (amount 100)
+O exemplo clássico de texto que quica funciona sem alterações: com `scale: [0, 0]` o caractere está colapsado (amount 100)
 até a sua vez; então o amount oscila a partir de 50 e decai até 0, e o caractere volta ao tamanho normal. Veja
 `.claude/skills/knsproj/examples/basicos/texto-bounce`.
 
 ## Matriz de compatibilidade
 
-Legenda: **Sim** = implementado e testado com a semântica documentada do AE; **Parcial** = implementado com diferenças
+Legenda: **Sim** = implementado e testado com a semântica de referência documentada; **Parcial** = implementado com diferenças
 descritas; **Não** = não existe (a expressão falha com "... is not defined" e o valor dos keyframes é usado).
 
 ### Contexto
@@ -68,7 +68,7 @@ descritas; **Não** = não existe (a expressão falha com "... is not defined" e
 | `time` | Sim | segundos da composição (do grupo, dentro de um grupo); `posterizeTime()` o quantiza |
 | `value` | Sim | valor da propriedade sem a expressão |
 | `inPoint`, `outPoint` | Sim | início e fim da camada |
-| `index` | Sim | 1 = camada de cima do contêiner (convenção do AE) |
+| `index` | Sim | 1 = camada de cima do contêiner (convenção usual) |
 | `thisComp` | Parcial | `width`, `height`, `duration`, `frameDuration`, `numLayers`, `displayStartTime` (0), `name`, `layer(índice ou nome)` |
 | `thisLayer` / `thisComp.layer(x)` | Parcial | `name`, `index`, `inPoint`, `outPoint`, `startTime` e `transform.position/scale/rotation/opacity` como **valores** no instante atual (sem expressões de outras camadas, sem efeitos, sem `.valueAtTime`) |
 | `thisProperty` | Parcial | `value`, `valueAtTime(t)`, `numKeys`, `key(n)` (`.time`, `.value`, `.index`), `nearestKey(t)`, `velocityAtTime(t)`, `loopIn`, `loopOut`, `wiggle`; sem `propertyGroup`, `name`, `speedAtTime` |
@@ -77,10 +77,10 @@ descritas; **Não** = não existe (a expressão falha com "... is not defined" e
 
 | API | Estado | Observações |
 |---|---|---|
-| `wiggle(freq, amp, octaves, ampMult, t)` | Parcial | parâmetros e semântica do AE (vetores por eixo, oitavas, `t`); o ruído é próprio do Kinesis, **não reproduz a sequência do AE**. Determinístico por camada/propriedade e quadro |
-| `loopOut(tipo, n)` / `loopIn(tipo, n)` | Sim | `"cycle"`, `"pingpong"`, `"offset"`, `"continue"`; vetores. `n` é interpretado como número de **segmentos** contados a partir do último (ou primeiro) keyframe (`0` = todos); essa leitura de `numKeyframes` não foi verificada contra o AE. Sem keyframes devolve `value` |
+| `wiggle(freq, amp, octaves, ampMult, t)` | Parcial | parâmetros e semântica de referência (vetores por eixo, oitavas, `t`); o ruído é próprio do Kinesis, **não reproduz a sequência de outros editores**. Determinístico por camada/propriedade e quadro |
+| `loopOut(tipo, n)` / `loopIn(tipo, n)` | Sim | `"cycle"`, `"pingpong"`, `"offset"`, `"continue"`; vetores. `n` é interpretado como número de **segmentos** contados a partir do último (ou primeiro) keyframe (`0` = todos); essa leitura de `numKeyframes` não foi verificada contra outros editores. Sem keyframes devolve `value` |
 | `linear(t, tMin, tMax, v1, v2)` e `linear(t, v1, v2)` | Sim | vetores elemento a elemento, limitado a `[tMin, tMax]` |
-| `ease`, `easeIn`, `easeOut` | Parcial | mesmos argumentos de `linear`; `ease` é a curva suave com tangentes zero nas duas pontas, `easeIn`/`easeOut` com tangente zero só no começo/fim e linear do outro lado. As curvas exatas do AE não foram comparadas |
+| `ease`, `easeIn`, `easeOut` | Parcial | mesmos argumentos de `linear`; `ease` é a curva suave com tangentes zero nas duas pontas, `easeIn`/`easeOut` com tangente zero só no começo/fim e linear do outro lado. As curvas exatas de outros editores não foram comparadas |
 | `posterizeTime(fps)` | Parcial | quantiza a variável `time` do restante da expressão; não afeta `valueAtTime` |
 
 ### Matemática e aleatoriedade
@@ -88,12 +88,12 @@ descritas; **Não** = não existe (a expressão falha com "... is not defined" e
 | API | Estado | Observações |
 |---|---|---|
 | `Math` | Sim | o `Math` do JavaScript (ES5/ES6 parcial). `Math.random()` é o `random()` determinístico |
-| `random()`, `random(max)`, `random(min, max)`, versões com array | Sim (semântica) | determinístico por quadro; os números **não** coincidem com os do AE |
+| `random()`, `random(max)`, `random(min, max)`, versões com array | Sim (semântica) | determinístico por quadro; os números **não** coincidem com os de outros editores |
 | `seedRandom(seed, timeless)` | Sim (semântica) | `timeless=false` muda a semente a cada quadro; `true` mantém |
 | `clamp(v, min, max)` | Sim | vetores elemento a elemento |
 | `length(v)`, `length(a, b)` | Sim | módulo e distância |
 | `normalize(v)` | Sim | |
-| `add`, `sub`, `mul`, `div`, `dot`, `cross`, `degreesToRadians`, `radiansToDegrees` | Sim | operações vetoriais do AE |
+| `add`, `sub`, `mul`, `div`, `dot`, `cross`, `degreesToRadians`, `radiansToDegrees` | Sim | operações vetoriais usuais |
 | `gaussRandom`, `noise`, `timeToFrames`, `framesToTime`, `rgbToHsl`, `hslToRgb`, `smooth`, `lookAt`, `toComp`, `fromComp`... | Não | |
 | `effect()`, `mask()`, `footage()`, `comp()`, `sourceText`, `createPath`, marcadores, controles de expressão | Não | |
 
@@ -121,16 +121,16 @@ descritas; **Não** = não existe (a expressão falha com "... is not defined" e
 - Cache: o código compilado é guardado por texto (até 512 scripts).
 - Linguagem: JavaScript ES5 completo mais `let`/`const`, funções-seta, *template strings* e os métodos novos de `Math`,
   `Array` e `String` do Rhino. **Não** há parâmetros padrão (`function f(a, b = 2)`) nem *spread* (`[...a]`).
-  Vetores são arrays comuns: `a + b` **não** soma arrays; use `add(a, b)` (igual ao AE).
+  Vetores são arrays comuns: `a + b` **não** soma arrays; use `add(a, b)` (como nos outros editores).
 
 ## Limitações conhecidas
 
-- Os valores de `wiggle`, `random` e `seedRandom` não são os do AE (o gerador deles não é público).
+- Os valores de `wiggle`, `random` e `seedRandom` não são os de outros editores (o gerador deles não é público).
 - `thisComp.layer(x)` lê só a transformação de outra camada, sem avaliar as expressões dela.
 - Expressões em parâmetros de efeitos funcionam (são propriedades animáveis), mas não há `effect("nome")("param")`.
 - Animadores de texto: escala uniforme por caractere; sem seletor de intervalo; `unit: line` não considera quebras
   automáticas.
-- O editor do app não tem autocompletar; o destaque de sintaxe cobre palavras-chave, funções do AE, números, textos e comentários.
+- O editor do app não tem autocompletar; o destaque de sintaxe cobre palavras-chave, funções de expressões, números, textos e comentários.
 - A CLI Python não interpreta JavaScript: confere só parênteses/aspas (código `expression.syntax` aproximado); a checagem
   exata é do app e do core Kotlin.
 - Não há proteção contra expressões que demoram (dentro do limite de instruções) em textos muito longos: o custo é por

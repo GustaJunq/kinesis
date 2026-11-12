@@ -7,7 +7,7 @@ import com.google.mediapipe.framework.image.ByteBufferExtractor
 import com.google.mediapipe.tasks.components.containers.NormalizedKeypoint
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.interactivesegmenter.InteractiveSegmenter
-import dev.kinesis.core.model.RotoBrush
+import dev.kinesis.core.model.CutoutBrush
 import dev.kinesis.core.model.RotoStroke
 import dev.kinesis.core.video.I420Frame
 import dev.kinesis.core.video.MaskTools
@@ -101,11 +101,11 @@ internal class RecordStore(private val file: File, private val recordBytes: Int,
 }
 
 /**
- * One Roto Brush editing session on a stretch of a video: the frames are decoded once (small, upright) so scrubbing and
+ * One Cut-out Brush editing session on a stretch of a video: the frames are decoded once (small, upright) so scrubbing and
  * painting are instant, the masks found so far are kept per frame, and the painted strokes are followed from frame to
  * frame by [RotoPropagator]. [render] writes the packed-alpha video.
  */
-class RotoBrushSession(
+class CutoutBrushSession(
     private val context: Context,
     private val source: File,
     val startUs: Long,
@@ -288,11 +288,11 @@ class RotoBrushSession(
     }
 
     /** The recipe to save with the layer. */
-    fun recipe(assetId: String, sourceStartSeconds: Double, strokes: Map<Int, List<RotoStroke>>): RotoBrush = RotoBrush(
+    fun recipe(assetId: String, sourceStartSeconds: Double, strokes: Map<Int, List<RotoStroke>>): CutoutBrush = CutoutBrush(
         source = assetId,
         sourceStart = sourceStartSeconds,
         duration = (endUs - startUs) / 1e6,
-        frames = strokes.filterValues { it.isNotEmpty() }.toSortedMap().map { (i, s) -> dev.kinesis.core.model.RotoFrame(timeOfFrame(i), s) }.take(RotoBrush.MAX_FRAMES),
+        frames = strokes.filterValues { it.isNotEmpty() }.toSortedMap().map { (i, s) -> dev.kinesis.core.model.RotoFrame(timeOfFrame(i), s) }.take(CutoutBrush.MAX_FRAMES),
     )
 
     override fun close() {

@@ -41,7 +41,7 @@ data class Animatable<T>(
     val keyframes: List<Keyframe<T>> = emptyList(),
     val loop: LoopMode = LoopMode.NONE,
     /**
-     * JavaScript expression (After Effects style) that computes the value at each time. The result is the value of
+     * JavaScript expression (motion-graphics style) that computes the value at each time. The result is the value of
      * the last evaluated statement; `value` is this property's keyframed/static value. See `dev.kinesis.core.expr`.
      */
     val expression: String? = null,
