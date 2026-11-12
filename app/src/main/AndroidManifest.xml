@@ -9,6 +9,13 @@
     <!-- Only to download a speech model once, when the user asks for it (captions). Nothing else uses the network. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Only when an Alight Motion project is imported: the app looks for the project's pictures, videos and sounds on the
+         phone (by name, size and pixel size) to copy them into the new project. It is asked at that moment and nowhere else. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
     <application
         android:name=".KinesisApp"
         android:allowBackup="true"

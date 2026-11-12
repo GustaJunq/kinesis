@@ -98,6 +98,10 @@ import dev.kinesis.core.math.Color
 import dev.kinesis.editor.BuildConfig
 import dev.kinesis.editor.R
 import dev.kinesis.editor.data.ProjectImportException
+import dev.kinesis.core.alight.AlightFormatException
+import dev.kinesis.core.alight.AlightImport
+import dev.kinesis.core.alight.AlightParser
+import dev.kinesis.editor.data.AlightMediaResolver
 import dev.kinesis.editor.data.ProjectStore
 import dev.kinesis.editor.data.ProjectSummary
 import dev.kinesis.editor.ui.common.OverlineLabel
@@ -217,6 +221,69 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private val _alight = MutableStateFlow<AlightFlow?>(null)
+    /** Where an Alight Motion import is (asking for missing media, or showing its report); null when none is running. */
+    val alight = _alight.asStateFlow()
+
+    /** Reads the Alight `.xml`, looks for its media on the phone and either asks for what is missing or converts at once. */
+    fun alightStart(uri: Uri) {
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            _busy.value = true
+            try {
+                val flow = withContext(Dispatchers.IO) {
+                    val scan = (app.contentResolver.openInputStream(uri) ?: error("Cannot open file")).use { AlightParser.scan(it) }
+                    AlightFlow.Missing(scan, AlightMediaResolver.resolve(app, scan.scene.media), emptyMap())
+                }
+                _alight.value = flow
+                if (flow.missing.isEmpty()) alightConvert()
+            } catch (e: AlightFormatException) {
+                _importError.value = app.getString(R.string.import_invalid, e.message ?: "")
+            } catch (e: Exception) {
+                _importError.value = app.getString(R.string.import_failed, e.message ?: e.javaClass.simpleName)
+            } finally {
+                _busy.value = false
+            }
+        }
+    }
+
+    /** Uses [file] for the Alight media [mediaUri]. */
+    fun alightPick(mediaUri: String, file: Uri) {
+        val f = _alight.value as? AlightFlow.Missing ?: return
+        _alight.value = AlightFlow.Missing(f.scan, f.found, f.picked + (mediaUri to file))
+    }
+
+    /** Converts with what was found and picked; the rest becomes placeholders. */
+    fun alightConvert() {
+        val f = _alight.value as? AlightFlow.Missing ?: return
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            _busy.value = true
+            try {
+                val done = withContext(Dispatchers.IO) {
+                    val usable = f.found.filterValues { it.automatic }.mapValues { Uri.parse(it.value.candidate.key) } + f.picked
+                    val conversion = AlightImport.convert(f.scan, usable.keys, "Kinesis Editor ${BuildConfig.VERSION_NAME}")
+                    val result = store.importAlight(conversion) { uri -> usable[uri]?.let { app.contentResolver.openInputStream(it) } }
+                    AlightFlow.Done(result.id, result.report)
+                }
+                refresh()
+                _alight.value = done
+            } catch (e: ProjectImportException) {
+                _alight.value = null
+                _importError.value = app.getString(R.string.import_invalid, e.message ?: "")
+            } catch (e: Exception) {
+                _alight.value = null
+                _importError.value = app.getString(R.string.import_failed, e.message ?: e.javaClass.simpleName)
+            } finally {
+                _busy.value = false
+            }
+        }
+    }
+
+    fun alightDismiss() {
+        _alight.value = null
+    }
+
     fun export(id: String, uri: Uri) {
         val resolver = getApplication<Application>().contentResolver
         viewModelScope.launch {
@@ -281,9 +348,18 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
     LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
 
     val scope = rememberCoroutineScope()
+    // An Alight Motion project is asked for its media only now: the media permission is requested here and nowhere else.
+    var pendingAlight by remember { mutableStateOf<Uri?>(null) }
+    val mediaPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        pendingAlight?.let { vm.alightStart(it) }
+        pendingAlight = null
+    }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
-            if (withContext(Dispatchers.IO) { isPluginPackage(resolver, uri) }) pluginUri = uri else vm.import(uri, onOpen)
+            if (withContext(Dispatchers.IO) { isAlightXml(resolver, uri) }) {
+                val needed = alightPermissions().filter { androidx.core.content.ContextCompat.checkSelfPermission(app, it) != android.content.pm.PackageManager.PERMISSION_GRANTED }
+                if (needed.isEmpty()) vm.alightStart(uri) else { pendingAlight = uri; mediaPermission.launch(needed.toTypedArray()) }
+            } else if (withContext(Dispatchers.IO) { isPluginPackage(resolver, uri) }) pluginUri = uri else vm.import(uri, onOpen)
         }
     }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
@@ -359,6 +435,7 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
             confirmButton = { TextButton(onClick = vm::dismissImportError) { Text(stringResource(R.string.ok), color = KColors.Accent) } },
         )
     }
+    AlightImportDialogs(vm, onOpen)
     if (importWarnings.isNotEmpty()) {
         AlertDialog(
             onDismissRequest = vm::dismissImportWarnings,

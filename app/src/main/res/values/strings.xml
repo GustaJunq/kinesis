@@ -110,7 +110,7 @@
     <string name="import_failed">Import failed: %1$s</string>
     <string name="import_font">Import font</string>
     <string name="import_invalid">This project is not valid:\n%1$s</string>
-    <string name="import_project">Import .knsproj</string>
+    <string name="import_project">Import project (.knsproj, .aureaproj, Alight .xml)</string>
     <string name="include_audio">Include audio</string>
     <string name="invert">Invert</string>
     <string name="italic">Italic</string>
@@ -664,4 +664,19 @@
     <string name="kokoro_download">Download Kokoro voices</string>
     <string name="kokoro_download_hint">Natural Brazilian Portuguese voices. Downloads %1$d MB once from Hugging Face (needs internet only now); after that it works offline. Generating is slower than the system voice.</string>
     <string name="kokoro_download_failed">Download failed: %1$s. You can try again; it resumes.</string>
+    <string name="alight_missing_title">Media not found</string>
+    <string name="alight_missing_message">The Alight project does not carry its pictures, videos and sounds, and these were not found on this phone. Pick each file, or import with gray placeholders you can replace later.</string>
+    <string name="alight_pick">Pick file</string>
+    <string name="alight_use_suggestion">Use %1$s</string>
+    <string name="alight_suggestion_note">Same name, different size: %1$s</string>
+    <string name="alight_picked">Chosen</string>
+    <string name="alight_import_go">Import</string>
+    <string name="alight_import_go_placeholders">Import with %1$d placeholder(s)</string>
+    <string name="alight_report_title">Alight import report</string>
+    <string name="alight_report_summary">%1$d converted · %2$d approximated · %3$d unsupported · %4$d media missing</string>
+    <string name="alight_kind_approximated">Approximated</string>
+    <string name="alight_kind_unsupported">Not supported</string>
+    <string name="alight_kind_missing">Media missing (placeholder)</string>
+    <string name="alight_kind_warning">Notes</string>
+    <string name="alight_open_project">Open project</string>
 </resources>

@@ -11,6 +11,9 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
+import dev.kinesis.core.alight.AlightConversion
+import dev.kinesis.core.alight.ImportReport
+import dev.kinesis.core.alight.ReportKind
 import dev.kinesis.core.edit.Factory
 import dev.kinesis.core.format.AureaFormatException
 import dev.kinesis.core.format.AureaImport
@@ -49,6 +52,9 @@ data class ProjectSummary(
 /** Thrown when an imported project is structurally invalid. */
 /** A new project id and what an imported Aurea project lost in the conversion. */
 data class ImportResult(val id: String, val warnings: List<String>)
+
+/** A new project made from an Alight Motion import, and what the conversion did. */
+class AlightImported(val id: String, val report: ImportReport)
 
 class ProjectImportException(message: String, val issues: List<ValidationIssue> = emptyList()) : Exception(message)
 
@@ -184,6 +190,49 @@ class ProjectStore(private val context: Context) {
             val id = UUID.randomUUID().toString()
             if (!tmp.renameTo(dir(id))) throw IOException("Cannot move imported project into place")
             return ImportResult(id, warnings)
+        } finally {
+            if (tmp.exists()) tmp.deleteRecursively()
+        }
+    }
+
+    /**
+     * Creates a project from an Alight Motion [conversion]. [source] opens the file behind an Alight media address; the
+     * files are copied into the project, so nothing outside it is needed afterwards.
+     */
+    fun importAlight(conversion: AlightConversion, source: (String) -> InputStream?): AlightImported {
+        val tmp = File(root, ".import-${UUID.randomUUID()}")
+        try {
+            File(tmp, "assets").mkdirs()
+            val assets = conversion.project.assets.map { asset ->
+                val label = asset.name ?: asset.path
+                val uri = conversion.media[asset.path] ?: throw ProjectImportException("mídia sem origem: $label")
+                val target = File(tmp, asset.path)
+                target.parentFile?.mkdirs()
+                try {
+                    (source(uri) ?: throw IOException("sem acesso")).use { i -> target.outputStream().use { o -> i.copyTo(o, 64 * 1024) } }
+                } catch (e: IOException) {
+                    throw ProjectImportException("não foi possível copiar \"$label\": ${e.message}")
+                } catch (e: SecurityException) {
+                    throw ProjectImportException("sem permissão para ler \"$label\"")
+                }
+                val probed = try { probe(asset, target) } catch (e: Exception) { throw ProjectImportException("\"$label\" não é uma mídia que o Kinesis consegue ler") }
+                if (asset.width != null && asset.height != null && (probed.width != asset.width || probed.height != asset.height)) {
+                    conversion.report.add(
+                        ReportKind.WARNING, "media:$label",
+                        "o arquivo tem ${probed.width}×${probed.height}, mas o projeto do Alight usava ${asset.width}×${asset.height}: a posição e o corte podem ficar diferentes",
+                    )
+                }
+                probed
+            }
+            val project = conversion.project.copy(assets = assets)
+            val report = ProjectValidator.validate(project)
+            if (!report.isValid) {
+                throw ProjectImportException(report.errors.take(5).joinToString("\n") { "${it.path}: ${it.message}" }, report.errors)
+            }
+            SafeFile.writeText(File(tmp, KnsprojArchive.PROJECT_ENTRY), KnsprojJson.encode(project), keepBackup = false)
+            val id = UUID.randomUUID().toString()
+            if (!tmp.renameTo(dir(id))) throw IOException("Cannot move imported project into place")
+            return AlightImported(id, conversion.report)
         } finally {
             if (tmp.exists()) tmp.deleteRecursively()
         }

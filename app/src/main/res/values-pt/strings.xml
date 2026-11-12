@@ -110,7 +110,7 @@
     <string name="import_failed">Falha ao importar: %1$s</string>
     <string name="import_font">Importar fonte</string>
     <string name="import_invalid">Este projeto não é válido:\n%1$s</string>
-    <string name="import_project">Importar .knsproj</string>
+    <string name="import_project">Importar projeto (.knsproj, .aureaproj, .xml do Alight)</string>
     <string name="include_audio">Incluir áudio</string>
     <string name="invert">Inverter</string>
     <string name="italic">Itálico</string>
@@ -664,4 +664,19 @@
     <string name="kokoro_download">Baixar as vozes Kokoro</string>
     <string name="kokoro_download_hint">Vozes naturais em português do Brasil. Baixa %1$d MB uma vez do Hugging Face (só agora precisa de internet); depois funciona offline. Gerar é mais lento que a voz do sistema.</string>
     <string name="kokoro_download_failed">O download falhou: %1$s. Dá para tentar de novo; ele continua de onde parou.</string>
+    <string name="alight_missing_title">Mídia não encontrada</string>
+    <string name="alight_missing_message">O projeto do Alight não traz as imagens, vídeos e sons, e estes não foram achados neste aparelho. Escolha cada arquivo ou importe com retângulos cinza no lugar, que dá para trocar depois.</string>
+    <string name="alight_pick">Escolher arquivo</string>
+    <string name="alight_use_suggestion">Usar %1$s</string>
+    <string name="alight_suggestion_note">Mesmo nome, tamanho diferente: %1$s</string>
+    <string name="alight_picked">Escolhido</string>
+    <string name="alight_import_go">Importar</string>
+    <string name="alight_import_go_placeholders">Importar com %1$d placeholder(s)</string>
+    <string name="alight_report_title">Relatório da importação do Alight</string>
+    <string name="alight_report_summary">%1$d convertidos · %2$d aproximados · %3$d não suportados · %4$d mídias ausentes</string>
+    <string name="alight_kind_approximated">Aproximado</string>
+    <string name="alight_kind_unsupported">Não suportado</string>
+    <string name="alight_kind_missing">Mídia ausente (placeholder)</string>
+    <string name="alight_kind_warning">Avisos</string>
+    <string name="alight_open_project">Abrir projeto</string>
 </resources>
