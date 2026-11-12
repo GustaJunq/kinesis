@@ -238,7 +238,7 @@ Valores possíveis (o schema é a fonte da verdade):
   efeitos aleatórios usam `seed` inteiro. Principais:
   - cor: `gradientMap` (stops), `exposure`, `brightnessContrast`, `saturation`, `hueShift`, `fill`, `deepGlow`, `lensFlare`, `glow`, `tint`;
   - desfoque: `blur` (radius), `lensBlur`, `directionalBlur`, `radialBlur` (`mode`: spin/zoom), `sharpen`;
-  - distorção: `glass` (refrata as camadas **abaixo** dela), `pinchBulge` (amount −1..1), `warp` (wave/fractal), `mirror`, `twirl`, `ripple`;
+  - distorção: `glass` (refrata as camadas **abaixo** dela), `pinchBulge` (amount −1..1), `warp` (wave/fractal), `bendWarp` (dobra em arco: angle, axis, length, offset), `mirror`, `twirl`, `ripple`;
   - movimento sem keyframes: `autoShake`, `spin`, `oscillate`, `float`, `pulse`;
   - estilo/glitch: `pixelate`, `dropShadow`, `vignette`, `halftone`, `posterize`, `filmGrain`, `scanlines`, `eightBit` (pixeliza + paleta reduzida), `pixDither` (dithering de Bayer), `pixelEncoder` (ASCII), `kernel` (convolução 3×3), `blockGlitch`, `lineGlitch`, `vhs`, `chromaticAberration`, `rgbSplit`, `staticNoise`, `signalAnalog`, `glitchify` (`speed` 0 congela), `dissolveShake` (`progress` 0..1) — exemplos em `basicos/efeito-*`;
   - borda: `outline`, `findEdges`, `emboss`, `sketch`; geradores: `fractalNoise`, `gradientRamp`, `checkerboard`, `grid` (`mode` + `mix`);

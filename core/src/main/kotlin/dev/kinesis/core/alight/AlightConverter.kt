@@ -138,38 +138,16 @@ object AlightConverter {
             return e
         }
 
-        /**
-         * A bend of `amount` degrees as a wave warp: half a wave over the layer's height [boxH], amplitude
-         * `boxH * sin|amount| / 4` px. The sign of the bend is the phase (0 or 180), flipped where the amount crosses zero.
-         */
+        /** `bendwarp` → Kinesis `bendWarp`: the amount is the bend angle; the limits give the curved part of the layer's height. */
         fun bendWarp(e: AlightEffect, at: String, dur: Double, boxH: Double): Effect {
-            val am = AlightAnimation.build(e.props["amount"], dur, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat() + 0f }
+            val angle = AlightAnimation.build(e.props["amount"], dur, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat().coerceIn(-170f, 170f) + 0f }
+            val low = (e.props["lowLimit"]?.static?.firstOrNull() ?: 0.25).coerceIn(0.0, 1.0)
+            val high = (e.props["highLimit"]?.static?.firstOrNull() ?: 0.75).coerceIn(0.0, 1.0)
             val h = boxH.coerceAtLeast(1.0)
-            fun amp(v: Float) = (h * sin(Math.toRadians(abs(v).toDouble())) / 4).toFloat()
-            val freq = (1000.0 / (2 * h)).toFloat()
-            val keys = ArrayList<Keyframe<Float>>(); val phases = ArrayList<Keyframe<Float>>()
-            if (am.keyframes.isEmpty()) {
-                keys += Keyframe(0.0, amp(am.value), Easing.LINEAR); phases += Keyframe(0.0, if (am.value < 0f) 180f else 0f, Easing.LINEAR)
-            } else {
-                val ts = AlightBake.times(listOf(am), dur, 1.0 / 30.0)
-                var prevT = 0.0; var prevV = 0f
-                for ((i, t) in ts.withIndex()) {
-                    val v = am.at(t)
-                    if (i > 0 && prevV * v < 0f) {
-                        val tc = prevT + (t - prevT) * (abs(prevV) / (abs(prevV) + abs(v)))
-                        val lo = max(tc, keys.last().time + 2 * Animatable.KEYFRAME_EPSILON)
-                        if (lo + 2 * Animatable.KEYFRAME_EPSILON < t) {
-                            keys += Keyframe(lo, 0f, Easing.LINEAR); phases += Keyframe(lo, if (prevV < 0f) 180f else 0f, Easing.LINEAR)
-                            keys += Keyframe(lo + 2 * Animatable.KEYFRAME_EPSILON, 0f, Easing.LINEAR); phases += Keyframe(lo + 2 * Animatable.KEYFRAME_EPSILON, if (v < 0f) 180f else 0f, Easing.LINEAR)
-                        }
-                    }
-                    keys += Keyframe(t, amp(v), Easing.LINEAR); phases += Keyframe(t, if (v < 0f) 180f else 0f, Easing.LINEAR)
-                    prevT = t; prevV = v
-                }
-            }
-            val ampA = Animatable(keys.first().value, keys); val phA = Animatable(phases.first().value, phases)
-            report.add(ReportKind.APPROXIMATED, at, "bendwarp aproximado por warp (onda): ${keys.size} keyframes; origem/limites/offset do Alight não são carregados")
-            return makeEffect("warp", nums = mapOf("amplitude" to ampA, "frequency" to anim(freq), "phase" to phA))
+            val length = (abs(high - low) * h).toFloat().coerceAtLeast(1f)
+            val offset = (((high + low) / 2 - 0.5) * h).toFloat()
+            report.add(ReportKind.APPROXIMATED, at, "bendwarp convertido em bendWarp: ângulo, limites e eixo vertical; originType, offset e oppositeType do Alight não são carregados")
+            return makeEffect("bendWarp", nums = mapOf("angle" to angle, "length" to anim(length), "offset" to anim(offset)))
         }
 
         class Fx(val loc: Animatable<Vec2>, val scale: Animatable<Vec2>, val rot: Animatable<Float>, val effects: List<Effect>, val motionBlur: Boolean)

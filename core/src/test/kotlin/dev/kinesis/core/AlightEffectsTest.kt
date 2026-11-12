@@ -106,4 +106,16 @@ class AlightEffectsTest {
         assertTrue(r.report.entries.any { it.kind == ReportKind.UNSUPPORTED && it.message.contains("desconhecido") })
         assertFalse(abs(1.0) < 0)
     }
+
+    @Test
+    fun bendWarpKeepsTheAngleAnimationAndTheLimits() {
+        val r = AlightConverter.convert(scene(fx("bendwarp",
+            """<property name="amount" type="float"><kf t="0.0" v="45"/><kf t="1.0" v="-45"/></property>""" +
+                prop("highLimit", "float", "0.75") + prop("lowLimit", "float", "0.25") + prop("originType", "int", "3"))))
+        val e = r.project.layers.single().effects.single()
+        assertEquals("bendWarp", e.type)
+        assertEquals(2, e.number("angle").keyframes.size)
+        assertEquals(45f, e.number("angle").at(0.0), 1e-4f); assertEquals(-45f, e.number("angle").at(2.0), 1e-4f)
+        assertEquals(50f, e.number("length").at(0.0), 1e-3f)   // (0.75 - 0.25) of the 100 px tall box
+    }
 }

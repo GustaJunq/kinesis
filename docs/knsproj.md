@@ -647,6 +647,10 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `complexity` | `3` | inteiro 1..8 — com `mode: "fractal"` |
 |  |  | `evolution` | `0` | -3600..3600 ° — com `mode: "fractal"` |
 |  |  | `seed` | `0` | inteiro 0..99999 |
+| `bendWarp` (Dobrar) | Distorção | `angle` | `45` | -170..170 ° |
+|  |  | `axis` | `90` | -3600..3600 ° |
+|  |  | `length` | `400` | 1..8000 px |
+|  |  | `offset` | `0` | -8000..8000 px |
 | `mirror` (Espelhar) | Distorção | `axis` | `"horizontal"` | `horizontal`, `vertical`, `both` (estático) |
 |  |  | `center` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
 |  |  | `angle` | `0` | -3600..3600 ° |

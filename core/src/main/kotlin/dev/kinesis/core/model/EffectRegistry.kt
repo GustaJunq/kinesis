@@ -363,6 +363,14 @@ object EffectRegistry {
             seed(),
         ),
         spec(
+            "bendWarp", EffectCategory.DISTORT, "Dobrar", "Bend Warp",
+            "Dobra o conteúdo em arco ao longo de um eixo; as pontas seguem retas.", "Bends the content into an arc along an axis; the ends carry on straight.",
+            num("angle", "Ângulo", "Angle", 45f, -170f, 170f, -170f, 170f, ParamUnit.DEG),
+            angle("axis", 90f, "Eixo", "Axis"),
+            px("length", "Comprimento", "Length", 400f, 8000f, 1500f, min = 1f),
+            num("offset", "Deslocamento", "Offset", 0f, -8000f, 8000f, -2000f, 2000f, ParamUnit.PX),
+        ),
+        spec(
             "mirror", EffectCategory.DISTORT, "Espelhar", "Mirror",
             "Espelha a camada em um eixo que passa pelo centro.", "Mirrors the layer across an axis through the centre.",
             choice("axis", "Eixo", "Axis", "horizontal", c("horizontal", "Horizontal", "Horizontal"), c("vertical", "Vertical", "Vertical"), c("both", "Ambos", "Both")),
