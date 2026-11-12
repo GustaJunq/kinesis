@@ -22,6 +22,55 @@ data class AlightScene(
     val media: List<AlightMedia> = emptyList(),
     /** Bookmark times in milliseconds. */
     val bookmarksMs: List<Long> = emptyList(),
+    /** Layers of this scene in document order: the first is at the back, the last on top. */
+    val layers: List<AlightLayer> = emptyList(),
+)
+
+enum class AlightLayerKind { SHAPE, EMBED, AUDIO }
+
+/** One keyframe: [t] is 0..1 of the layer's duration (the file lists them out of order), [easing] the raw `e` text. */
+@Serializable
+data class AlightKeyframe(val t: Double, val value: List<Double>, val easing: String? = null)
+
+/** A property that is either a constant ([static]) or animated ([keyframes], sorted by time). */
+@Serializable
+data class AlightProp(val static: List<Double>? = null, val keyframes: List<AlightKeyframe> = emptyList()) {
+    val animated get() = keyframes.isNotEmpty()
+}
+
+@Serializable
+data class AlightTransform(
+    val location: AlightProp? = null,
+    val scale: AlightProp? = null,
+    val rotation: AlightProp? = null,
+    val pivot: AlightProp? = null,
+    val opacity: AlightProp? = null,
+)
+
+/**
+ * A layer as written in the XML. Geometry facts that the mapper relies on (checked against the fixture): `size` is the
+ * half-extent of the rectangle, `location` is where the layer's centre goes (in the parent's space, origin top-left
+ * for the scene and the centre for a parent layer) and `pivot` only moves the axis of rotation and scale.
+ */
+@Serializable
+data class AlightLayer(
+    val id: String,
+    val label: String,
+    val kind: AlightLayerKind,
+    val startMs: Long,
+    val endMs: Long,
+    val parentId: String? = null,
+    /** `media` or `color` for shapes, `intrinsic` for embedded scenes. */
+    val fillType: String? = null,
+    /** `content://` address of the picture, video or audio the layer shows or plays. */
+    val mediaUri: String? = null,
+    val mediaFillMode: String? = null,
+    /** Half-extent of the rectangle, from the `size` property. */
+    val size: List<Double>? = null,
+    val inTimeMs: Long? = null,
+    val outTimeMs: Long? = null,
+    val speed: Double? = null,
+    val transform: AlightTransform = AlightTransform(),
 )
 
 enum class AlightMediaKind { IMAGE, VIDEO, AUDIO, OTHER }

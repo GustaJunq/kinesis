@@ -112,6 +112,72 @@ object AlightParser {
             exportedBy = root.getAttribute("am").ifBlank { null },
             media = media.values.toList(),
             bookmarksMs = bookmarks.sorted(),
+            layers = readLayers(root, report),
+        )
+    }
+
+    private fun children(e: Element, name: String): List<Element> {
+        val out = ArrayList<Element>()
+        var c: Node? = e.firstChild
+        while (c != null) { if (c is Element && c.tagName == name) out += c; c = c.nextSibling }
+        return out
+    }
+
+    private fun numbers(text: String): List<Double>? {
+        val parts = text.split(',').map { it.trim().toDoubleOrNull() }
+        return if (parts.isEmpty() || parts.any { it == null || !it.isFinite() }) null else parts.map { it!! }
+    }
+
+    private fun readProp(e: Element?, where: String, report: ImportReport): AlightProp? {
+        e ?: return null
+        val kfs = children(e, "kf").mapNotNull { k ->
+            val v = numbers(k.getAttribute("v"))
+            val t = k.getAttribute("t").toDoubleOrNull()
+            if (v == null || t == null) { report.add(ReportKind.WARNING, where, "keyframe inválido ignorado"); null }
+            else AlightKeyframe(t, v, k.getAttribute("e").ifBlank { null })
+        }.sortedBy { it.t }
+        if (kfs.isNotEmpty()) return AlightProp(keyframes = kfs)
+        val v = numbers(e.getAttribute("value"))
+        if (v == null && e.hasAttribute("value")) report.add(ReportKind.WARNING, where, "valor inválido \"${e.getAttribute("value")}\", ignorado")
+        return v?.let { AlightProp(static = it) }
+    }
+
+    private fun readLayers(scene: Element, report: ImportReport): List<AlightLayer> {
+        val out = ArrayList<AlightLayer>()
+        var c: Node? = scene.firstChild
+        while (c != null) {
+            if (c is Element) {
+                val kind = when (c.tagName) { "shape" -> AlightLayerKind.SHAPE; "embedScene" -> AlightLayerKind.EMBED; "audio" -> AlightLayerKind.AUDIO; else -> null }
+                if (kind != null) readLayer(c, kind, report)?.let { out += it }
+            }
+            c = c.nextSibling
+        }
+        return out
+    }
+
+    private fun readLayer(e: Element, kind: AlightLayerKind, report: ImportReport): AlightLayer? {
+        val id = e.getAttribute("id")
+        val label = e.getAttribute("label").ifBlank { id }
+        val start = e.getAttribute("startTime").toLongOrNull()
+        val end = e.getAttribute("endTime").toLongOrNull()
+        if (id.isBlank() || start == null || end == null || end <= start) {
+            report.add(ReportKind.WARNING, "layer:$label", "camada sem id ou com tempos inválidos ignorada")
+            return null
+        }
+        val t = children(e, "transform").firstOrNull()
+        fun prop(name: String) = readProp(t?.let { children(it, name).firstOrNull() }, "layer:$label/$name", report)
+        val size = children(e, "property").firstOrNull { it.getAttribute("name") == "size" }?.let { numbers(it.getAttribute("value")) }
+        return AlightLayer(
+            id = id, label = label, kind = kind, startMs = start, endMs = end,
+            parentId = e.getAttribute("parent").ifBlank { null },
+            fillType = e.getAttribute("fillType").ifBlank { null },
+            mediaUri = listOf("fillImage", "fillVideo", "src").map { e.getAttribute(it) }.firstOrNull { it.isNotBlank() },
+            mediaFillMode = e.getAttribute("mediaFillMode").ifBlank { null },
+            size = size,
+            inTimeMs = e.getAttribute("inTime").toLongOrNull(),
+            outTimeMs = e.getAttribute("outTime").toLongOrNull(),
+            speed = e.getAttribute("speed").toDoubleOrNull(),
+            transform = AlightTransform(prop("location"), prop("scale"), prop("rotation"), prop("pivot"), prop("opacity")),
         )
     }
 
