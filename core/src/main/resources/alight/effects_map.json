@@ -13,7 +13,7 @@
     "scaleassist": { "action": "bake", "target": "scale", "note": "its scale multiplies the layer's scale" },
     "offset": { "action": "bake", "target": "position", "note": "its offset is added to the layer's position; feather and mask are not carried" },
     "colorize": { "action": "unsupported", "reason": "the meaning of its tint (three numbers) is not documented, and Kinesis' tint takes a colour" },
-    "bendwarp": { "action": "unsupported", "reason": "Kinesis has no bend warp" },
+    "bendwarp": { "action": "map", "kinesis": "warp", "note": "a rough stand-in: Kinesis' wave warp, half a wave over the layer's height, with an amplitude that follows the bend angle (sign carried by the phase); the wave lives in composition space, so it does not follow the layer around" },
     "threshold": { "action": "unsupported", "reason": "Kinesis has no black-and-white threshold" }
   }
 }

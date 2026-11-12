@@ -37,7 +37,7 @@ internal object AlightBake {
     const val MAX_KEYS = 3000
 
     /** Sample times: every key of [bases] plus a grid of [step] seconds over 0..[dur]. */
-    private fun times(bases: List<Animatable<*>>, dur: Double, step: Double): List<Double> {
+    internal fun times(bases: List<Animatable<*>>, dur: Double, step: Double): List<Double> {
         val grid = ArrayList<Double>()
         val n = ceil(dur / step).toInt().coerceIn(1, MAX_KEYS)
         for (i in 0..n) grid += min(dur, i * dur / n)

@@ -138,6 +138,40 @@ object AlightConverter {
             return e
         }
 
+        /**
+         * A bend of `amount` degrees as a wave warp: half a wave over the layer's height [boxH], amplitude
+         * `boxH * sin|amount| / 4` px. The sign of the bend is the phase (0 or 180), flipped where the amount crosses zero.
+         */
+        fun bendWarp(e: AlightEffect, at: String, dur: Double, boxH: Double): Effect {
+            val am = AlightAnimation.build(e.props["amount"], dur, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat() + 0f }
+            val h = boxH.coerceAtLeast(1.0)
+            fun amp(v: Float) = (h * sin(Math.toRadians(abs(v).toDouble())) / 4).toFloat()
+            val freq = (1000.0 / (2 * h)).toFloat()
+            val keys = ArrayList<Keyframe<Float>>(); val phases = ArrayList<Keyframe<Float>>()
+            if (am.keyframes.isEmpty()) {
+                keys += Keyframe(0.0, amp(am.value), Easing.LINEAR); phases += Keyframe(0.0, if (am.value < 0f) 180f else 0f, Easing.LINEAR)
+            } else {
+                val ts = AlightBake.times(listOf(am), dur, 1.0 / 30.0)
+                var prevT = 0.0; var prevV = 0f
+                for ((i, t) in ts.withIndex()) {
+                    val v = am.at(t)
+                    if (i > 0 && prevV * v < 0f) {
+                        val tc = prevT + (t - prevT) * (abs(prevV) / (abs(prevV) + abs(v)))
+                        val lo = max(tc, keys.last().time + 2 * Animatable.KEYFRAME_EPSILON)
+                        if (lo + 2 * Animatable.KEYFRAME_EPSILON < t) {
+                            keys += Keyframe(lo, 0f, Easing.LINEAR); phases += Keyframe(lo, if (prevV < 0f) 180f else 0f, Easing.LINEAR)
+                            keys += Keyframe(lo + 2 * Animatable.KEYFRAME_EPSILON, 0f, Easing.LINEAR); phases += Keyframe(lo + 2 * Animatable.KEYFRAME_EPSILON, if (v < 0f) 180f else 0f, Easing.LINEAR)
+                        }
+                    }
+                    keys += Keyframe(t, amp(v), Easing.LINEAR); phases += Keyframe(t, if (v < 0f) 180f else 0f, Easing.LINEAR)
+                    prevT = t; prevV = v
+                }
+            }
+            val ampA = Animatable(keys.first().value, keys); val phA = Animatable(phases.first().value, phases)
+            report.add(ReportKind.APPROXIMATED, at, "bendwarp aproximado por warp (onda): ${keys.size} keyframes; origem/limites/offset do Alight não são carregados")
+            return makeEffect("warp", nums = mapOf("amplitude" to ampA, "frequency" to anim(freq), "phase" to phA))
+        }
+
         class Fx(val loc: Animatable<Vec2>, val scale: Animatable<Vec2>, val rot: Animatable<Float>, val effects: List<Effect>, val motionBlur: Boolean)
 
         private val sampleF: (Animatable<Float>, Double) -> Float = { a, t -> a.at(t) }
@@ -147,7 +181,7 @@ object AlightConverter {
          * The effects of [l] in file order, following `effects_map.json`: mapped to Kinesis effects, baked into the
          * transform ([speed] converts layer time back to Alight time) or reported.
          */
-        fun applyEffects(l: AlightLayer, where: String, dur: Double, speed: Double, loc0: Animatable<Vec2>, scale0: Animatable<Vec2>, rot0: Animatable<Float>): Fx {
+        fun applyEffects(l: AlightLayer, where: String, dur: Double, speed: Double, boxH: Double, loc0: Animatable<Vec2>, scale0: Animatable<Vec2>, rot0: Animatable<Float>): Fx {
             var loc = loc0; var scale = scale0; var rot = rot0
             var motionBlur = false
             val out = ArrayList<Effect>()
@@ -169,6 +203,7 @@ object AlightConverter {
                         val fx: Effect? = when (e.name) {
                             "gaussianblur" -> makeEffect("blur", nums = mapOf("radius" to anim1(e, "strength", 0f).mapValues { it * BLUR_PX_PER_STRENGTH }))
                             "hueshift" -> makeEffect("hueShift", nums = mapOf("hue" to anim1(e, "hue", 0f)))
+                            "bendwarp" -> bendWarp(e, at, dur, boxH)
                             "mosaic" -> makeEffect("pixelate", nums = mapOf("size" to anim1(e, "size", 16f).mapValues { it.coerceAtLeast(1f) }))
                             "invert" -> {
                                 val on = listOf("invertRed", "invertGreen", "invertBlue").map { e.text[it] != "false" }
@@ -284,7 +319,7 @@ object AlightConverter {
                 var scaleA = AlightAnimation.build(tr.scale, dur, Vec2.ONE, stats) { Vec2(it.getOrElse(0) { 1.0 }.toFloat() + 0f, it.getOrElse(1) { 1.0 }.toFloat() + 0f) }
                 var rotA = AlightAnimation.build(tr.rotation, dur, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat() + 0f }
                 val opacityA = AlightAnimation.build(tr.opacity, dur, 1f, stats) { it.getOrElse(0) { 1.0 }.toFloat().coerceIn(0f, 1f) }
-                val fx = applyEffects(l, where, dur, speed, locA, scaleA, rotA)
+                val fx = applyEffects(l, where, dur, speed, boxH, locA, scaleA, rotA)
                 locA = fx.loc; scaleA = fx.scale; rotA = fx.rot
                 val pivotP = tr.pivot
                 if (pivotP != null && pivotP.animated) report.add(ReportKind.APPROXIMATED, "$where/pivot", "pivô animado: usado só o primeiro valor")

@@ -34,7 +34,7 @@ class AlightEffectsTest {
         }
         assertEquals(13, names.size)
         for (n in names) assertNotNull("no rule for $n", AlightEffectsMap.rule(n))
-        assertEquals("unsupported", AlightEffectsMap.rule("bendwarp")!!.action)
+        assertEquals("map", AlightEffectsMap.rule("bendwarp")!!.action)
         assertEquals("bake", AlightEffectsMap.rule("swing2")!!.action)
     }
 
@@ -52,7 +52,7 @@ class AlightEffectsTest {
         val png = LayerTree.all(p).first { it.name.startsWith("file_0000") }
         val pos = png.transform.position
         assertTrue(pos.at(png.duration).x - pos.at(0.0).x > 4000f)
-        assertEquals(9, r.report.count(ReportKind.UNSUPPORTED))
+        assertEquals(3, r.report.count(ReportKind.UNSUPPORTED))
     }
 
     @Test
