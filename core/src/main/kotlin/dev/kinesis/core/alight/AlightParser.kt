@@ -181,6 +181,15 @@ object AlightParser {
             speed = e.getAttribute("speed").toDoubleOrNull(),
             scene = if (kind == AlightLayerKind.EMBED) children(e, "scene").firstOrNull()?.let { readScene(it, report, depth + 1) } else null,
             linkId = e.getAttribute("link").ifBlank { null },
+            shapeType = if (kind == AlightLayerKind.SHAPE) e.getAttribute("s").ifBlank { null } else null,
+            shadows = children(e, "shadow").map { sh ->
+                fun sp(n: String) = children(sh, n).firstOrNull()?.let { readProp(it, "layer:$label/shadow/$n", report) }
+                AlightShadow(
+                    direction = sh.getAttribute("direction").ifBlank { "outside" },
+                    color = children(sh, "color").firstOrNull()?.getAttribute("value")?.ifBlank { null } ?: "#ff000000",
+                    opacity = sp("opacity"), size = sp("size"), offset = sp("offset"),
+                )
+            },
             gain = children(e, "gain").firstOrNull()?.let { readProp(it, "layer:$label/gain", report) },
             transform = AlightTransform(prop("location"), prop("scale"), prop("rotation"), prop("pivot"), prop("opacity")),
         )

@@ -13,6 +13,8 @@ import dev.kinesis.core.math.Color
 import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.model.Asset
 import dev.kinesis.core.model.AssetType
+import dev.kinesis.core.model.Effect
+import dev.kinesis.core.model.EffectValue
 import dev.kinesis.core.model.FillSpec
 import dev.kinesis.core.model.ImageContent
 import dev.kinesis.core.model.KnsProject
@@ -118,6 +120,31 @@ object AlightConverter {
                 id = id, type = LayerType.AUDIO, name = l.label, start = (l.startMs / 1000.0 - shiftSec) / speed, duration = dur,
                 audio = MediaContent(asset.id, sourceStart = (l.inTimeMs ?: 0L) / 1000.0, speed = own * speed, volume = vol, muted = muted),
             )
+        }
+
+        /** `<shadow>` → `dropShadow` effects. An inside shadow has no Kinesis counterpart. */
+        fun shadowEffects(l: AlightLayer, where: String, durSec: Double): List<Effect> = l.shadows.mapIndexedNotNull { i, sh ->
+            val at = "$where/shadow${if (l.shadows.size > 1) " ${i + 1}" else ""}"
+            if (sh.direction != "outside") { report.add(ReportKind.UNSUPPORTED, at, "sombra \"${sh.direction}\" (interna) não tem equivalente no Kinesis: ignorada"); return@mapIndexedNotNull null }
+            val off = sh.offset
+            if (off != null && off.animated) report.add(ReportKind.APPROXIMATED, "$at/offset", "deslocamento animado da sombra: usado só o primeiro valor")
+            val o = off?.static ?: off?.keyframes?.firstOrNull()?.value
+            val ox = o?.getOrNull(0) ?: 0.0; val oy = o?.getOrNull(1) ?: 0.0
+            val dist = Math.hypot(ox, oy).toFloat()
+            val angle = if (dist > 0f) Math.toDegrees(Math.atan2(oy, ox)).toFloat() else 90f
+            val opacity = AlightAnimation.build(sh.opacity, durSec, 1f, stats) { it.getOrElse(0) { 1.0 }.toFloat().coerceIn(0f, 1f) + 0f }
+            val size = AlightAnimation.build(sh.size, durSec, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat().coerceAtLeast(0f) + 0f }
+            report.add(ReportKind.APPROXIMATED, at, "sombra convertida em dropShadow: o tamanho do Alight vira a suavidade (o desfoque pode diferir)")
+            // Parameters at their default are left out, as the file format writes them (keeps the round trip exact).
+            var fx = Effect.create("dropShadow")
+            fun num(name: String, a: AnimFloat) {
+                val d = (EffectValue.default(fx.spec.param(name)) as EffectValue.Num).anim
+                if (a != d) fx = fx.withNumber(name, a)
+            }
+            val c = argb(sh.color)
+            if (c.r != 0f || c.g != 0f || c.b != 0f) fx = fx.withColor("color", anim(Color(c.r, c.g, c.b)))
+            num("opacity", opacity); num("angle", anim(angle)); num("distance", anim(dist)); num("softness", size)
+            fx
         }
 
         fun finish() {
@@ -242,8 +269,12 @@ object AlightConverter {
                     report.add(ReportKind.APPROXIMATED, "$where/location", "posição com pivô e escala/rotação animadas: calculada em ${bake.keyframes.size} keyframes")
                     bake
                 }
+                if (!isEmbed && l.shapeType != null && l.shapeType != ".rect") {
+                    report.add(ReportKind.APPROXIMATED, where, "forma \"${l.shapeType}\" convertida em retângulo")
+                }
                 val layer = common.copy(
                     start = start, duration = dur, parent = parentKid,
+                    effects = common.effects + shadowEffects(l, where, dur),
                     transform = Transform2D(
                         anchor = anim(Vec2((pivot[0] / f).toFloat(), (pivot[1] / f).toFloat())),
                         position = positionA,

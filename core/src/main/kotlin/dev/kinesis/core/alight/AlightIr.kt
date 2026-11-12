@@ -26,6 +26,16 @@ data class AlightScene(
     val layers: List<AlightLayer> = emptyList(),
 )
 
+/** A `<shadow>` of a layer: [direction] is `outside` (drop shadow) or `inside`; [size] is the blur extent in pixels. */
+@Serializable
+data class AlightShadow(
+    val direction: String,
+    val color: String,
+    val opacity: AlightProp? = null,
+    val size: AlightProp? = null,
+    val offset: AlightProp? = null,
+)
+
 enum class AlightLayerKind { SHAPE, EMBED, AUDIO }
 
 /** One keyframe: [t] is 0..1 of the layer's duration (the file lists them out of order), [easing] the raw `e` text. */
@@ -76,6 +86,9 @@ data class AlightLayer(
     val linkId: String? = null,
     /** `gain` of a video or audio layer: linear volume (0 = silent), constant or animated over the layer. */
     val gain: AlightProp? = null,
+    /** Shape type written in `s` (`.rect` for rectangles), null when absent. */
+    val shapeType: String? = null,
+    val shadows: List<AlightShadow> = emptyList(),
     val transform: AlightTransform = AlightTransform(),
 )
 
