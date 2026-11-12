@@ -162,7 +162,7 @@ class EffectPreviews private constructor(private val context: Context) {
         /** Effects that only show on a shape with transparent surroundings (edges, shadows, motion, glass). */
         private val SHAPE_SUBJECT = setOf(
             "glass", "outline", "matteChoker", "dropShadow", "glow", "deepGlow", "echo",
-            "autoShake", "spin", "oscillate", "float", "pulse",
+            "autoShake", "spin", "oscillate", "float", "pulse", "swing", "scaleAssist",
         )
 
         @Volatile private var instance: EffectPreviews? = null

@@ -21,9 +21,10 @@ import dev.kinesis.core.alight.MediaMatch
  * A [MediaMatch.candidate]'s `key` is the `content://` address of the file.
  */
 object AlightMediaResolver {
-    fun resolve(context: Context, media: List<AlightMedia>): Map<String, MediaMatch> {
+    fun resolve(context: Context, media: List<AlightMedia>, onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }): Map<String, MediaMatch> {
         val out = LinkedHashMap<String, MediaMatch>()
-        for (m in media) {
+        for ((i, m) in media.withIndex()) {
+            onProgress(i, media.size)
             val direct = direct(context, m)
             val match = direct?.takeIf { it.automatic } ?: AlightMediaMatcher.match(m, searchStore(context, m)) ?: direct
             if (match != null) out[m.uri] = match

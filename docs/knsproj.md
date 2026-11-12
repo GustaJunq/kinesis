@@ -604,6 +604,10 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `rings` | `4` | inteiro 0..12 |
 | `tint` (Tingir) | Cor e luz | `color` | `#7D5CFF` | cor |
 |  |  | `amount` | `1` | 0..1 % |
+| `colorize` (Colorir) | Cor e luz | `hue` | `200` | -3600..3600 ° |
+|  |  | `saturation` | `0.7` | 0..1 % |
+|  |  | `lightness` | `0` | -1..1 % |
+|  |  | `amount` | `1` | 0..1 % |
 | `glow` (Brilho simples) | Cor e luz | `color` | `#FFFFFF` | cor |
 |  |  | `radius` | `24` | 0..500 px |
 |  |  | `intensity` | `1` | 0..10 × |
@@ -680,6 +684,12 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 | `pulse` (Pulsar) | Movimentar e transformar | `amount` | `0.08` | 0..2 % |
 |  |  | `frequency` | `1` | 0..60 Hz |
 |  |  | `phase` | `0` | -3600..3600 ° |
+| `swing` (Balanço) | Movimentar e transformar | `angleA` | `15` | -3600..3600 ° |
+|  |  | `angleB` | `-15` | -3600..3600 ° |
+|  |  | `frequency` | `1` | 0..60 Hz |
+|  |  | `phase` | `0` | -3600..3600 ° |
+| `scaleAssist` (Assistência de escala) | Movimentar e transformar | `scale` | `1` | 0..100 % |
+|  |  | `axis` | `"both"` | `both`, `x`, `y` (estático) |
 | `pixelate` (Pixelizar) | Estilizar | `size` | `16` | 1..1000 px |
 | `dropShadow` (Sombra) | Estilizar | `color` | `#000000` | cor |
 |  |  | `opacity` | `0.6` | 0..1 % |

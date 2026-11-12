@@ -45,6 +45,18 @@ internal object EffectMotion {
                 val w = 2.0 * PI * e.f("frequency") * t + Math.toRadians(e.f("phase").toDouble())
                 around(e.origin, 0f, 1f + e.f("amount") * (0.5f + 0.5f * sin(w).toFloat()), Vec2.ZERO)
             }
+            "swing" -> {
+                val a = e.f("angleA"); val b = e.f("angleB")
+                val w = 2.0 * PI * e.f("frequency") * t + Math.toRadians(e.f("phase").toDouble())
+                around(e.origin, (a + b) / 2f + (a - b) / 2f * sin(w).toFloat(), 1f, Vec2.ZERO)
+            }
+            "scaleAssist" -> {
+                val k = e.f("scale")
+                val axis = e.choice("axis")
+                val sx = if (axis == "y") 1f else k
+                val sy = if (axis == "x") 1f else k
+                Affine2D.translate(e.origin) * Affine2D.scale(sx, sy) * Affine2D.translate(-e.origin.x, -e.origin.y)
+            }
             else -> null
         }
     }

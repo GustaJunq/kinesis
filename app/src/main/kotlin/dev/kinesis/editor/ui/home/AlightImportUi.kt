@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,10 +19,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +33,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.dp
 import dev.kinesis.core.alight.AlightMedia
 import dev.kinesis.core.alight.AlightScan
@@ -40,6 +48,12 @@ import dev.kinesis.core.alight.ReportKind
 import dev.kinesis.editor.R
 import dev.kinesis.editor.ui.theme.KColors
 import dev.kinesis.editor.ui.theme.KShapes
+
+/** The step of an Alight import that is running, for the loading screen. */
+enum class AlightStage { READING, SEARCHING, COPYING, CONVERTING }
+
+/** [done] of [total] items of the [stage] (0 of 0 when the step has no count). */
+class AlightProgress(val stage: AlightStage, val done: Int = 0, val total: Int = 0)
 
 /** Where an Alight Motion import is. */
 sealed interface AlightFlow {
@@ -75,6 +89,8 @@ fun isAlightXml(resolver: ContentResolver, uri: Uri): Boolean {
 @Composable
 fun AlightImportDialogs(vm: HomeViewModel, onOpen: (String) -> Unit) {
     val flow by vm.alight.collectAsState()
+    val progress by vm.alightProgress.collectAsState()
+    progress?.let { AlightLoadingDialog(it) }
     when (val f = flow) {
         is AlightFlow.Missing -> AlightMissingDialog(f, onPick = vm::alightPick, onImport = vm::alightConvert, onCancel = vm::alightDismiss)
         is AlightFlow.Done -> AlightReportDialog(f.report, onOpen = { vm.alightDismiss(); onOpen(f.id) }, onClose = vm::alightDismiss)
@@ -189,4 +205,46 @@ private fun AlightReportDialog(report: ImportReport, onOpen: () -> Unit, onClose
         confirmButton = { TextButton(onClick = onOpen) { Text(stringResource(R.string.alight_open_project), color = KColors.Accent) } },
         dismissButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.close), color = KColors.TextSoft) } },
     )
+}
+
+/** Shown while the media is read and copied: the step, a progress bar and a tip that changes every few seconds. */
+@Composable
+private fun AlightLoadingDialog(progress: AlightProgress) {
+    val facts = stringArrayResource(R.array.alight_facts)
+    var index by remember { mutableStateOf(if (facts.isEmpty()) 0 else (System.currentTimeMillis() / 1000 % facts.size).toInt()) }
+    LaunchedEffect(facts.size) {
+        while (facts.isNotEmpty()) {
+            delay(4500)
+            index = (index + 1) % facts.size
+        }
+    }
+    val stage = when (progress.stage) {
+        AlightStage.READING -> stringResource(R.string.alight_stage_reading)
+        AlightStage.SEARCHING -> stringResource(R.string.alight_stage_searching)
+        AlightStage.COPYING -> stringResource(R.string.alight_stage_copying)
+        AlightStage.CONVERTING -> stringResource(R.string.alight_stage_converting)
+    }
+    Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
+        Column(
+            Modifier.fillMaxWidth().background(KColors.Sheet, KShapes.Card).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(stringResource(R.string.alight_loading_title), color = KColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
+            Text(
+                if (progress.total > 0) "$stage  ${minOf(progress.done + 1, progress.total)}/${progress.total}" else stage,
+                color = KColors.TextSoft, style = MaterialTheme.typography.bodyMedium,
+            )
+            if (progress.total > 0) {
+                LinearProgressIndicator(progress = { progress.done.toFloat() / progress.total }, modifier = Modifier.fillMaxWidth())
+            } else {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+            if (facts.isNotEmpty()) {
+                Text(stringResource(R.string.alight_fact_title), color = KColors.Accent, style = MaterialTheme.typography.labelLarge)
+                Crossfade(targetState = index, label = "alight-fact") { i ->
+                    Text(facts[i % facts.size], color = KColors.TextSoft, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+    }
 }

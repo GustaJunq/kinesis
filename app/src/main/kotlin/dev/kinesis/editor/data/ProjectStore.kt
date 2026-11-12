@@ -199,11 +199,13 @@ class ProjectStore(private val context: Context) {
      * Creates a project from an Alight Motion [conversion]. [source] opens the file behind an Alight media address; the
      * files are copied into the project, so nothing outside it is needed afterwards.
      */
-    fun importAlight(conversion: AlightConversion, source: (String) -> InputStream?): AlightImported {
+    fun importAlight(conversion: AlightConversion, onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }, source: (String) -> InputStream?): AlightImported {
         val tmp = File(root, ".import-${UUID.randomUUID()}")
         try {
             File(tmp, "assets").mkdirs()
-            val assets = conversion.project.assets.map { asset ->
+            val total = conversion.project.assets.size
+            val assets = conversion.project.assets.mapIndexed { index, asset ->
+                onProgress(index, total)
                 val label = asset.name ?: asset.path
                 val uri = conversion.media[asset.path] ?: throw ProjectImportException("mídia sem origem: $label")
                 val target = File(tmp, asset.path)

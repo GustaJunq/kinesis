@@ -176,12 +176,35 @@ object AlightConverter {
                 if (rule == null) { report.add(ReportKind.UNSUPPORTED, at, "efeito \"${e.id}\" desconhecido: ignorado"); continue }
                 when (rule.action) {
                     "unsupported" -> report.add(ReportKind.UNSUPPORTED, at, "${e.name} não convertido: ${rule.reason ?: "sem equivalente"}")
+                    "skip" -> report.add(ReportKind.WARNING, at, rule.reason ?: "${e.name} ignorado")
                     "flag" -> { motionBlur = true; report.add(ReportKind.APPROXIMATED, at, "desfoque de movimento ligado na camada; ${rule.note ?: ""}".trim()) }
                     "map" -> {
                         val fx: Effect? = when (e.name) {
                             "gaussianblur" -> makeEffect("blur", nums = mapOf("radius" to anim1(e, "strength", 0f).mapValues { it * BLUR_PX_PER_STRENGTH }))
                             "hueshift" -> makeEffect("hueShift", nums = mapOf("hue" to anim1(e, "hue", 0f)))
                             "bendwarp" -> bendWarp(e, at, dur, boxH)
+                            "swing2" -> {
+                                val f = num(e, "freq", 1.0).coerceAtLeast(0.0) * speed
+                                if ((e.props["type"]?.static?.firstOrNull() ?: 0.0) != 0.0) report.add(ReportKind.APPROXIMATED, at, "tipo de onda diferente de 0: usada a senoide")
+                                makeEffect("swing", nums = mapOf(
+                                    "angleA" to anim1(e, "a1", 0f), "angleB" to anim1(e, "a2", 0f),
+                                    "frequency" to anim(f.toFloat()), "phase" to anim1(e, "phase", 0f),
+                                ))
+                            }
+                            "scaleassist" -> {
+                                val axis = (e.props["axis"]?.static?.firstOrNull() ?: 3.0).toInt()
+                                makeEffect("scaleAssist", nums = mapOf("scale" to anim1(e, "scale", 1f))).let { fx0 ->
+                                    if (axis == 1) fx0.with("axis", EffectValue.Choice("x")) else if (axis == 2) fx0.with("axis", EffectValue.Choice("y")) else fx0
+                                }
+                            }
+                            "colorize" -> {
+                                val t = e.props["tint"]?.static ?: e.props["tint"]?.keyframes?.firstOrNull()?.value
+                                val hue = (((t?.getOrNull(0) ?: 0.0) * 360.0) % 360.0 + 360.0) % 360.0
+                                makeEffect("colorize", nums = mapOf(
+                                    "hue" to anim(hue.toFloat()), "saturation" to anim((t?.getOrNull(1) ?: 1.0).toFloat().coerceIn(0f, 1f)),
+                                    "lightness" to anim((t?.getOrNull(2) ?: 0.0).toFloat().coerceIn(-1f, 1f)),
+                                ))
+                            }
                             "mosaic" -> makeEffect("pixelate", nums = mapOf("size" to anim1(e, "size", 16f).mapValues { it.coerceAtLeast(1f) }))
                             "invert" -> {
                                 val on = listOf("invertRed", "invertGreen", "invertBlue").map { e.text[it] != "false" }
@@ -207,12 +230,6 @@ object AlightConverter {
                             report.add(ReportKind.CONVERTED, at, "deslocamento somado à posição da camada")
                             if (e.text["mask"] == "true" || (e.props["feather"]?.static?.firstOrNull() ?: 0.0) != 0.0) report.add(ReportKind.APPROXIMATED, at, "feather/máscara do deslocamento não são carregados")
                         }
-                        "swing2" -> {
-                            val f = num(e, "freq", 1.0).coerceAtLeast(1e-3); val a1 = num(e, "a1", 0.0); val a2 = num(e, "a2", 0.0); val ph = Math.toRadians(num(e, "phase", 0.0))
-                            val mid = ((a1 + a2) / 2).toFloat(); val amp = (a1 - a2) / 2
-                            rot = AlightBake.overlay(rot, dur, 1.0 / f, sampleF) { v, t -> v + mid + (amp * sin(2 * PI * f * t * speed + ph)).toFloat() }
-                            report.add(ReportKind.APPROXIMATED, at, "balanço assado em ${rot.keyframes.size} keyframes de rotação (senoide entre $a1° e $a2°, ${f} Hz; o formato exato do Alight não é documentado)")
-                        }
                         "oscillate3" -> {
                             val f = num(e, "freq", 1.0).coerceAtLeast(1e-3); val mag = num(e, "mag", 0.0); val ph = Math.toRadians(num(e, "phase", 0.0))
                             val ang = anim1(e, "angle", 0f)
@@ -222,11 +239,6 @@ object AlightConverter {
                                 Vec2((v.x + k * cos(a)).toFloat(), (v.y + k * sin(a)).toFloat())
                             }
                             report.add(ReportKind.APPROXIMATED, at, "oscilação assada em ${loc.keyframes.size} keyframes de posição (senoide de $mag px, $f Hz; o formato exato do Alight não é documentado)")
-                        }
-                        "scaleassist" -> {
-                            val m = anim1(e, "scale", 1f); val axis = (e.props["axis"]?.static?.firstOrNull() ?: 3.0).toInt()
-                            scale = AlightBake.combine(scale, m, dur, sampleV, sampleF) { s0, k -> Vec2(if (axis == 2) s0.x else s0.x * k, if (axis == 1) s0.y else s0.y * k) }
-                            report.add(ReportKind.APPROXIMATED, at, "escala multiplicada na camada (${scale.keyframes.size} keyframes); eixo $axis: 1 = X, 2 = Y, outro = os dois")
                         }
                         else -> report.add(ReportKind.UNSUPPORTED, at, "${e.name}: regra de bake desconhecida")
                     }

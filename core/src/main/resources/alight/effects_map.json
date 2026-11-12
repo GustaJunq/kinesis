@@ -28,14 +28,13 @@
       "note": "cor e alfa; o modo de mistura não é carregado"
     },
     "motionblur4": {
-      "action": "flag",
-      "kinesis": "motionBlur",
-      "note": "liga o desfoque de movimento da camada; \"tune\" e as chaves de posição/escala/ângulo não são carregados"
+      "action": "skip",
+      "reason": "ignorado de propósito: o desfoque de movimento deixa a renderização muito mais lenta; ligue \"desfoque de movimento\" na camada se quiser"
     },
     "swing2": {
-      "action": "bake",
-      "target": "rotation",
-      "note": "a rotação balança entre a1 e a2 graus na frequência freq (Hz)"
+      "action": "map",
+      "kinesis": "swing",
+      "note": "balanço entre a1 e a2 graus na frequência freq (Hz), em senoide"
     },
     "oscillate3": {
       "action": "bake",
@@ -43,9 +42,9 @@
       "note": "a posição vai e volta mag pixels ao longo do ângulo na frequência freq (Hz)"
     },
     "scaleassist": {
-      "action": "bake",
-      "target": "scale",
-      "note": "a escala dele multiplica a escala da camada"
+      "action": "map",
+      "kinesis": "scaleAssist",
+      "note": "escala animada que multiplica a da camada (eixo 1 = X, 2 = Y, outro = os dois)"
     },
     "offset": {
       "action": "bake",
@@ -53,8 +52,9 @@
       "note": "o deslocamento é somado à posição da camada; feather e máscara não são carregados"
     },
     "colorize": {
-      "action": "unsupported",
-      "reason": "o significado do tint (três números) não é documentado, e o tint do Kinesis recebe uma cor"
+      "action": "map",
+      "kinesis": "colorize",
+      "note": "o tint é lido como matiz (em voltas), saturação e luminosidade; o significado exato não é documentado pelo Alight"
     },
     "bendwarp": {
       "action": "map",

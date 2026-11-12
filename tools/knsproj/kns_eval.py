@@ -608,10 +608,18 @@ def motion_matrix(kind, v, t, origin, to_comp):
             a = v["amplitude"]
             return _around(origin, a * 0.05 * math.sin(w * 0.5 + 0.8), 1.0, (a * 0.3 * math.sin(w * 0.5), -a * math.sin(w)))
         return _around(origin, 0.0, 1 + v["amount"] * (0.5 + 0.5 * math.sin(w)), (0.0, 0.0))
+    if kind == "swing":
+        w = 2 * math.pi * v["frequency"] * t + math.radians(v.get("phase", 0))
+        a, b = v["angleA"], v["angleB"]
+        return _around(origin, (a + b) / 2 + (a - b) / 2 * math.sin(w), 1.0, (0.0, 0.0))
+    if kind == "scaleAssist":
+        k, axis = v["scale"], v.get("axis", "both")
+        m = amul(atrans(*origin), ascale(1.0 if axis == "y" else k, 1.0 if axis == "x" else k))
+        return amul(m, atrans(-origin[0], -origin[1]))
     return None
 
 
-MOTION = {"autoShake", "spin", "oscillate", "float", "pulse"}
+MOTION = {"autoShake", "spin", "oscillate", "float", "pulse", "swing", "scaleAssist"}
 
 
 def effects_of(l, t, to_comp):

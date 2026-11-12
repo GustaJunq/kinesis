@@ -679,4 +679,22 @@
     <string name="alight_kind_missing">Mídia ausente (placeholder)</string>
     <string name="alight_kind_warning">Avisos</string>
     <string name="alight_open_project">Abrir projeto</string>
+    <string name="alight_loading_title">Importando do Alight Motion</string>
+    <string name="alight_stage_reading">Lendo o projeto…</string>
+    <string name="alight_stage_searching">Procurando as mídias neste aparelho…</string>
+    <string name="alight_stage_converting">Convertendo camadas e efeitos…</string>
+    <string name="alight_stage_copying">Copiando as mídias para o projeto…</string>
+    <string name="alight_fact_title">Você sabia?</string>
+    <string-array name="alight_facts">
+        <item>Dá para importar projetos do Alight Motion (.xml) e do Aurea (.aureaproj) pelo mesmo botão de importar.</item>
+        <item>O XML do Alight não traz as mídias: o Kinesis procura cada arquivo pelo nome, tamanho e resolução, então arquivos renomeados também são achados.</item>
+        <item>A mídia que não for encontrada vira um retângulo cinza com o nome do arquivo, e dá para trocar depois.</item>
+        <item>As pré-composições do Alight viram grupos, cortados pelo quadro delas.</item>
+        <item>O Kinesis funciona offline: só baixa algo (como o modelo de voz ou de legendas) quando você pede.</item>
+        <item>Dá para exportar GIF, WebM e MOV com transparência, e sequência de PNG.</item>
+        <item>O editor de curvas tem um modo Cíclico para ondas e molas.</item>
+        <item>O desfoque de movimento é uma chave por camada, e uma opção do projeto desliga tudo.</item>
+        <item>Plugins (.knsplugin) podem trazer presets e comandos, e só recebem as permissões que você aprovar.</item>
+        <item>O editor guarda cópias do seu projeto, então uma falha não custa o trabalho.</item>
+    </string-array>
 </resources>

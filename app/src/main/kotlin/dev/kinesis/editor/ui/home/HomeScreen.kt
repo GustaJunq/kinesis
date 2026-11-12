@@ -221,6 +221,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private val _alightProgress = MutableStateFlow<AlightProgress?>(null)
+    /** What the Alight import is doing right now (for the loading screen), or null when it is not working. */
+    val alightProgress = _alightProgress.asStateFlow()
+
     private val _alight = MutableStateFlow<AlightFlow?>(null)
     /** Where an Alight Motion import is (asking for missing media, or showing its report); null when none is running. */
     val alight = _alight.asStateFlow()
@@ -230,16 +234,21 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         viewModelScope.launch {
             _busy.value = true
+            _alightProgress.value = AlightProgress(AlightStage.READING)
             try {
                 val flow = withContext(Dispatchers.IO) {
                     val scan = (app.contentResolver.openInputStream(uri) ?: error("Cannot open file")).use { AlightParser.scan(it) }
-                    AlightFlow.Missing(scan, AlightMediaResolver.resolve(app, scan.scene.media), emptyMap())
+                    val found = AlightMediaResolver.resolve(app, scan.scene.media) { done, total -> _alightProgress.value = AlightProgress(AlightStage.SEARCHING, done, total) }
+                    AlightFlow.Missing(scan, found, emptyMap())
                 }
                 _alight.value = flow
+                _alightProgress.value = null
                 if (flow.missing.isEmpty()) alightConvert()
             } catch (e: AlightFormatException) {
+                _alightProgress.value = null
                 _importError.value = app.getString(R.string.import_invalid, e.message ?: "")
             } catch (e: Exception) {
+                _alightProgress.value = null
                 _importError.value = app.getString(R.string.import_failed, e.message ?: e.javaClass.simpleName)
             } finally {
                 _busy.value = false
@@ -259,11 +268,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         viewModelScope.launch {
             _busy.value = true
+            _alightProgress.value = AlightProgress(AlightStage.CONVERTING)
             try {
                 val done = withContext(Dispatchers.IO) {
                     val usable = f.found.filterValues { it.automatic }.mapValues { Uri.parse(it.value.candidate.key) } + f.picked
                     val conversion = AlightImport.convert(f.scan, usable.keys, "Kinesis Editor ${BuildConfig.VERSION_NAME}")
-                    val result = store.importAlight(conversion) { uri -> usable[uri]?.let { app.contentResolver.openInputStream(it) } }
+                    val result = store.importAlight(conversion, onProgress = { d, n -> _alightProgress.value = AlightProgress(AlightStage.COPYING, d, n) }) { uri ->
+                        usable[uri]?.let { app.contentResolver.openInputStream(it) }
+                    }
                     AlightFlow.Done(result.id, result.report)
                 }
                 refresh()
@@ -275,6 +287,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 _alight.value = null
                 _importError.value = app.getString(R.string.import_failed, e.message ?: e.javaClass.simpleName)
             } finally {
+                _alightProgress.value = null
                 _busy.value = false
             }
         }

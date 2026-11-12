@@ -679,4 +679,22 @@
     <string name="alight_kind_missing">Media missing (placeholder)</string>
     <string name="alight_kind_warning">Notes</string>
     <string name="alight_open_project">Open project</string>
+    <string name="alight_loading_title">Importing from Alight Motion</string>
+    <string name="alight_stage_reading">Reading the project…</string>
+    <string name="alight_stage_searching">Looking for the media on this phone…</string>
+    <string name="alight_stage_converting">Converting layers and effects…</string>
+    <string name="alight_stage_copying">Copying the media into the project…</string>
+    <string name="alight_fact_title">Did you know?</string>
+    <string-array name="alight_facts">
+        <item>You can import Alight Motion projects (.xml) and Aurea projects (.aureaproj) from the same Import button.</item>
+        <item>The Alight XML does not carry the media: Kinesis looks for each file by name, size and pixel size, so renamed files are still found.</item>
+        <item>Media that cannot be found becomes a gray rectangle with the file name, so you can replace it later.</item>
+        <item>Alight pre-compositions become groups, clipped to their frame.</item>
+        <item>Kinesis works offline: it only downloads something (like a voice or caption model) when you ask.</item>
+        <item>You can export GIF, WebM and MOV with transparency, and PNG sequences.</item>
+        <item>The curve editor has a Cyclic mode for waves and springs.</item>
+        <item>Motion blur is a switch per layer, and a project setting turns it all off.</item>
+        <item>Plugins (.knsplugin) can add presets and commands, and they only get the permissions you approve.</item>
+        <item>The editor keeps snapshots of your project, so a crash never costs you the work.</item>
+    </string-array>
 </resources>

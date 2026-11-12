@@ -41,14 +41,17 @@ falha ao gravar, 2 = uso errado. O jar sai de `./gradlew :core:alight2knsJar`.
 | Sombra externa | efeito Sombra (`dropShadow`) |
 | `gaussianblur`, `hueshift`, `invert`, `mosaic`, `solidcolor` | Desfoque, Matiz, Inverter, Pixelizar, Preencher |
 | `bendwarp` | Dobrar (`bendWarp`): ângulo e limites; eixo vertical |
-| `swing2`, `oscillate3`, `scaleassist`, `offset` | **assados** em keyframes de rotação, posição e escala |
-| `motionblur4` | liga o desfoque de movimento da camada |
+| `swing2` | Balanço (`swing`) |
+| `scaleassist` | Assistência de escala (`scaleAssist`), com a animação e o eixo |
+| `colorize` | Colorir (`colorize`): o `tint` lido como matiz, saturação e luminosidade (aproximado) |
+| `oscillate3`, `offset` | **assados** em keyframes de posição |
+| `motionblur4` | ignorado de propósito: deixa a renderização muito mais lenta (o relatório avisa) |
 
-Não convertidos (aparecem no relatório): `colorize`, `threshold`, sombra interna, inversão de só alguns canais RGB.
+Não convertidos (aparecem no relatório): `threshold`, sombra interna, inversão de só alguns canais RGB.
 A tabela de efeitos fica em `core/src/main/resources/alight/effects_map.json`.
 
 ## Suposições a conferir
 
 O Alight não documenta alguns detalhes; foram deduzidos do arquivo de exemplo e marcados como aproximados no relatório:
-unidade do desfoque, forma da senoide de `swing2`/`oscillate3`, eixo de `scaleassist`, cor das formas sólidas (o XML não traz;
+unidade do desfoque, forma da senoide de `swing2`/`oscillate3`, significado do `tint` do `colorize`, eixo de `scaleassist`, cor das formas sólidas (o XML não traz;
 usa-se branco) e a conversão de `elastic`/`cyclic`.
