@@ -18,7 +18,7 @@ class ExpressionError(val line: Int, val reason: String) : Exception(if (line > 
 /** A keyframe of the evaluated property, in composition time. */
 class ExprKey(val time: Double, val value: DoubleArray)
 
-/** What `thisLayer` / `thisComp.layer()` expose. Position is in After Effects space (origin at the top-left corner). */
+/** What `thisLayer` / `thisComp.layer()` expose. Position is in top-left-origin space. */
 class ExprLayerInfo(
     val name: String,
     val index: Int,
@@ -32,7 +32,7 @@ class ExprLayerInfo(
 
 class ExprComp(val width: Double, val height: Double, val duration: Double, val frameDuration: Double, val numLayers: Int)
 
-/** Everything one evaluation can see. Times are composition seconds; values use After Effects units. */
+/** Everything one evaluation can see. Times are composition seconds; values use percentage-based units. */
 class ExprInput(
     val time: Double,
     val value: DoubleArray,

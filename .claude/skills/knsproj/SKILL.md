@@ -14,7 +14,7 @@ do Kinesis: só arquivos JSON, a CLI `tools/knsproj` (Python 3, biblioteca padr�
 Referências (leia quando precisar de detalhes):
 - Especificação: `docs/knsproj.md`
 - Schema oficial: `schema/knsproj-v11.schema.json` (formato versão 11; arquivos v1 a v10 ainda abrem e são migrados). Escreva sempre `"formatVersion": 11`.
-  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`; v7 `cyclic.offset` = assimetria (skew) de cada ciclo, `phase` = deslocamento; v8 `markers` (marcadores da timeline) e `eq` (equalizador) em clipes de áudio/vídeo; v9 `editorView` (câmera livre da prévia, não renderizada: exemplo `basicos/vista-do-editor`) o efeito `timeSlice` (exemplo `basicos/fatias-de-tempo`) e `video.roto` (receita do Roto Brush: vídeo de origem e pinceladas; exemplo `basicos/recorte-roto-brush`); v10 os efeitos retrô e de glitch `eightBit`, `pixDither`, `pixelEncoder`, `kernel`, `signalAnalog`, `glitchify` e `dissolveShake` (exemplos `basicos/efeito-*`); v11 o efeito `copyBackground` (Copiar fundo = camada de ajuste: copia o que está embaixo e os efeitos seguintes atuam só onde a camada é opaca; exemplo `basicos/efeito-copiar-fundo`);
+  Novidades por versão: v3 expressões e animadores de texto; v4 camada `null` e câmera por `rotation`; v5 easing `cyclic`; v7 `cyclic.offset` = assimetria (skew) de cada ciclo, `phase` = deslocamento; v8 `markers` (marcadores da timeline) e `eq` (equalizador) em clipes de áudio/vídeo; v9 `editorView` (câmera livre da prévia, não renderizada: exemplo `basicos/vista-do-editor`) o efeito `timeSlice` (exemplo `basicos/fatias-de-tempo`) e `video.roto` (receita do Pincel de recorte: vídeo de origem e pinceladas; exemplo `basicos/recorte-pincel`); v10 os efeitos retrô e de glitch `eightBit`, `pixDither`, `pixelEncoder`, `kernel`, `signalAnalog`, `glitchify` e `dissolveShake` (exemplos `basicos/efeito-*`); v11 o efeito `copyBackground` (Copiar fundo = camada de ajuste: copia o que está embaixo e os efeitos seguintes atuam só onde a camada é opaca; exemplo `basicos/efeito-copiar-fundo`);
   v6 texto 3D (`primitive: "text"`), `material.shading`, sombras (`light.castShadows`), profundidade de campo (`camera.dof`),
   ambiente HDRI (`composition.environment`) e vídeo com transparência (`video.alphaPacked`).
 - Expressões (APIs, unidades, matriz de compatibilidade): `docs/expressoes.md`
@@ -32,7 +32,7 @@ Tudo em `.claude/skills/knsproj/examples/`; cada pasta tem `project.json` e `REA
 | Pasta | Use quando o pedido envolve |
 |---|---|
 | `basicos/texto-animators` | texto aparecendo por caractere/palavra, typewriter, onda |
-| `basicos/texto-bounce` | texto que quica letra por letra (animador de texto com expressão, o "Bounce Text" do After Effects) |
+| `basicos/texto-bounce` | texto que quica letra por letra (animador de texto com expressão, o clássico texto que quica) |
 | `basicos/expressoes` | `wiggle`, `loopOut`, matemática na opacidade |
 | `basicos/shape-trim-path` | linha que se desenha, círculo de loading |
 | `basicos/keyframes-easing` | overshoot (`cubicBezier`), bounce, loops `pingpong` |
@@ -139,7 +139,7 @@ O que é aproximado ou ignorado: expressões JavaScript (usa o valor/keyframes d
 sombras, sem DOF, sem motion blur, sem ambiente HDRI (reflexo de céu genérico), texto 3D plano (sem extrusão), efeitos
 fora deste subconjunto — `blur`, `glow`, `deepGlow`, `dropShadow`, `fill`, `tint`, `saturation`,
 `brightnessContrast`, `exposure`, `hueShift`, `invert`, `posterize`, `pixelate`, `vignette`, `posterizeTime` e os de
-movimento (`autoShake`, `spin`, `oscillate`, `float`, `pulse`) — e o recorte do Roto Brush.
+movimento (`autoShake`, `spin`, `oscillate`, `float`, `pulse`) — e o recorte do Pincel de recorte.
 
 ## Referência rápida do formato
 
@@ -274,7 +274,7 @@ pulsos (`Math.sin`), ou animação **por caractere**. Prefira keyframes normais 
 ```
 
 Regras que evitam erro:
-- **Unidades do After Effects dentro da expressão:** escala e opacidade em % (100 = normal), posição medida do canto
+- **Unidades de motion graphics dentro da expressão:** escala e opacidade em % (100 = normal), posição medida do canto
   superior esquerdo (`[thisComp.width / 2, thisComp.height / 2]` = centro), cores `[r, g, b, a]` de 0 a 1, rotação em graus. O
   arquivo guarda os valores no formato do Kinesis; a conversão é automática.
 - Disponíveis: `time`, `value`, `inPoint`, `outPoint`, `index`, `thisComp`, `thisLayer`, `thisProperty`, `wiggle`, `loopOut`,

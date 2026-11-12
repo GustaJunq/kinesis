@@ -5,7 +5,7 @@
 - A câmera gira em torno do modelo como filha do `rig`. Sem camadas `light`, vale a iluminação de estúdio padrão.
 
 ## Quando usar
-- Mostrar um modelo exportado do Blender ou de bibliotecas de assets 3D.
+- Mostrar um modelo exportado de um programa de modelagem 3D ou de bibliotecas de assets 3D.
 
 ## Armadilhas
 - O modelo é centrado e escalado para que a **maior dimensão** tenha `size` pixels.

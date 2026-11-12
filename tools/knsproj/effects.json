@@ -231,8 +231,8 @@
     {
       "id": "deepGlow",
       "category": "colorLight",
-      "pt": "Brilho profundo",
-      "en": "Deep Glow",
+      "pt": "Brilho amplo",
+      "en": "Wide Glow",
       "target": "any",
       "needsBackdrop": false,
       "params": [
@@ -1141,8 +1141,8 @@
     {
       "id": "scaleAssist",
       "category": "motion",
-      "pt": "Assistência de escala",
-      "en": "Scale Assist",
+      "pt": "Multiplicador de escala",
+      "en": "Scale Multiplier",
       "target": "any",
       "needsBackdrop": false,
       "params": [
@@ -2143,8 +2143,8 @@
     {
       "id": "gradientRamp",
       "category": "procedural",
-      "pt": "Rampa de gradiente",
-      "en": "Gradient Ramp",
+      "pt": "Degradê entre pontos",
+      "en": "Two-point Gradient",
       "target": "any",
       "needsBackdrop": false,
       "params": [
@@ -2377,8 +2377,8 @@
     {
       "id": "spillSuppressor",
       "category": "keying",
-      "pt": "Supressor de spill",
-      "en": "Spill Suppressor",
+      "pt": "Remover reflexo",
+      "en": "Spill Remover",
       "target": "any",
       "needsBackdrop": false,
       "params": [
@@ -2399,8 +2399,8 @@
     {
       "id": "matteChoker",
       "category": "keying",
-      "pt": "Ajuste de fosco",
-      "en": "Matte Choker",
+      "pt": "Ajuste de borda do recorte",
+      "en": "Matte Edge Trim",
       "target": "any",
       "needsBackdrop": false,
       "params": [
@@ -2454,8 +2454,8 @@
     {
       "id": "posterizeTime",
       "category": "time",
-      "pt": "Posterizar tempo",
-      "en": "Posterize Time",
+      "pt": "Reduzir quadros",
+      "en": "Frame Rate Reducer",
       "target": "any",
       "needsBackdrop": false,
       "params": [

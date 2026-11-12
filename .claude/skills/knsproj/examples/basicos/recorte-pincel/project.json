@@ -2,7 +2,7 @@
   "format": "knsproj",
   "formatVersion": 9,
   "generator": "knsproj skill examples",
-  "meta": { "title": "Recorte com Roto Brush" },
+  "meta": { "title": "Recorte com o Pincel de recorte" },
   "composition": { "width": 480, "height": 270, "fps": 30, "duration": 4, "background": "#101522" },
   "assets": [
     { "id": "origem", "type": "video", "path": "assets/origem.mp4", "name": "origem.mp4", "mimeType": "video/mp4", "width": 480, "height": 270, "duration": 4, "hasAudio": true },

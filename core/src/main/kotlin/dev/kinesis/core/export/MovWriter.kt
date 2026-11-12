@@ -8,7 +8,7 @@ import kotlin.math.roundToLong
 
 /**
  * QuickTime `.mov` with one video track of PNG frames (`png ` codec, 32-bit, with alpha): lossless and transparent,
- * opened by After Effects, Premiere, DaVinci Resolve, Final Cut and ffmpeg. Frames are written as they come (`mdat`
+ * opened by the main professional video editors and ffmpeg. Frames are written as they come (`mdat`
  * first, 64-bit size) and the index (`moov`) at the end.
  */
 class MovWriter(file: File, private val width: Int, private val height: Int, fps: Double) : AutoCloseable {

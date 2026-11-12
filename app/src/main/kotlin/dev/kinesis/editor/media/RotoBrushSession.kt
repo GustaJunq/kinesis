@@ -101,7 +101,7 @@ internal class RecordStore(private val file: File, private val recordBytes: Int,
 }
 
 /**
- * One Roto Brush editing session on a stretch of a video: the frames are decoded once (small, upright) so scrubbing and
+ * One Cut-out Brush editing session on a stretch of a video: the frames are decoded once (small, upright) so scrubbing and
  * painting are instant, the masks found so far are kept per frame, and the painted strokes are followed from frame to
  * frame by [RotoPropagator]. [render] writes the packed-alpha video.
  */

@@ -6,8 +6,8 @@ import java.io.RandomAccessFile
 import kotlin.math.roundToLong
 
 /**
- * WebM (Matroska) writer for VP8 video with an alpha channel, the layout browsers, ffmpeg (libvpx), After Effects
- * plug-ins and DaVinci Resolve read: the colour frame goes in the Block and the alpha frame (a second VP8 stream whose
+ * WebM (Matroska) writer for VP8 video with an alpha channel, the layout browsers, ffmpeg (libvpx) and
+ * video editors (some through plug-ins) read: the colour frame goes in the Block and the alpha frame (a second VP8 stream whose
  * luma is the alpha) in `BlockAdditions` with `BlockAddID` 1; the track says `AlphaMode` 1.
  *
  * Frames are written in display order with a constant frame rate. A cluster starts at every key frame (and at least

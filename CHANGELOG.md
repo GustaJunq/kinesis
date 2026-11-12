@@ -4,8 +4,11 @@ Todas as versões do Kinesis Editor. As notas completas de cada release ficam em
 
 ## 0.2.1-hotfix
 
+### Alterado (nomes neutros)
+- Nomes de recursos de outros programas foram trocados por descrições da função, no app, nos docs e nos comentários: **Pincel de recorte** (antes com o nome de um recurso de outro editor), **Multiplicador de escala**, **Brilho amplo**, **Degradê entre pontos**, **Remover reflexo**, **Ajuste de borda do recorte** e **Reduzir quadros**. As referências a outros editores nas dicas, nas notas de exportação, nos docs de expressões e nos exemplos agora falam só de "editores de vídeo" e "motion graphics". Os identificadores internos e as chaves do `.knsproj` não mudaram: nenhum projeto salvo é afetado.
+
 ### Alterado
-- **Dobrar (`bendWarp`) refeito** como o efeito de dobra do Alight Motion: a camada é uma barra presa por um lado (esquerda, direita, topo ou base) e, do ponto inicial até a ponta oposta, curva o ângulo todo. Parâmetros: lado fixo, ângulo, ponto inicial, o que fazer antes do início (congelar, dobrar igual ou oposto), tamanho no eixo, âncora, deslocamento lateral e limites alto/baixo. Projetos que já usavam o Dobrar da 0.2.1 precisam reajustar os parâmetros.
+- **Dobrar (`bendWarp`) refeito** como uma dobra de barra: a camada é uma barra presa por um lado (esquerda, direita, topo ou base) e, do ponto inicial até a ponta oposta, curva o ângulo todo. Parâmetros: lado fixo, ângulo, ponto inicial, o que fazer antes do início (congelar, dobrar igual ou oposto), tamanho no eixo, âncora, deslocamento lateral e limites alto/baixo. Projetos que já usavam o Dobrar da 0.2.1 precisam reajustar os parâmetros.
 
 ## 0.2.1
 
@@ -133,7 +136,7 @@ Formato `.knsproj` **v9** (abre v1 a v8; só campos novos — `editorView`, `vid
   integrado), contagem 3-2-1 e gravação enquanto a timeline toca. A pose ao tocar em *Gravar* vira a rotação atual da
   câmera; intensidade, travar eixos X/Y/Z, suavização, simplificar curva (menos keyframes, mesma forma) e regravar só um
   trecho (os keyframes de fora ficam). Posição opcional e experimental. Escondido em aparelhos sem sensor.
-- **Roto Brush.** Recorta qualquer objeto pintando sobre o vídeo: pincel adicionar/remover, tamanho, desfazer pincelada,
+- **Pincel de recorte.** Recorta qualquer objeto pintando sobre o vídeo: pincel adicionar/remover, tamanho, desfazer pincelada,
   visões Final / Sobreposição / Máscara, tira de quadros com recorte, progresso e cancelamento. O objeto é seguido para
   frente e para trás a partir dos quadros pintados; pintar de novo corrige dali em diante. O resultado é uma camada com
   alfa (`alphaPacked`) acima da original, que fica oculta; as pinceladas ficam em `video.roto` para reabrir.
@@ -142,7 +145,7 @@ Formato `.knsproj` **v9** (abre v1 a v8; só campos novos — `editorView`, `vid
   mapeado em [docs/aureaproj.md](docs/aureaproj.md).
 
 ### Notas técnicas
-- Modelo do Roto Brush: Interactive Segmenter do MediaPipe com o modelo Magic Touch (Apache-2.0). Ele recebe **um ponto**
+- Modelo do Pincel de recorte: Interactive Segmenter do MediaPipe com o modelo Magic Touch (Apache-2.0). Ele recebe **um ponto**
   por pergunta; as pinceladas são aplicadas sobre a resposta do modelo e vários pontos são perguntados um a um.
 
 ## 0.1.5 — 2026-10-18
@@ -258,7 +261,7 @@ Formato `.knsproj` **v5**.
 
 Formato `.knsproj` **v3**.
 
-- Expressões JavaScript no estilo do After Effects e animadores de texto por caractere.
+- Expressões JavaScript no estilo de motion graphics e animadores de texto por caractere.
 - 60 efeitos em 13 categorias, interface redesenhada, tema claro/escuro, português/inglês, apresentação inicial e novo logo.
 - Pipeline de release com assinatura de produção verificada.
 

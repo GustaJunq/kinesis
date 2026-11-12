@@ -127,7 +127,7 @@ class RegistryArtifactsTest {
             props["value"] = plain
             props["expression"] = obj(
                 "type" to str("string"), "maxLength" to JsonPrimitive(20000),
-                "description" to str("JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."),
+                "description" to str("JavaScript (motion-graphics style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."),
             )
             props["expressionEnabled"] = obj("type" to str("boolean"), "description" to str("false switches the expression off without deleting it (default true)."))
             val object3 = LinkedHashMap(animated)
@@ -143,7 +143,7 @@ class RegistryArtifactsTest {
             defs[name] = JsonObject(d)
         }
         defs["textPropertyAnimator"] = obj(
-            "description" to str("After Effects style text animator: properties weighted per character by the Expression Selector `amount`."),
+            "description" to str("motion-graphics style text animator: properties weighted per character by the Expression Selector `amount`."),
             "type" to str("object"),
             "properties" to obj(
                 "name" to obj("type" to str("string")),
@@ -436,7 +436,7 @@ class RegistryArtifactsTest {
             "additionalProperties" to JsonPrimitive(false),
         )
         defs["rotoStroke"] = obj(
-            "description" to str("A brush stroke of the Roto Brush."),
+            "description" to str("A brush stroke of the Cut-out Brush."),
             "type" to str("object"),
             "properties" to obj(
                 "mode" to obj("enum" to JsonArray(listOf(str("add"), str("remove"))), "description" to str("add = part of the object (default); remove = not part of it.")),
@@ -461,7 +461,7 @@ class RegistryArtifactsTest {
             "additionalProperties" to JsonPrimitive(false),
         )
         defs["rotoBrush"] = obj(
-            "description" to str("How a packed-alpha video was cut out with the Roto Brush: the source video and the strokes, so it can be edited again."),
+            "description" to str("How a packed-alpha video was cut out with the Cut-out Brush: the source video and the strokes, so it can be edited again."),
             "type" to str("object"),
             "properties" to obj(
                 "source" to obj("type" to str("string"), "description" to str("Asset id of the source video.")),

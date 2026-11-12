@@ -99,7 +99,7 @@ def v7_to_v8(doc):
 
 
 def v8_to_v9(doc):
-    """Version 9 only adds optional fields (editorView, the TimeSlice effect, Roto Brush strokes)."""
+    """Version 9 only adds optional fields (editorView, the TimeSlice effect, Pincel de recorte strokes)."""
     doc["formatVersion"] = 9
     return doc
 

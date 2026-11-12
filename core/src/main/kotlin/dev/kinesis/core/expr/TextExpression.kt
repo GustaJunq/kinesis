@@ -9,7 +9,7 @@ import dev.kinesis.core.model.TextPropertyAnimator
 import dev.kinesis.core.model.TextUnit
 import dev.kinesis.core.scene.GlyphState
 
-/** Evaluates the After Effects style text animators of a text layer: one expression run per character (or word/line). */
+/** Evaluates the motion-graphics style text animators of a text layer: one expression run per character (or word/line). */
 object TextExpression {
 
     /** Index (0-based) of the unit of every UTF-16 char of [text] (-1 for characters that belong to no unit) and the unit count. */

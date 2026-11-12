@@ -8,7 +8,7 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
- * Pure helpers of the Roto Brush: painting strokes into masks, finding where to ask the network about the object,
+ * Pure helpers of the Cut-out Brush: painting strokes into masks, finding where to ask the network about the object,
  * deciding which frames a correction touches and drawing the three ways of looking at a cut-out. Masks are
  * [FloatArray]s of 0..1 values, row by row.
  */

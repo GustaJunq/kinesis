@@ -1,4 +1,4 @@
-# Cor e luz: Gradient Map, Deep Glow e Lens Flare
+# Cor e luz: mapa de gradiente, brilho amplo e reflexo de lente
 
 ## O que demonstra
 - `gradientMap` recolore o fundo pela luminância com três stops.

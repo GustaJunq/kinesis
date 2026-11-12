@@ -22,7 +22,7 @@ Basicamente offline-first.
 - **Animar qualquer coisa** com keyframes, curvas de velocidade (editor de curvas e editor de gráfico), presets de
   easing que você salva e reaproveita, e copiar/colar keyframes entre camadas.
 - **Texto:** fontes do sistema ou suas (TTF/OTF), animação por letra, palavra ou linha, e expressões no estilo do
-  After Effects (`wiggle`, `loopOut`…).
+  editores de motion graphics (`wiggle`, `loopOut`…).
 - **Formas, imagens, vídeo e áudio:** cortar, dividir, velocidade, volume com fades, máscaras e track mattes.
 - **69 efeitos** (brilho, desfoque, glitch, vidro, chroma key…), transições e motion blur.
 - **3D:** cubos, esferas, modelos GLB, **texto 3D** com profundidade e chanfro, luzes com **sombras**, iluminação por

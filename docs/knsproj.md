@@ -112,7 +112,7 @@ Toda propriedade marcada como *animável* aceita duas formas:
 
 ### 4.1 Expressões
 
-Qualquer propriedade animável aceita ainda uma **expressão** JavaScript no estilo do After Effects:
+Qualquer propriedade animável aceita ainda uma **expressão** JavaScript no estilo de motion graphics:
 
 ```json
 "position": { "value": [0, 0], "expression": "wiggle(3, 40)" }
@@ -130,7 +130,7 @@ Qualquer propriedade animável aceita ainda uma **expressão** JavaScript no est
 - `value`: o valor estático (obrigatório quando não há `keyframes`); dentro da expressão, `value` é o valor da propriedade
   sem a expressão.
 - `expressionEnabled`: `false` desliga a expressão sem apagá-la (padrão `true`).
-- Dentro da expressão valem as unidades do After Effects (escala e opacidade em %, posição a partir do canto superior
+- Dentro da expressão valem as unidades de motion graphics (escala e opacidade em %, posição a partir do canto superior
   esquerdo, cores 0..1); o arquivo continua guardando os valores do Kinesis.
 - Erros de sintaxe são `expression.syntax` na validação; em tempo de execução a propriedade usa o valor dos keyframes.
 
@@ -255,7 +255,7 @@ começa em `start + i·stagger` (tempo local) e anima por `unitDuration` segundo
 | `order` | `forward`, `backward`, `center`, `random` (aleatório determinístico) |
 | `amount` | px para *slides* e amplitude do `wave`; graus para `rotate`; escala inicial em % para `scale` (0 = do nada) |
 
-**Animadores de texto estilo After Effects** (`propertyAnimators`, versão 3): um animador tem propriedades opcionais
+**Animadores de texto estilo motion graphics** (`propertyAnimators`, versão 3): um animador tem propriedades opcionais
 (`position`, `scale`, `rotation`, `opacity`) e um seletor de expressão (`amount`, em %). A expressão do `amount` roda
 por caractere (ou palavra/linha) com `textIndex` (a partir de 1), `textTotal` e `selectorValue`.
 
@@ -278,7 +278,7 @@ por caractere (ou palavra/linha) com `textIndex` (a partir de 1), `textTotal` e 
 | `opacity` | %, 100 = normal |
 | `amount` | animável, em % (padrão 100); aceita `expression` |
 
-A semântica completa e o exemplo "Bounce Text" estão em [`expressoes.md`](expressoes.md).
+A semântica completa e o exemplo clássico de texto que quica estão em [`expressoes.md`](expressoes.md).
 
 ### 5.3 `shape`
 
@@ -315,7 +315,7 @@ A semântica completa e o exemplo "Bounce Text" estão em [`expressoes.md`](expr
 `type` (`peak`, `lowShelf` ou `highShelf`; padrão `peak`), `frequency` (20 a 20000 Hz, padrão 1000), `gain` (−24 a 24 dB, padrão 0) e `q` (0,1 a 10, padrão 1;
 maior = mais estreito). Ausente ou vazio = desligado. É não destrutivo (o arquivo de mídia não muda) e vale no preview e na exportação.
 
-`roto` (formato v9, em `video` com `alphaPacked`): a receita de um recorte feito com o Roto Brush, para poder editá-lo de novo.
+`roto` (formato v9, em `video` com `alphaPacked`): a receita de um recorte feito com o Pincel de recorte, para poder editá-lo de novo.
 `{ "source": "<id do vídeo de origem>", "sourceStart": 0, "duration": 4, "frames": [ { "time": 0, "strokes": [ { "mode": "add", "size": 0.06, "points": [[0.45, 0.5], [0.5, 0.55]] } ] } ] }`.
 `source` é um asset de vídeo do projeto; `sourceStart` e `duration` (s) dizem que trecho dele foi recortado; cada item de `frames`
 é um quadro pintado (`time` em segundos depois de `sourceStart`, de 0 a `duration`; no máximo 240) com até 64 pinceladas. Uma pincelada
@@ -570,7 +570,7 @@ Comportamentos especiais:
   lista atuam nos pixels de fundo cobertos pelas partes opacas da camada; máscaras, `feather` e `opacity` da camada recortam
   a região. `amount` (0..1, animável) mistura a camada com o fundo copiado (1 = só o fundo). Põe-se no começo da lista de
   efeitos: o que vem antes é descartado. Só vê as camadas abaixo na lista, nunca as de cima. Exemplo: `basicos/efeito-copiar-fundo`.
-- No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho profundo)
+- No preview do celular, efeitos com muitas amostras (desfoques de lente, direcional e radial, brilho amplo)
   usam menos amostras durante a reprodução, como no motion blur; a exportação usa sempre a qualidade total.
 
 Migração da versão 1: `colorAdjust` vira `hueShift` (`hue`), `brightnessContrast` (`brightness`, `contrast`) e
@@ -593,7 +593,7 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 | `invert` (Inverter cores) | Cor e luz | `amount` | `1` | 0..1 % |
 | `fill` (Preenchimento) | Cor e luz | `color` | `#FFFFFF` | cor |
 |  |  | `amount` | `1` | 0..1 % |
-| `deepGlow` (Brilho profundo) | Cor e luz | `threshold` | `0.6` | 0..1 % |
+| `deepGlow` (Brilho amplo) | Cor e luz | `threshold` | `0.6` | 0..1 % |
 |  |  | `radius` | `60` | 0..1000 px |
 |  |  | `intensity` | `1.5` | 0..10 × |
 |  |  | `falloff` | `0.5` | 0..1 % |
@@ -693,7 +693,7 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `angleB` | `-15` | -3600..3600 ° |
 |  |  | `frequency` | `1` | 0..60 Hz |
 |  |  | `phase` | `0` | -3600..3600 ° |
-| `scaleAssist` (Assistência de escala) | Movimentar e transformar | `scale` | `1` | 0..100 % |
+| `scaleAssist` (Multiplicador de escala) | Movimentar e transformar | `scale` | `1` | 0..100 % |
 |  |  | `axis` | `"both"` | `both`, `x`, `y` (estático) |
 | `pixelate` (Pixelizar) | Estilizar | `size` | `16` | 1..1000 px |
 | `dropShadow` (Sombra) | Estilizar | `color` | `#000000` | cor |
@@ -804,7 +804,7 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `seed` | `0` | inteiro 0..99999 |
 |  |  | `mode` | `"replace"` | `replace`, `add`, `multiply`, `screen`, `overlay` (estático) |
 |  |  | `mix` | `1` | 0..1 % |
-| `gradientRamp` (Rampa de gradiente) | Procedimental | `shape` | `"linear"` | `linear`, `radial` (estático) |
+| `gradientRamp` (Degradê entre pontos) | Procedimental | `shape` | `"linear"` | `linear`, `radial` (estático) |
 |  |  | `start` | `[0, -300]` | `[x, y]` px relativos à origem da camada |
 |  |  | `end` | `[0, 300]` | `[x, y]` px relativos à origem da camada |
 |  |  | `startColor` | `#000000` | cor |
@@ -834,14 +834,14 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `tolerance` | `0.1` | 0..1 % |
 |  |  | `softness` | `0.05` | 0..1 % |
 |  |  | `invert` | `false` | `true`/`false` (estático) |
-| `spillSuppressor` (Supressor de spill) | Fosco, máscara e chave | `color` | `#00FF00` | cor |
+| `spillSuppressor` (Remover reflexo) | Fosco, máscara e chave | `color` | `#00FF00` | cor |
 |  |  | `amount` | `1` | 0..1 % |
-| `matteChoker` (Ajuste de fosco) | Fosco, máscara e chave | `choke` | `2` | -100..100 px |
+| `matteChoker` (Ajuste de borda do recorte) | Fosco, máscara e chave | `choke` | `2` | -100..100 px |
 |  |  | `softness` | `1` | 0..100 px |
 | `echo` (Eco) | Tempo e transição | `delay` | `0.1` | 0.01..5 s |
 |  |  | `count` | `4` | inteiro 1..16 |
 |  |  | `decay` | `0.6` | 0..1 % |
-| `posterizeTime` (Posterizar tempo) | Tempo e transição | `fps` | `8` | 1..120 fps |
+| `posterizeTime` (Reduzir quadros) | Tempo e transição | `fps` | `8` | 1..120 fps |
 | `strobe` (Estroboscópio) | Tempo e transição | `frequency` | `4` | 0..60 Hz |
 |  |  | `duty` | `0.5` | 0..1 % |
 |  |  | `mode` | `"flash"` | `flash`, `hide` (estático) |
@@ -946,7 +946,7 @@ Erros da versão 6 e 7: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeigh
   5.13; só campos novos, documentos v5 abrem sem mudança); **v7** → em `{"cyclic": …}`, `offset` passa a ser a
   assimetria de cada ciclo e o antigo deslocamento vira `phase` (a migração v6→v7 move o valor antigo de `offset` para
   `phase`, então projetos v5/v6 ficam idênticos). **v8** → `markers` na raiz e `eq` nos clipes de áudio/vídeo (seções 2 e 5; só campos novos, documentos v7 abrem sem mudança).
-  **v9** → `editorView` na raiz (seção 2), o efeito `timeSlice` (seção 7, efeitos de tempo) e os recortes do Roto Brush (seção 5.4; só campos novos, documentos v8 abrem sem mudança).
+  **v9** → `editorView` na raiz (seção 2), o efeito `timeSlice` (seção 7, efeitos de tempo) e os recortes do Pincel de recorte (seção 5.4; só campos novos, documentos v8 abrem sem mudança).
   **v10** → efeitos de estilo e glitch retrô: `eightBit`, `pixDither`, `pixelEncoder`, `kernel`, `signalAnalog`, `glitchify` e `dissolveShake` (seção 7; só efeitos novos, documentos v9 abrem sem mudança).
   **v11** → o efeito `copyBackground` (Copiar fundo, seção 7; só um efeito novo, documentos v10 abrem sem mudança).
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.

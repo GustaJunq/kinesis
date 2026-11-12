@@ -79,7 +79,7 @@ val PROPERTY_PRESETS = listOf(
     ExprPreset(R.string.expr_p_posterize, "posterizeTime(8);\nvalue"),
 )
 
-/** The expression of the After Effects "Bounce Text" tutorial, usable unchanged on a Scale animator's selector. */
+/** The expression of the well-known text-bounce tutorial, usable unchanged on a Scale animator's selector. */
 const val BOUNCE_TEXT_EXPRESSION = """delay = 0.030;
 myDelay = delay * textIndex;
 t = (time - inPoint) - myDelay;
@@ -204,7 +204,7 @@ fun ExpressionEditor(
 
 // ---------------------------------------------------------------------------------------- text animators (expressions)
 
-/** After Effects style text animators: properties plus an Expression Selector evaluated per character. */
+/** motion-graphics style text animators: properties plus an Expression Selector evaluated per character. */
 @Composable
 fun TextExpressionAnimatorsBlock(vm: EditorViewModel, layer: Layer) {
     val text = layer.text ?: return

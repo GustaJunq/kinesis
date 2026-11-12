@@ -105,8 +105,8 @@ sealed class CaptionUiState {
 }
 
 /**
- * What the Roto Brush needs to open on a layer: the source video and stretch, and the strokes saved before (by time).
- * [replacing] = the layer is already a Roto Brush result and is updated in place.
+ * What the Cut-out Brush needs to open on a layer: the source video and stretch, and the strokes saved before (by time).
+ * [replacing] = the layer is already a Cut-out Brush result and is updated in place.
  */
 class RotoRequest(
     val layerId: String,
@@ -1036,7 +1036,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
 
     fun canRotoBrush(layer: Layer?): Boolean = layer?.type == LayerType.VIDEO && layer.video != null
 
-    /** Opens the Roto Brush on a video layer (or on a Roto Brush result, with its saved strokes); null if the source is not readable. */
+    /** Opens the Cut-out Brush on a video layer (or on a Cut-out Brush result, with its saved strokes); null if the source is not readable. */
     fun rotoRequest(layerId: String): RotoRequest? {
         val layer = LayerTree.find(current, layerId) ?: return null
         val media = layer.video ?: return null
@@ -1055,7 +1055,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     }
 
     /**
-     * Puts a finished Roto Brush cut-out in the project: a new layer above the original (which is hidden), or the layer being
+     * Puts a finished Cut-out Brush cut-out in the project: a new layer above the original (which is hidden), or the layer being
      * edited gets the new video and strokes. One undo step.
      */
     suspend fun finishRoto(request: RotoRequest, recipe: dev.kinesis.core.model.RotoBrush, file: File, result: PackedAlpha.Result) {

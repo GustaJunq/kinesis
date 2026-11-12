@@ -1,4 +1,4 @@
-# Fosco, máscara e chave: Luma Key e Matte Choker
+# Fosco, máscara e chave: chave de luminância e ajuste de borda do recorte
 
 ## O que demonstra
 - `lumaKey` remove as partes escuras do fundo radial (fica um disco claro com borda suave).

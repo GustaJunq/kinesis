@@ -79,7 +79,7 @@ private sealed class RotoBusy(val label: Int) {
 }
 
 /**
- * The Roto Brush: paint over the frame to say what to keep (add) and what not (remove); the object is followed from the
+ * The Cut-out Brush: paint over the frame to say what to keep (add) and what not (remove); the object is followed from the
  * painted frames to the rest of the stretch. Painting any frame again corrects it and the frames after it. The result is a
  * packed-alpha layer, and the strokes stay in the project so it can be reopened.
  */

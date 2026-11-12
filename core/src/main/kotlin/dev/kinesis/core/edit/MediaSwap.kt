@@ -25,7 +25,7 @@ object MediaSwap {
      * @param scale factor for the layer's scale when the new file has fewer pixels than the original.
      * @param alphaPacked the new video holds colour and alpha side by side.
      * @param muted whether the new copy is silent (the new file has no sound).
-     * @param roto the Roto Brush recipe of the new video, when it is a cut-out made by hand.
+     * @param roto the Cut-out Brush recipe of the new video, when it is a cut-out made by hand.
      * @return the project and the id of the new layer.
      */
     fun replace(

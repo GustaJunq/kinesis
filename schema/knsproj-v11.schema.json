@@ -174,7 +174,7 @@
             "expression": {
               "type": "string",
               "maxLength": 20000,
-              "description": "JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
+              "description": "JavaScript (motion-graphics style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
             },
             "expressionEnabled": {
               "type": "boolean",
@@ -234,7 +234,7 @@
             "expression": {
               "type": "string",
               "maxLength": 20000,
-              "description": "JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
+              "description": "JavaScript (motion-graphics style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
             },
             "expressionEnabled": {
               "type": "boolean",
@@ -294,7 +294,7 @@
             "expression": {
               "type": "string",
               "maxLength": 20000,
-              "description": "JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
+              "description": "JavaScript (motion-graphics style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
             },
             "expressionEnabled": {
               "type": "boolean",
@@ -354,7 +354,7 @@
             "expression": {
               "type": "string",
               "maxLength": 20000,
-              "description": "JavaScript (After Effects style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
+              "description": "JavaScript (motion-graphics style). The result is the last evaluated statement; `value` is the property's own value. See docs/knsproj.md, expressions."
             },
             "expressionEnabled": {
               "type": "boolean",
@@ -722,7 +722,7 @@
           },
           "additionalProperties": false,
           "required": ["type"],
-          "description": "Deep Glow (Color & light). Multi-pass bloom built from the areas above the threshold."
+          "description": "Wide Glow (Color & light). Multi-pass bloom built from the areas above the threshold."
         },
         {
           "type": "object",
@@ -1370,7 +1370,7 @@
           },
           "additionalProperties": false,
           "required": ["type"],
-          "description": "Scale Assist (Move & transform). Multiplies the layer's scale around its origin; the scale can be animated (handy for springs and pops)."
+          "description": "Scale Multiplier (Move & transform). Multiplies the layer's scale around its origin; the scale can be animated (handy for springs and pops)."
         },
         {
           "type": "object",
@@ -2090,7 +2090,7 @@
           },
           "additionalProperties": false,
           "required": ["type"],
-          "description": "Gradient Ramp (Procedural). Linear or radial gradient between two points."
+          "description": "Two-point Gradient (Procedural). Linear or radial gradient between two points."
         },
         {
           "type": "object",
@@ -2237,7 +2237,7 @@
           },
           "additionalProperties": false,
           "required": ["type"],
-          "description": "Spill Suppressor (Matte, mask & key). Removes the screen colour reflected on the edges."
+          "description": "Spill Remover (Matte, mask & key). Removes the screen colour reflected on the edges."
         },
         {
           "type": "object",
@@ -2257,7 +2257,7 @@
           },
           "additionalProperties": false,
           "required": ["type"],
-          "description": "Matte Choker (Matte, mask & key). Shrinks (> 0) or grows (< 0) the alpha and softens the edge."
+          "description": "Matte Edge Trim (Matte, mask & key). Shrinks (> 0) or grows (< 0) the alpha and softens the edge."
         },
         {
           "type": "object",
@@ -2297,7 +2297,7 @@
           },
           "additionalProperties": false,
           "required": ["type"],
-          "description": "Posterize Time (Time & transition). Animates the layer at a lower frame rate (stop-motion look)."
+          "description": "Frame Rate Reducer (Time & transition). Animates the layer at a lower frame rate (stop-motion look)."
         },
         {
           "type": "object",
@@ -3207,7 +3207,7 @@
       ]
     },
     "textPropertyAnimator": {
-      "description": "After Effects style text animator: properties weighted per character by the Expression Selector `amount`.",
+      "description": "motion-graphics style text animator: properties weighted per character by the Expression Selector `amount`.",
       "type": "object",
       "properties": {
         "name": {
@@ -3426,7 +3426,7 @@
       "additionalProperties": false
     },
     "rotoStroke": {
-      "description": "A brush stroke of the Roto Brush.",
+      "description": "A brush stroke of the Cut-out Brush.",
       "type": "object",
       "properties": {
         "mode": {
@@ -3481,7 +3481,7 @@
       "additionalProperties": false
     },
     "rotoBrush": {
-      "description": "How a packed-alpha video was cut out with the Roto Brush: the source video and the strokes, so it can be edited again.",
+      "description": "How a packed-alpha video was cut out with the Cut-out Brush: the source video and the strokes, so it can be edited again.",
       "type": "object",
       "properties": {
         "source": {

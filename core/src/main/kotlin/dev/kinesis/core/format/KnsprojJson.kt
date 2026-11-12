@@ -149,7 +149,7 @@ object Migrations {
     /** Version 10 only adds effects (8-bit, PixDither, Pixel Encoder, Kernel, Signal Analog, Glitchify, Dissolve Shake), so version 9 documents are valid as they are. */
     fun v9ToV10(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(10)))
 
-    /** Version 9 only adds optional fields (`editorView`, the TimeSlice effect, Roto Brush strokes), so version 8 documents are valid as they are. */
+    /** Version 9 only adds optional fields (`editorView`, the TimeSlice effect, Cut-out Brush strokes), so version 8 documents are valid as they are. */
     fun v8ToV9(doc: JsonObject): JsonObject = JsonObject(doc + ("formatVersion" to JsonPrimitive(9)))
 
     /** Version 8 only adds optional fields (`markers`, the `eq` of audio and video clips), so version 7 documents are valid as they are. */

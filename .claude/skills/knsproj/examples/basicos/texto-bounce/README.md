@@ -1,8 +1,8 @@
-# Texto com quique (Bounce Text)
+# Texto com quique 
 
 ## O que demonstra
-- Um **animador de texto** (`text.propertyAnimators`) no estilo do After Effects: a propriedade `scale` do animador vale `[0, 0]` (%) e o **seletor** (`amount`, em %) decide, por caractere, o quanto dessa escala é aplicada.
-- A expressão do tutorial "Bounce Text" **sem nenhuma alteração**, no `amount`. Ela roda uma vez por caractere, com `textIndex` (1, 2, 3...) e `textTotal`.
+- Um **animador de texto** (`text.propertyAnimators`) no estilo de motion graphics: a propriedade `scale` do animador vale `[0, 0]` (%) e o **seletor** (`amount`, em %) decide, por caractere, o quanto dessa escala é aplicada.
+- A expressão do tutorial clássico de texto que quica **sem nenhuma alteração**, no `amount`. Ela roda uma vez por caractere, com `textIndex` (1, 2, 3...) e `textTotal`.
 - Antes da vez do caractere a expressão devolve `value` (100%): escala 0, o caractere está invisível. Depois, `[s, s]` oscila com amortecimento e termina em 0%, escala normal.
 
 ## Quando usar

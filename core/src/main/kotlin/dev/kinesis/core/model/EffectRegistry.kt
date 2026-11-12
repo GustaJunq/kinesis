@@ -248,7 +248,7 @@ object EffectRegistry {
             color("color", "Cor", "Color", Color.WHITE), amount(),
         ),
         spec(
-            "deepGlow", EffectCategory.COLOR_LIGHT, "Brilho profundo", "Deep Glow",
+            "deepGlow", EffectCategory.COLOR_LIGHT, "Brilho amplo", "Wide Glow",
             "Bloom em várias passadas a partir das áreas acima do limiar.", "Multi-pass bloom built from the areas above the threshold.",
             num("threshold", "Limiar", "Threshold", 0.6f, 0f, 1f, unit = ParamUnit.PERCENT),
             px("radius", "Raio", "Radius", 60f, 1000f, 300f),
@@ -452,7 +452,7 @@ object EffectRegistry {
             hz(default = 1f), phase(),
         ),
         spec(
-            "scaleAssist", EffectCategory.MOTION, "Assistência de escala", "Scale Assist",
+            "scaleAssist", EffectCategory.MOTION, "Multiplicador de escala", "Scale Multiplier",
             "Multiplica a escala da camada em torno da origem; a escala pode ser animada (útil para elásticos e pulos).", "Multiplies the layer's scale around its origin; the scale can be animated (handy for springs and pops).",
             num("scale", "Escala", "Scale", 1f, 0f, 100f, 0f, 4f, ParamUnit.PERCENT),
             choice("axis", "Eixo", "Axis", "both", c("both", "X e Y", "X and Y"), c("x", "Só X", "X only"), c("y", "Só Y", "Y only")),
@@ -680,7 +680,7 @@ object EffectRegistry {
             seed(), *blendParams().toTypedArray(),
         ),
         spec(
-            "gradientRamp", EffectCategory.PROCEDURAL, "Rampa de gradiente", "Gradient Ramp",
+            "gradientRamp", EffectCategory.PROCEDURAL, "Degradê entre pontos", "Two-point Gradient",
             "Gradiente linear ou radial entre dois pontos.", "Linear or radial gradient between two points.",
             choice("shape", "Forma", "Shape", "linear", c("linear", "Linear", "Linear"), c("radial", "Radial", "Radial")),
             point("start", "Início", "Start", Vec2(0f, -300f)), point("end", "Fim", "End", Vec2(0f, 300f)),
@@ -722,12 +722,12 @@ object EffectRegistry {
             bool("invert", "Inverter", "Invert", false),
         ),
         spec(
-            "spillSuppressor", EffectCategory.KEYING, "Supressor de spill", "Spill Suppressor",
+            "spillSuppressor", EffectCategory.KEYING, "Remover reflexo", "Spill Remover",
             "Remove o reflexo da cor de fundo nas bordas.", "Removes the screen colour reflected on the edges.",
             color("color", "Cor", "Color", Color(0f, 1f, 0f)), amount(),
         ),
         spec(
-            "matteChoker", EffectCategory.KEYING, "Ajuste de fosco", "Matte Choker",
+            "matteChoker", EffectCategory.KEYING, "Ajuste de borda do recorte", "Matte Edge Trim",
             "Contrai (> 0) ou expande (< 0) o alfa e suaviza a borda.", "Shrinks (> 0) or grows (< 0) the alpha and softens the edge.",
             px("choke", "Choke", "Choke", 2f, 100f, 20f, min = -100f, sliderMin = -20f),
             px("softness", "Suavidade", "Softness", 1f, 100f, 20f),
@@ -742,7 +742,7 @@ object EffectRegistry {
             num("decay", "Decaimento", "Decay", 0.6f, 0f, 1f, unit = ParamUnit.PERCENT),
         ),
         spec(
-            "posterizeTime", EffectCategory.TIME, "Posterizar tempo", "Posterize Time",
+            "posterizeTime", EffectCategory.TIME, "Reduzir quadros", "Frame Rate Reducer",
             "Anima a camada em uma taxa de quadros menor (efeito stop-motion).", "Animates the layer at a lower frame rate (stop-motion look).",
             num("fps", "Quadros por segundo", "Frame rate", 8f, 1f, 120f, 1f, 30f, ParamUnit.FPS),
         ),
