@@ -5,23 +5,10 @@ Todas as versões do Kinesis Editor. As notas completas de cada release ficam em
 ## 0.2.1
 
 ### Adicionado
-- **Importar do Alight Motion (.xml):** converte o projeto exportado pelo Alight (camadas, keyframes e easing, pré-composições,
-  vídeo e áudio com retime e ganho, sombras e efeitos) em um projeto novo. O app procura as mídias sozinho (endereço original,
-  depois nome, tamanho e resolução no MediaStore), mostra uma tela de mídia não encontrada (com placeholders) e um relatório
-  do que foi convertido, aproximado ou não suportado. Também há a linha de comando `tools/alight2kns`. Veja
-  [docs/alight-import.md](docs/alight-import.md).
 - **Efeito Dobrar (`bendWarp`):** dobra o conteúdo em arco ao longo de um eixo (ângulo, eixo, comprimento, deslocamento).
 - **Efeito Balanço (`swing`):** balança a camada entre dois ângulos, em senoide.
 - **Efeito Assistência de escala (`scaleAssist`):** multiplica a escala da camada, com a escala animável e eixo X/Y/os dois.
 - **Efeito Colorir (`colorize`):** pinta a camada com um matiz mantendo luz e sombra (matiz, saturação, luminosidade, quantidade).
-- **Tela de carregamento da importação do Alight:** mostra a etapa (lendo, procurando mídias, copiando, convertendo) com progresso e dicas ("Você sabia?").
-
-### Alterado
-- O importador do Alight usa os efeitos Balanço, Assistência de escala e Colorir em vez de assar `swing2` e `scaleassist` em keyframes, e converte o `colorize`. O desfoque de movimento (`motionblur4`) passa a ser ignorado de propósito, porque deixa a renderização muito mais lenta; o relatório avisa.
-
-### Corrigido
-- Importar do Alight: um pai listado depois do filho no XML (um braço antes do corpo) perdia o vínculo.
-- O relatório da importação agrupa entradas repetidas e as notas dos efeitos estão em português.
 
 ## 0.2.0-hotfix
 

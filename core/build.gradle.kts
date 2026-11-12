@@ -33,16 +33,3 @@ tasks.test {
     val nativeLib = file("../native/target/release")
     if (nativeLib.isDirectory) systemProperty("java.library.path", nativeLib.absolutePath)
 }
-
-// `alight2kns`: a self-contained jar (java -jar alight2kns.jar scan|convert ...), built by `./gradlew :core:alight2knsJar`.
-tasks.register<Jar>("alight2knsJar") {
-    group = "distribution"
-    archiveBaseName.set("alight2kns")
-    archiveVersion.set("")
-    manifest { attributes["Main-Class"] = "dev.kinesis.core.alight.cli.Alight2Kns" }
-    from(sourceSets.main.get().output)
-    dependsOn(configurations.runtimeClasspath)
-    from({ configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) } })
-    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
