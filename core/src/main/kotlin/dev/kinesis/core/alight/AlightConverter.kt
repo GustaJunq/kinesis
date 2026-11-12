@@ -1,6 +1,10 @@
 package dev.kinesis.core.alight
 
+import dev.kinesis.core.anim.Animatable
+import dev.kinesis.core.anim.Easing
+import dev.kinesis.core.anim.Keyframe
 import dev.kinesis.core.anim.anim
+import dev.kinesis.core.anim.at
 import dev.kinesis.core.edit.Factory
 import dev.kinesis.core.edit.Ids
 import dev.kinesis.core.edit.TimelineOps
@@ -58,6 +62,7 @@ object AlightConverter {
         val taken = HashSet<String>()
         val kinesisId = HashMap<String, String>()
         val out = ArrayList<Layer>()
+        val stats = EasingStats()
 
         fun assetFor(uri: String, m: AlightMedia): Asset = assets.getOrPut(uri) {
             val type = if (m.kind == AlightMediaKind.VIDEO) AssetType.VIDEO else if (m.kind == AlightMediaKind.AUDIO) AssetType.AUDIO else AssetType.IMAGE
@@ -99,11 +104,15 @@ object AlightConverter {
             val fp = if (parentKid != null) factor(parentSrc!!) else 1.0
 
             val tr = l.transform
-            val scale = vec(tr.scale, 2, doubleArrayOf(1.0, 1.0), l, "scale", report)
-            val rot = vec(tr.rotation, 1, doubleArrayOf(0.0), l, "rotation", report)[0]
-            val pivot = vec(tr.pivot, 2, doubleArrayOf(0.0, 0.0), l, "pivot", report)
-            val loc = vec(tr.location, 3, doubleArrayOf(0.0, 0.0, 0.0), l, "location", report)
-            val opacity = vec(tr.opacity, 1, doubleArrayOf(1.0), l, "opacity", report)[0].coerceIn(0.0, 1.0)
+            val dur = (l.endMs - l.startMs) / 1000.0
+            val locA = AlightAnimation.build(tr.location, dur, Vec2.ZERO, stats) { Vec2(it.getOrElse(0) { 0.0 }.toFloat(), it.getOrElse(1) { 0.0 }.toFloat()) }
+            val scaleA = AlightAnimation.build(tr.scale, dur, Vec2.ONE, stats) { Vec2(it.getOrElse(0) { 1.0 }.toFloat(), it.getOrElse(1) { 1.0 }.toFloat()) }
+            val rotA = AlightAnimation.build(tr.rotation, dur, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat() }
+            val opacityA = AlightAnimation.build(tr.opacity, dur, 1f, stats) { it.getOrElse(0) { 1.0 }.toFloat().coerceIn(0f, 1f) }
+            val pivotP = tr.pivot
+            if (pivotP != null && pivotP.animated) report.add(ReportKind.APPROXIMATED, "layer:${l.label}/pivot", "pivô animado: usado só o primeiro valor")
+            val pv = (pivotP?.static ?: pivotP?.keyframes?.firstOrNull()?.value)
+            val pivot = doubleArrayOf(pv?.getOrNull(0) ?: 0.0, pv?.getOrNull(1) ?: 0.0)
             val f: Double
 
             val media = l.mediaUri?.let { mediaByUri[it] }
@@ -150,20 +159,32 @@ object AlightConverter {
 
             // Alight: centre at `location`, rotation and scale around `pivot` (which does not move the layer). Kinesis:
             // position is where the anchor lands, so the anchor goes to location + R·S·pivot.
-            val a = Math.toRadians(rot)
-            val sx = scale[0] * pivot[0]; val sy = scale[1] * pivot[1]
-            val px = loc[0] + sx * cos(a) - sy * sin(a)
-            val py = loc[1] + sx * sin(a) + sy * cos(a)
-            val position = if (parentKid != null) Vec2((px / fp).toFloat(), (py / fp).toFloat())
-            else Vec2((px - scene.width / 2.0).toFloat(), (py - scene.height / 2.0).toFloat())
+            fun landing(loc: Vec2, sc: Vec2, rotDeg: Float): Vec2 {
+                val a = Math.toRadians(rotDeg.toDouble())
+                val sx = sc.x * pivot[0]; val sy = sc.y * pivot[1]
+                val px = loc.x + sx * cos(a) - sy * sin(a)
+                val py = loc.y + sx * sin(a) + sy * cos(a)
+                return if (parentKid != null) Vec2((px / fp).toFloat(), (py / fp).toFloat())
+                else Vec2((px - scene.width / 2.0).toFloat(), (py - scene.height / 2.0).toFloat())
+            }
+            val needsBake = (pivot[0] != 0.0 || pivot[1] != 0.0) && (scaleA.keyframes.isNotEmpty() || rotA.keyframes.isNotEmpty())
+            val positionA = if (!needsBake) {
+                // The offset R·S·pivot is constant (or zero), so the location keyframes carry over one to one.
+                val sc = scaleA.value; val ro = rotA.value
+                locA.mapValues { landing(it, sc, ro) }
+            } else {
+                val bake = bakePosition(locA, scaleA, rotA, dur, ::landing)
+                report.add(ReportKind.APPROXIMATED, "layer:${l.label}/location", "posição com pivô e escala/rotação animadas: calculada em ${bake.keyframes.size} keyframes")
+                bake
+            }
             val layer = common.copy(
-                start = l.startMs / 1000.0, duration = (l.endMs - l.startMs) / 1000.0, parent = parentKid,
+                start = l.startMs / 1000.0, duration = dur, parent = parentKid,
                 transform = Transform2D(
                     anchor = anim(Vec2((pivot[0] / f).toFloat(), (pivot[1] / f).toFloat())),
-                    position = anim(position),
-                    scale = anim(Vec2((scale[0] * f).toFloat(), (scale[1] * f).toFloat())),
-                    rotation = anim(rot.toFloat()),
-                    opacity = anim(opacity.toFloat()),
+                    position = positionA,
+                    scale = scaleA.mapValues { Vec2((it.x * f).toFloat(), (it.y * f).toFloat()) },
+                    rotation = rotA,
+                    opacity = opacityA,
                 ),
             )
             kinesisId[l.id] = layer.id
@@ -171,22 +192,35 @@ object AlightConverter {
             report.add(ReportKind.CONVERTED, "layer:${l.label}", "convertida")
         }
 
+        if (stats.elastic > 0) report.add(ReportKind.APPROXIMATED, "easing", "${stats.elastic} keyframes com easing elastic: aproximados por easeOutElastic (os parâmetros do Alight não estão documentados)")
+        if (stats.cyclic > 0) report.add(ReportKind.APPROXIMATED, "easing", "${stats.cyclic} keyframes com easing cyclic: ciclos estimados a partir do primeiro pico (0,5 ÷ pico)")
+        for (u in stats.unknown) report.add(ReportKind.WARNING, "easing", "easing \"$u\" desconhecido: usado linear")
         project = project.copy(layers = out, assets = assets.values.toList())
         return AlightConversion(project, report, assetUris)
     }
 
-    /** Static value, or the first keyframe of an animated property (keyframes are converted in a later step). */
-    private fun vec(p: AlightProp?, n: Int, default: DoubleArray, l: AlightLayer, name: String, report: ImportReport): DoubleArray {
-        val v = when {
-            p == null -> return default
-            p.static != null -> p.static
-            p.keyframes.isNotEmpty() -> {
-                report.add(ReportKind.APPROXIMATED, "layer:${l.label}/$name", "animado: usado só o primeiro keyframe por enquanto")
-                p.keyframes.first().value
+    /**
+     * Position when scale or rotation move a pivot that is not the centre: it depends on all three at once, so it is
+     * sampled at every keyframe of the three and at a few points between them (linear between samples).
+     */
+    private fun bakePosition(
+        loc: Animatable<Vec2>, scale: Animatable<Vec2>, rot: Animatable<Float>, durationSec: Double,
+        landing: (Vec2, Vec2, Float) -> Vec2,
+    ): Animatable<Vec2> {
+        val marks = (loc.keyframes.map { it.time } + scale.keyframes.map { it.time } + rot.keyframes.map { it.time }).sorted()
+        val times = ArrayList<Double>()
+        for ((i, t) in marks.withIndex()) {
+            if (times.isNotEmpty() && t - times.last() < 1e-6) continue
+            if (i > 0 && times.isNotEmpty()) {
+                val from = times.last()
+                val gap = t - from
+                val n = min(40, max(1, Math.ceil(gap * 8).toInt()))
+                for (k in 1 until n) times += from + gap * k / n
             }
-            else -> return default
+            times += t
         }
-        return DoubleArray(n) { v.getOrElse(it) { default.getOrElse(it) { 0.0 } } }
+        val keys = times.map { t -> Keyframe(t, landing(loc.at(t), scale.at(t), rot.at(t)), Easing.LINEAR) }
+        return Animatable(keys.first().value, keys)
     }
 
     /** `#aarrggbb` (Alight) to a colour; anything else is black. */
