@@ -20,7 +20,7 @@ class AlightPrecompTest {
 
     // An opaque scene background becomes one extra "Fundo" rectangle inside its group.
     private fun opaque(bg: String?) = bg != null && bg.length == 9 && !bg.startsWith("#00")
-    private fun count(layers: List<AlightLayer>): Int = layers.filter { it.kind != AlightLayerKind.AUDIO }
+    private fun count(layers: List<AlightLayer>): Int = layers
         .sumOf { 1 + (it.scene?.let { s -> count(s.layers) + (if (opaque(s.background)) 1 else 0) } ?: 0) }
     private fun countOut(layers: List<Layer>): Int = layers.sumOf { 1 + countOut(it.layers) }
 

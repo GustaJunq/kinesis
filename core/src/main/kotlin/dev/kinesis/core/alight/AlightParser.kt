@@ -181,6 +181,7 @@ object AlightParser {
             speed = e.getAttribute("speed").toDoubleOrNull(),
             scene = if (kind == AlightLayerKind.EMBED) children(e, "scene").firstOrNull()?.let { readScene(it, report, depth + 1) } else null,
             linkId = e.getAttribute("link").ifBlank { null },
+            gain = children(e, "gain").firstOrNull()?.let { readProp(it, "layer:$label/gain", report) },
             transform = AlightTransform(prop("location"), prop("scale"), prop("rotation"), prop("pivot"), prop("opacity")),
         )
     }

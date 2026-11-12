@@ -74,6 +74,8 @@ data class AlightLayer(
     val scene: AlightScene? = null,
     /** `link` of a pre-composition that Alight keeps in sync across copies. */
     val linkId: String? = null,
+    /** `gain` of a video or audio layer: linear volume (0 = silent), constant or animated over the layer. */
+    val gain: AlightProp? = null,
     val transform: AlightTransform = AlightTransform(),
 )
 

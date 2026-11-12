@@ -1,5 +1,6 @@
 package dev.kinesis.core.alight
 
+import dev.kinesis.core.anim.AnimFloat
 import dev.kinesis.core.anim.Animatable
 import dev.kinesis.core.anim.Easing
 import dev.kinesis.core.anim.Keyframe
@@ -68,8 +69,9 @@ object AlightConverter {
         val stats = EasingStats()
         var layerCount = 0
 
-        fun assetFor(uri: String, m: AlightMedia): Asset = assets.getOrPut(uri) {
-            val type = if (m.kind == AlightMediaKind.VIDEO) AssetType.VIDEO else if (m.kind == AlightMediaKind.AUDIO) AssetType.AUDIO else AssetType.IMAGE
+        /** [asAudio]: an audio layer that plays the sound of a video file gets its own audio asset (same file). */
+        fun assetFor(uri: String, m: AlightMedia, asAudio: Boolean = false): Asset = assets.getOrPut(if (asAudio) "audio:$uri" else uri) {
+            val type = if (asAudio || m.kind == AlightMediaKind.AUDIO) AssetType.AUDIO else if (m.kind == AlightMediaKind.VIDEO) AssetType.VIDEO else AssetType.IMAGE
             val prefix = when (type) { AssetType.VIDEO -> "video"; AssetType.AUDIO -> "audio"; else -> "image" }
             val id = "${prefix}_${assets.size + 1}"
             val ext = m.filename.substringAfterLast('.', "").lowercase().filter { it.isLetterOrDigit() }.take(5).ifEmpty { if (type == AssetType.VIDEO) "mp4" else "png" }
@@ -91,6 +93,33 @@ object AlightConverter {
             return if (l.mediaFillMode == "fit") min(rw / f.width!!, rh / f.height!!) else max(rw / f.width!!, rh / f.height!!)
         }
 
+        /** Volume of a media layer: a constant 0 mutes it, anything else is the (animated) linear gain. */
+        fun volumeOf(l: AlightLayer, durSec: Double): Pair<AnimFloat, Boolean> {
+            val g = l.gain ?: return anim(1f) to false
+            if (!g.animated && (g.static?.firstOrNull() ?: 1.0) <= 0.0) return anim(1f) to true
+            val a = AlightAnimation.build(g, durSec, 1f, stats) { it.getOrElse(0) { 1.0 }.toFloat().coerceAtLeast(0f) + 0f }
+            return a to false
+        }
+
+        /** An `audio` layer: plays [AlightLayer.inTimeMs] onwards at the layer speed times the enclosing speeds. */
+        fun audioLayer(l: AlightLayer, where: String, shiftSec: Double, speed: Double): Layer? {
+            val media = l.mediaUri?.let { mediaByUri[it] }
+            if (media == null || l.mediaUri !in available) {
+                report.add(ReportKind.MISSING_MEDIA, where, "áudio \"${media?.filename ?: l.mediaUri}\" não encontrado: a camada de áudio não foi criada")
+                return null
+            }
+            val dur = (l.endMs - l.startMs) / 1000.0 / speed
+            val asset = assetFor(l.mediaUri!!, media, asAudio = true)
+            val (vol, muted) = volumeOf(l, dur)
+            val own = l.speed?.takeIf { it > 0.0 && it.isFinite() } ?: 1.0
+            val id = Ids.newId(TimelineOps.prefixFor(LayerType.AUDIO), taken).also { taken += it }
+            report.add(ReportKind.CONVERTED, where, "áudio convertido")
+            return Layer(
+                id = id, type = LayerType.AUDIO, name = l.label, start = (l.startMs / 1000.0 - shiftSec) / speed, duration = dur,
+                audio = MediaContent(asset.id, sourceStart = (l.inTimeMs ?: 0L) / 1000.0, speed = own * speed, volume = vol, muted = muted),
+            )
+        }
+
         fun finish() {
             if (stats.elastic > 0) report.add(ReportKind.APPROXIMATED, "easing", "${stats.elastic} keyframes com easing elastic: aproximados por easeOutElastic (os parâmetros do Alight não estão documentados)")
             if (stats.cyclic > 0) report.add(ReportKind.APPROXIMATED, "easing", "${stats.cyclic} keyframes com easing cyclic: ciclos estimados a partir do primeiro pico (0,5 ÷ pico)")
@@ -110,7 +139,7 @@ object AlightConverter {
             for (l in sc.layers) {
                 val where = "layer:$path${l.label}"
                 if (++layerCount > MAX_LAYERS) { report.add(ReportKind.WARNING, where, "limite de $MAX_LAYERS camadas atingido: o resto foi ignorado"); break }
-                if (l.kind == AlightLayerKind.AUDIO) { report.add(ReportKind.UNSUPPORTED, where, "áudio ainda não é convertido"); continue }
+                if (l.kind == AlightLayerKind.AUDIO) { audioLayer(l, where, shiftSec, speed)?.let { out += it }; continue }
                 val isEmbed = l.kind == AlightLayerKind.EMBED
                 val sub = l.scene
                 if (isEmbed && (sub == null || depth >= 24)) { report.add(ReportKind.UNSUPPORTED, where, "pré-composição sem cena válida: ignorada"); continue }
@@ -175,12 +204,14 @@ object AlightConverter {
                             common = Layer(
                                 id = id, type = if (isVideo) LayerType.VIDEO else LayerType.IMAGE, name = l.label,
                                 image = if (isVideo) null else ImageContent(asset.id),
-                                video = if (isVideo) MediaContent(asset.id) else null,
+                                video = if (isVideo) {
+                                    val (vol, muted) = volumeOf(l, dur)
+                                    val own = l.speed?.takeIf { it > 0.0 && it.isFinite() } ?: 1.0
+                                    MediaContent(asset.id, sourceStart = (l.inTimeMs ?: 0L) / 1000.0, speed = own * speed, volume = vol, muted = muted)
+                                } else null,
                                 masks = if (crop) listOf(Mask(size = anim(Vec2(cropW.toFloat(), cropH.toFloat())))) else emptyList(),
                             )
-                            if (isVideo && (l.inTimeMs != null || l.outTimeMs != null || (l.speed != null && abs(l.speed - 1.0) > 1e-6))) {
-                                report.add(ReportKind.APPROXIMATED, where, "retime do vídeo (inTime/outTime/speed) ainda não é aplicado")
-                            }
+
                         }
                         else -> {
                             common = Layer(
