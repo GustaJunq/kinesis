@@ -1,19 +1,69 @@
 {
   "version": 1,
-  "comment": "What the Alight Motion importer does with each effect. action: map (a Kinesis effect), bake (turned into keyframes of the layer), flag (a layer switch) or unsupported (reported, not converted). Unknown ids are reported too.",
+  "comment": "O que o importador do Alight faz com cada efeito. action: map (um efeito do Kinesis), bake (vira keyframes da camada), flag (uma chave da camada) ou unsupported (só relatado). Efeitos desconhecidos também são relatados. Os textos aparecem no relatório da importação.",
   "effects": {
-    "gaussianblur": { "action": "map", "kinesis": "blur", "note": "strength becomes the blur radius in pixels (the unit of Alight's strength is not documented)" },
-    "hueshift": { "action": "map", "kinesis": "hueShift", "note": "hue in degrees, same meaning" },
-    "invert": { "action": "map", "kinesis": "invert", "note": "only when red, green and blue are all inverted" },
-    "mosaic": { "action": "map", "kinesis": "pixelate", "note": "cell size in pixels" },
-    "solidcolor": { "action": "map", "kinesis": "fill", "note": "colour and alpha; the blend mode is not carried" },
-    "motionblur4": { "action": "flag", "kinesis": "motionBlur", "note": "turns on the layer's motion blur; tune and the position/scale/angle switches are not carried" },
-    "swing2": { "action": "bake", "target": "rotation", "note": "rotation swings between a1 and a2 degrees at freq Hz" },
-    "oscillate3": { "action": "bake", "target": "position", "note": "position moves back and forth by mag pixels along angle at freq Hz" },
-    "scaleassist": { "action": "bake", "target": "scale", "note": "its scale multiplies the layer's scale" },
-    "offset": { "action": "bake", "target": "position", "note": "its offset is added to the layer's position; feather and mask are not carried" },
-    "colorize": { "action": "unsupported", "reason": "the meaning of its tint (three numbers) is not documented, and Kinesis' tint takes a colour" },
-    "bendwarp": { "action": "map", "kinesis": "bendWarp", "note": "amount becomes the bend angle (animation and easing kept); the length of the curved part is (highLimit - lowLimit) of the layer height, centred on the middle of those limits; the axis is vertical; originType, offset and oppositeType are not carried" },
-    "threshold": { "action": "unsupported", "reason": "Kinesis has no black-and-white threshold" }
+    "gaussianblur": {
+      "action": "map",
+      "kinesis": "blur",
+      "note": "a força vira o raio do desfoque em pixels (a unidade da força no Alight não é documentada; calibrada num quadro de referência)"
+    },
+    "hueshift": {
+      "action": "map",
+      "kinesis": "hueShift",
+      "note": "matiz em graus, mesmo significado"
+    },
+    "invert": {
+      "action": "map",
+      "kinesis": "invert",
+      "note": "só quando vermelho, verde e azul são invertidos juntos"
+    },
+    "mosaic": {
+      "action": "map",
+      "kinesis": "pixelate",
+      "note": "tamanho da célula em pixels"
+    },
+    "solidcolor": {
+      "action": "map",
+      "kinesis": "fill",
+      "note": "cor e alfa; o modo de mistura não é carregado"
+    },
+    "motionblur4": {
+      "action": "flag",
+      "kinesis": "motionBlur",
+      "note": "liga o desfoque de movimento da camada; \"tune\" e as chaves de posição/escala/ângulo não são carregados"
+    },
+    "swing2": {
+      "action": "bake",
+      "target": "rotation",
+      "note": "a rotação balança entre a1 e a2 graus na frequência freq (Hz)"
+    },
+    "oscillate3": {
+      "action": "bake",
+      "target": "position",
+      "note": "a posição vai e volta mag pixels ao longo do ângulo na frequência freq (Hz)"
+    },
+    "scaleassist": {
+      "action": "bake",
+      "target": "scale",
+      "note": "a escala dele multiplica a escala da camada"
+    },
+    "offset": {
+      "action": "bake",
+      "target": "position",
+      "note": "o deslocamento é somado à posição da camada; feather e máscara não são carregados"
+    },
+    "colorize": {
+      "action": "unsupported",
+      "reason": "o significado do tint (três números) não é documentado, e o tint do Kinesis recebe uma cor"
+    },
+    "bendwarp": {
+      "action": "map",
+      "kinesis": "bendWarp",
+      "note": "o ângulo (amount) vira o ângulo da dobra, mantendo animação e easing; o comprimento da parte curva é (highLimit − lowLimit) da altura da camada, centrado no meio desses limites; o eixo é vertical; originType, offset e oppositeType não são carregados"
+    },
+    "threshold": {
+      "action": "unsupported",
+      "reason": "o Kinesis não tem limiar preto e branco"
+    }
   }
 }

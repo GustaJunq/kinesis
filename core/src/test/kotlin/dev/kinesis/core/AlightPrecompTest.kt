@@ -111,4 +111,22 @@ class AlightPrecompTest {
         )
         assertTrue(AlightConverter.convert(s).report.entries.any { it.kind == ReportKind.APPROXIMATED && it.message.contains("link") })
     }
+
+    /** A parent listed after its child (an arm before the body it hangs from) is still the parent. */
+    @Test
+    fun aParentListedAfterItsChildStillCounts() {
+        val s = scene(rect("1", 0, 2000, parent = "2") + rect("2", 0, 2000))
+        val r = AlightConverter.convert(s)
+        val (child, parent) = r.project.layers
+        assertEquals(parent.id, child.parent)
+        assertTrue(r.report.entries.none { it.message.contains("camada-pai") })
+        assertTrue(ProjectValidator.validate(r.project).isValid)
+    }
+
+    @Test
+    fun theFixtureLosesNoParents() {
+        val s = fixture(); val r = AlightConverter.convert(s, s.media.map { it.uri }.toSet())
+        assertTrue(r.report.entries.none { it.message.contains("camada-pai") })
+        assertTrue(LayerTree.all(r.project).any { it.name == "Arm E" && it.parent != null })
+    }
 }

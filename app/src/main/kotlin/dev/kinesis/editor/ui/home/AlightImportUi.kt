@@ -153,7 +153,11 @@ private fun AlightReportDialog(report: ImportReport, onOpen: () -> Unit, onClose
     )
     val rows = order.flatMap { (kind, title) ->
         val entries = report.entries.filter { it.kind == kind }
-        if (entries.isEmpty()) emptyList<Any>() else listOf<Any>(title to entries.size) + entries
+        // The same message on many layers (a blur on each of 20 groups) is one line with a count and the first place.
+        val grouped = entries.groupBy { it.message }.map { (message, same) ->
+            ReportEntry(kind, if (same.size > 1) "${same.first().where} (+${same.size - 1})" else same.first().where, message)
+        }
+        if (entries.isEmpty()) emptyList<Any>() else listOf<Any>(title to entries.size) + grouped
     }
     AlertDialog(
         onDismissRequest = onClose,

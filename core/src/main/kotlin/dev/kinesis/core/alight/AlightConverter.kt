@@ -271,6 +271,11 @@ object AlightConverter {
         fun layers(sc: AlightScene, shiftSec: Double, speed: Double, depth: Int, path: String = ""): List<Layer> {
             val byId = sc.layers.associateBy { it.id }
             val kinesisId = HashMap<String, String>()
+            // A parent may come after its children in the file (an arm listed before the body it hangs from), so every
+            // layer's id is reserved before any of them is converted.
+            for (l in sc.layers) if (l.kind != AlightLayerKind.AUDIO) {
+                kinesisId[l.id] = Ids.newId(TimelineOps.prefixFor(if (l.kind == AlightLayerKind.EMBED) LayerType.GROUP else LayerType.SHAPE), taken).also { taken += it }
+            }
             val out = ArrayList<Layer>()
             for (l in sc.layers) {
                 val where = "layer:$path${l.label}"
@@ -304,7 +309,7 @@ object AlightConverter {
                 val pv = pivotP?.static ?: pivotP?.keyframes?.firstOrNull()?.value
                 val pivot = doubleArrayOf(pv?.getOrNull(0) ?: 0.0, pv?.getOrNull(1) ?: 0.0)
 
-                val id = Ids.newId(TimelineOps.prefixFor(if (isEmbed) LayerType.GROUP else LayerType.SHAPE), taken).also { taken += it }
+                val id = kinesisId.getValue(l.id)
                 var f = 1.0
                 val common: Layer
                 if (isEmbed) {
@@ -395,11 +400,12 @@ object AlightConverter {
                         opacity = opacityA,
                     ),
                 )
-                kinesisId[l.id] = layer.id
-                out += layer
+                                out += layer
                 report.add(ReportKind.CONVERTED, where, if (isEmbed) "pré-composição convertida em grupo (${layer.layers.size} camadas)" else "convertida")
             }
-            return out
+            // A parent that was skipped (no valid size, ...) leaves its children without parent.
+            val kept = out.map { it.id }.toSet()
+            return out.map { l -> if (l.parent != null && l.parent !in kept) l.copy(parent = null).also { report.add(ReportKind.WARNING, "layer:${path}${l.name}", "a camada-pai não foi convertida: a camada ficou sem pai") } else l }
         }
     }
 
