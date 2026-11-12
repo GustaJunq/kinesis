@@ -764,6 +764,32 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "colorize"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "hue": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "saturation": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "lightness": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "amount": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Colorize (Color & light). Paints the layer with one hue, keeping the image's lights and shadows."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "glow"
             },
             "enabled": {
@@ -1049,6 +1075,32 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "bendWarp"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "angle": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "axis": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "length": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "offset": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Bend Warp (Distort). Bends the content into an arc along an axis; the ends carry on straight."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "mirror"
             },
             "enabled": {
@@ -1245,6 +1297,53 @@
           "additionalProperties": false,
           "required": ["type"],
           "description": "Pulse (Move & transform). Rhythmic scale pulse."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "swing"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "angleA": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "angleB": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "frequency": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "phase": {
+              "$ref": "#/$defs/animFloat"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Swing (Move & transform). Swings the layer between two angles in a sine wave, around its origin."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "scaleAssist"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "scale": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "axis": {
+              "type": "string",
+              "enum": ["both", "x", "y"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type"],
+          "description": "Scale Assist (Move & transform). Multiplies the layer's scale around its origin; the scale can be animated (handy for springs and pops)."
         },
         {
           "type": "object",

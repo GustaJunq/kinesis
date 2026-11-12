@@ -2,6 +2,14 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.2.1
+
+### Adicionado
+- **Efeito Dobrar (`bendWarp`):** dobra o conteúdo em arco ao longo de um eixo (ângulo, eixo, comprimento, deslocamento).
+- **Efeito Balanço (`swing`):** balança a camada entre dois ângulos, em senoide.
+- **Efeito Assistência de escala (`scaleAssist`):** multiplica a escala da camada, com a escala animável e eixo X/Y/os dois.
+- **Efeito Colorir (`colorize`):** pinta a camada com um matiz mantendo luz e sombra (matiz, saturação, luminosidade, quantidade).
+
 ## 0.2.0-hotfix
 
 ### Adicionado

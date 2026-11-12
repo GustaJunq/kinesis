@@ -270,6 +270,14 @@ object EffectRegistry {
             color("color", "Cor", "Color", Color(0.49f, 0.36f, 1f)), amount(),
         ),
         spec(
+            "colorize", EffectCategory.COLOR_LIGHT, "Colorir", "Colorize",
+            "Pinta a camada com um matiz, mantendo a luz e a sombra da imagem.", "Paints the layer with one hue, keeping the image's lights and shadows.",
+            angle("hue", 200f, "Matiz", "Hue"),
+            num("saturation", "Saturação", "Saturation", 0.7f, 0f, 1f, unit = ParamUnit.PERCENT),
+            num("lightness", "Luminosidade", "Lightness", 0f, -1f, 1f, unit = ParamUnit.PERCENT),
+            num("amount", "Quantidade", "Amount", 1f, 0f, 1f, unit = ParamUnit.PERCENT),
+        ),
+        spec(
             "glow", EffectCategory.COLOR_LIGHT, "Brilho simples", "Glow",
             "Halo desfocado em volta do conteúdo.", "Blurred halo around the content.",
             color("color", "Cor", "Color", Color.WHITE),
@@ -363,6 +371,14 @@ object EffectRegistry {
             seed(),
         ),
         spec(
+            "bendWarp", EffectCategory.DISTORT, "Dobrar", "Bend Warp",
+            "Dobra o conteúdo em arco ao longo de um eixo; as pontas seguem retas.", "Bends the content into an arc along an axis; the ends carry on straight.",
+            num("angle", "Ângulo", "Angle", 45f, -170f, 170f, -170f, 170f, ParamUnit.DEG),
+            angle("axis", 90f, "Eixo", "Axis"),
+            px("length", "Comprimento", "Length", 400f, 8000f, 1500f, min = 1f),
+            num("offset", "Deslocamento", "Offset", 0f, -8000f, 8000f, -2000f, 2000f, ParamUnit.PX),
+        ),
+        spec(
             "mirror", EffectCategory.DISTORT, "Espelhar", "Mirror",
             "Espelha a camada em um eixo que passa pelo centro.", "Mirrors the layer across an axis through the centre.",
             choice("axis", "Eixo", "Axis", "horizontal", c("horizontal", "Horizontal", "Horizontal"), c("vertical", "Vertical", "Vertical"), c("both", "Ambos", "Both")),
@@ -421,6 +437,20 @@ object EffectRegistry {
             "Escala pulsando em ritmo.", "Rhythmic scale pulse.",
             num("amount", "Quantidade", "Amount", 0.08f, 0f, 2f, 0f, 0.5f, ParamUnit.PERCENT),
             hz(default = 1f), phase(),
+        ),
+
+        spec(
+            "swing", EffectCategory.MOTION, "Balanço", "Swing",
+            "Balança a camada entre dois ângulos, em senoide, em torno da origem.", "Swings the layer between two angles in a sine wave, around its origin.",
+            num("angleA", "Ângulo A", "Angle A", 15f, -3600f, 3600f, -180f, 180f, ParamUnit.DEG),
+            num("angleB", "Ângulo B", "Angle B", -15f, -3600f, 3600f, -180f, 180f, ParamUnit.DEG),
+            hz(default = 1f), phase(),
+        ),
+        spec(
+            "scaleAssist", EffectCategory.MOTION, "Assistência de escala", "Scale Assist",
+            "Multiplica a escala da camada em torno da origem; a escala pode ser animada (útil para elásticos e pulos).", "Multiplies the layer's scale around its origin; the scale can be animated (handy for springs and pops).",
+            num("scale", "Escala", "Scale", 1f, 0f, 100f, 0f, 4f, ParamUnit.PERCENT),
+            choice("axis", "Eixo", "Axis", "both", c("both", "X e Y", "X and Y"), c("x", "Só X", "X only"), c("y", "Só Y", "Y only")),
         ),
 
         // Estilizar
