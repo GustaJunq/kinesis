@@ -70,6 +70,10 @@ data class AlightLayer(
     val inTimeMs: Long? = null,
     val outTimeMs: Long? = null,
     val speed: Double? = null,
+    /** Embedded scene (pre-composition) of an `embedScene`: its own size, length and layers. */
+    val scene: AlightScene? = null,
+    /** `link` of a pre-composition that Alight keeps in sync across copies. */
+    val linkId: String? = null,
     val transform: AlightTransform = AlightTransform(),
 )
 

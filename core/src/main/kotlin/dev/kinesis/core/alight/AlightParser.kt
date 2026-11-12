@@ -17,13 +17,14 @@ class AlightScan(val scene: AlightScene, val report: ImportReport)
  */
 object AlightParser {
     const val MAX_BYTES = 32L * 1024 * 1024
+    private const val MAX_DEPTH = 24
 
     fun scan(xml: ByteArray): AlightScan = scan(ByteArrayInputStream(xml))
 
     fun scan(input: InputStream): AlightScan {
         val root = readRoot(input)
         val report = ImportReport()
-        val scene = readScene(root, report)
+        val scene = readScene(root, report, 0)
         return AlightScan(scene, report)
     }
 
@@ -68,7 +69,8 @@ object AlightParser {
         return out.toByteArray()
     }
 
-    private fun readScene(root: Element, report: ImportReport): AlightScene {
+    private fun readScene(root: Element, report: ImportReport, depth: Int): AlightScene {
+        if (depth > MAX_DEPTH) throw AlightFormatException("pré-composições aninhadas demais (limite $MAX_DEPTH)")
         fun int(name: String, default: Int, min: Int, max: Int): Int {
             val v = root.getAttribute(name).toIntOrNull()
             if (v == null || v !in min..max) {
@@ -101,7 +103,7 @@ object AlightParser {
                 c = c.nextSibling
             }
         }
-        walk(root, true)
+        if (depth == 0) walk(root, true)
         return AlightScene(
             title = root.getAttribute("title"),
             width = int("width", 1080, 16, 16384),
@@ -112,7 +114,7 @@ object AlightParser {
             exportedBy = root.getAttribute("am").ifBlank { null },
             media = media.values.toList(),
             bookmarksMs = bookmarks.sorted(),
-            layers = readLayers(root, report),
+            layers = readLayers(root, report, depth),
         )
     }
 
@@ -142,20 +144,20 @@ object AlightParser {
         return v?.let { AlightProp(static = it) }
     }
 
-    private fun readLayers(scene: Element, report: ImportReport): List<AlightLayer> {
+    private fun readLayers(scene: Element, report: ImportReport, depth: Int): List<AlightLayer> {
         val out = ArrayList<AlightLayer>()
         var c: Node? = scene.firstChild
         while (c != null) {
             if (c is Element) {
                 val kind = when (c.tagName) { "shape" -> AlightLayerKind.SHAPE; "embedScene" -> AlightLayerKind.EMBED; "audio" -> AlightLayerKind.AUDIO; else -> null }
-                if (kind != null) readLayer(c, kind, report)?.let { out += it }
+                if (kind != null) readLayer(c, kind, report, depth)?.let { out += it }
             }
             c = c.nextSibling
         }
         return out
     }
 
-    private fun readLayer(e: Element, kind: AlightLayerKind, report: ImportReport): AlightLayer? {
+    private fun readLayer(e: Element, kind: AlightLayerKind, report: ImportReport, depth: Int): AlightLayer? {
         val id = e.getAttribute("id")
         val label = e.getAttribute("label").ifBlank { id }
         val start = e.getAttribute("startTime").toLongOrNull()
@@ -177,6 +179,8 @@ object AlightParser {
             inTimeMs = e.getAttribute("inTime").toLongOrNull(),
             outTimeMs = e.getAttribute("outTime").toLongOrNull(),
             speed = e.getAttribute("speed").toDoubleOrNull(),
+            scene = if (kind == AlightLayerKind.EMBED) children(e, "scene").firstOrNull()?.let { readScene(it, report, depth + 1) } else null,
+            linkId = e.getAttribute("link").ifBlank { null },
             transform = AlightTransform(prop("location"), prop("scale"), prop("rotation"), prop("pivot"), prop("opacity")),
         )
     }

@@ -37,8 +37,8 @@ class AlightConvertTest {
         assertTrue(ProjectValidator.validate(p).errors.toString(), ProjectValidator.validate(p).isValid)
         assertEquals(p, KnsprojJson.decode(KnsprojJson.encode(p)))
         assertEquals(1440, p.composition.width); assertEquals(19.865, p.composition.duration, 1e-9)
-        // First layer of the file at the back, the four white flashes last (on top).
-        assertEquals(7, p.layers.size)
+        // First layer of the file at the back, the four white flashes last (on top). The audio is not converted yet.
+        assertEquals(10, p.layers.size)
         assertTrue(p.layers.first().name.startsWith("Novo projeto 185"))
         assertTrue(p.layers.takeLast(4).all { it.name == "Retângulo 1" && it.type == LayerType.SHAPE })
         // The flash: size 100 is the half-extent, so the box is 200 px and scale 7.2 x 5.4 covers the 1440 x 1080 frame.
@@ -61,15 +61,16 @@ class AlightConvertTest {
         for (a in p.assets) assertNotNull(r.media[a.path])
         assertEquals(0, r.report.count(ReportKind.MISSING_MEDIA))
         // Embedded scenes and audio are reported until their steps exist; nothing is dropped silently.
-        assertEquals(4, r.report.count(ReportKind.UNSUPPORTED))
+        assertEquals(1, r.report.count(ReportKind.UNSUPPORTED))
     }
 
     @Test
     fun missingMediaBecomesPlaceholders() {
         val r = AlightConverter.convert(fixture(), available = emptySet())
-        assertEquals(3, r.report.count(ReportKind.MISSING_MEDIA))
-        assertEquals(7, r.project.layers.size)
-        assertTrue(r.project.layers.all { it.type == LayerType.SHAPE })
+        // 50 pictures and videos across the project and its pre-compositions, each one a placeholder.
+        assertEquals(50, r.report.count(ReportKind.MISSING_MEDIA))
+        assertEquals(10, r.project.layers.size)
+        assertTrue(r.project.layers.none { it.type == LayerType.IMAGE || it.type == LayerType.VIDEO })
         assertTrue(r.project.assets.isEmpty() && r.media.isEmpty())
         // The placeholder keeps the box of the original layer.
         val first = r.project.layers.first()

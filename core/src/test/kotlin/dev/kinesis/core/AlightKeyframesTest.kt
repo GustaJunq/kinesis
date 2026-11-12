@@ -51,7 +51,7 @@ class AlightKeyframesTest {
     @Test
     fun keyframeCountsSurviveTheConversion() {
         val s = fixture(); val r = AlightConverter.convert(s, s.media.map { it.uri }.toSet())
-        val shapes = s.layers.filter { it.kind == dev.kinesis.core.alight.AlightLayerKind.SHAPE }
+        val shapes = s.layers.filter { it.kind != dev.kinesis.core.alight.AlightLayerKind.AUDIO }
         val layers = r.project.layers
         assertEquals(shapes.size, layers.size)
         var srcTotal = 0; var outTotal = 0

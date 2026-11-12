@@ -48,21 +48,25 @@ object AlightConverter {
     private val PLACEHOLDER = Color(0.42f, 0.42f, 0.48f)
 
     fun convert(scene: AlightScene, available: Set<String> = emptySet(), generator: String = "Kinesis Editor"): AlightConversion {
-        val report = ImportReport()
-        val now = Instant.now().toString()
-        var project = Factory.newProject(
+        val run = Run(scene, available)
+        val project = Factory.newProject(
             title = scene.title.ifBlank { "Projeto do Alight" }, width = scene.width, height = scene.height, fps = scene.fps,
-            duration = scene.totalTimeMs / 1000.0, background = argb(scene.background), nowIso = now,
+            duration = scene.totalTimeMs / 1000.0, background = argb(scene.background), nowIso = Instant.now().toString(),
             generator = "$generator (importado do Alight Motion)",
         )
-        val byId = scene.layers.associateBy { it.id }
-        val mediaByUri = scene.media.associateBy { it.uri }
+        val layers = run.layers(scene, shiftSec = 0.0, speed = 1.0, depth = 0)
+        run.finish()
+        return AlightConversion(project.copy(layers = layers, assets = run.assets.values.toList()), run.report, run.assetUris)
+    }
+
+    private class Run(val root: AlightScene, val available: Set<String>) {
+        val report = ImportReport()
+        val mediaByUri = root.media.associateBy { it.uri }
         val assets = LinkedHashMap<String, Asset>() // uri -> asset
         val assetUris = LinkedHashMap<String, String>() // asset path -> uri
         val taken = HashSet<String>()
-        val kinesisId = HashMap<String, String>()
-        val out = ArrayList<Layer>()
         val stats = EasingStats()
+        var layerCount = 0
 
         fun assetFor(uri: String, m: AlightMedia): Asset = assets.getOrPut(uri) {
             val type = if (m.kind == AlightMediaKind.VIDEO) AssetType.VIDEO else if (m.kind == AlightMediaKind.AUDIO) AssetType.AUDIO else AssetType.IMAGE
@@ -78,126 +82,154 @@ object AlightConverter {
         /** Size of the file behind a layer, when its media is available. */
         fun fileOf(l: AlightLayer): AlightMedia? = l.mediaUri?.takeIf { it in available }?.let { mediaByUri[it] }?.takeIf { (it.width ?: 0) > 0 && (it.height ?: 0) > 0 }
 
-        /** Cover factor: pixels of the box per pixel of the file (1 for shapes and placeholders). */
+        /** Cover factor: pixels of the box per pixel of the file (1 for shapes, placeholders and groups). */
         fun factor(l: AlightLayer): Double {
+            if (l.kind != AlightLayerKind.SHAPE) return 1.0
             val f = fileOf(l) ?: return 1.0
             val box = l.size ?: return 1.0
             val rw = 2 * box[0]; val rh = 2 * box[1]
             return if (l.mediaFillMode == "fit") min(rw / f.width!!, rh / f.height!!) else max(rw / f.width!!, rh / f.height!!)
         }
 
-        for (l in scene.layers) {
-            when (l.kind) {
-                AlightLayerKind.EMBED -> { report.add(ReportKind.UNSUPPORTED, "layer:${l.label}", "pré-composição (embedScene) ainda não é convertida"); continue }
-                AlightLayerKind.AUDIO -> { report.add(ReportKind.UNSUPPORTED, "layer:${l.label}", "áudio ainda não é convertido"); continue }
-                AlightLayerKind.SHAPE -> Unit
-            }
-            val box = l.size
-            if (box == null || box.size < 2 || box[0] <= 0 || box[1] <= 0) {
-                report.add(ReportKind.UNSUPPORTED, "layer:${l.label}", "forma sem tamanho (property size) válido: ignorada")
-                continue
-            }
-            val rw = 2 * box[0]; val rh = 2 * box[1]
-            val parentSrc = l.parentId?.let { byId[it] }
-            val parentKid = parentSrc?.let { kinesisId[it.id] }
-            if (l.parentId != null && parentKid == null) report.add(ReportKind.WARNING, "layer:${l.label}", "camada-pai ${l.parentId} não foi convertida: a camada ficou sem pai")
-            val fp = if (parentKid != null) factor(parentSrc!!) else 1.0
-
-            val tr = l.transform
-            val dur = (l.endMs - l.startMs) / 1000.0
-            val locA = AlightAnimation.build(tr.location, dur, Vec2.ZERO, stats) { Vec2(it.getOrElse(0) { 0.0 }.toFloat(), it.getOrElse(1) { 0.0 }.toFloat()) }
-            val scaleA = AlightAnimation.build(tr.scale, dur, Vec2.ONE, stats) { Vec2(it.getOrElse(0) { 1.0 }.toFloat(), it.getOrElse(1) { 1.0 }.toFloat()) }
-            val rotA = AlightAnimation.build(tr.rotation, dur, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat() }
-            val opacityA = AlightAnimation.build(tr.opacity, dur, 1f, stats) { it.getOrElse(0) { 1.0 }.toFloat().coerceIn(0f, 1f) }
-            val pivotP = tr.pivot
-            if (pivotP != null && pivotP.animated) report.add(ReportKind.APPROXIMATED, "layer:${l.label}/pivot", "pivô animado: usado só o primeiro valor")
-            val pv = (pivotP?.static ?: pivotP?.keyframes?.firstOrNull()?.value)
-            val pivot = doubleArrayOf(pv?.getOrNull(0) ?: 0.0, pv?.getOrNull(1) ?: 0.0)
-            val f: Double
-
-            val media = l.mediaUri?.let { mediaByUri[it] }
-            val common: Layer
-            val file = if (l.fillType == "media") fileOf(l) else null
-            if (l.fillType == "media" && media == null) {
-                report.add(ReportKind.WARNING, "layer:${l.label}", "mídia ${l.mediaUri} não está declarada no projeto: placeholder")
-            }
-            val id = Ids.newId(TimelineOps.prefixFor(LayerType.SHAPE), taken).also { taken += it }
-            when {
-                l.fillType == "color" -> {
-                    f = 1.0
-                    common = Layer(
-                        id = id, type = LayerType.SHAPE, name = l.label,
-                        shape = ShapeContent(kind = ShapeKind.RECTANGLE, size = anim(Vec2(rw.toFloat(), rh.toFloat())), fill = FillSpec(color = anim(Color.WHITE))),
-                    )
-                    report.add(ReportKind.APPROXIMATED, "layer:${l.label}", "a cor da forma não está no XML: usado branco")
-                }
-                file != null && media != null -> {
-                    f = factor(l)
-                    val asset = assetFor(l.mediaUri!!, media)
-                    val isVideo = asset.type == AssetType.VIDEO
-                    val cropW = rw / f; val cropH = rh / f
-                    val crop = abs(cropW - file.width!!) > 0.5 || abs(cropH - file.height!!) > 0.5
-                    common = Layer(
-                        id = id, type = if (isVideo) LayerType.VIDEO else LayerType.IMAGE, name = l.label,
-                        image = if (isVideo) null else ImageContent(asset.id),
-                        video = if (isVideo) MediaContent(asset.id) else null,
-                        masks = if (crop) listOf(Mask(size = anim(Vec2(cropW.toFloat(), cropH.toFloat())))) else emptyList(),
-                    )
-                    if (isVideo && (l.inTimeMs != null || l.outTimeMs != null || (l.speed != null && abs(l.speed - 1.0) > 1e-6))) {
-                        report.add(ReportKind.APPROXIMATED, "layer:${l.label}", "retime do vídeo (inTime/outTime/speed) ainda não é aplicado")
-                    }
-                }
-                else -> {
-                    f = 1.0
-                    common = Layer(
-                        id = id, type = LayerType.SHAPE, name = l.label,
-                        shape = ShapeContent(kind = ShapeKind.RECTANGLE, size = anim(Vec2(rw.toFloat(), rh.toFloat())), fill = FillSpec(color = anim(PLACEHOLDER))),
-                    )
-                    report.add(ReportKind.MISSING_MEDIA, "layer:${l.label}", "mídia \"${media?.filename ?: l.mediaUri}\" não encontrada: placeholder")
-                }
-            }
-
-            // Alight: centre at `location`, rotation and scale around `pivot` (which does not move the layer). Kinesis:
-            // position is where the anchor lands, so the anchor goes to location + R·S·pivot.
-            fun landing(loc: Vec2, sc: Vec2, rotDeg: Float): Vec2 {
-                val a = Math.toRadians(rotDeg.toDouble())
-                val sx = sc.x * pivot[0]; val sy = sc.y * pivot[1]
-                val px = loc.x + sx * cos(a) - sy * sin(a)
-                val py = loc.y + sx * sin(a) + sy * cos(a)
-                return if (parentKid != null) Vec2((px / fp).toFloat(), (py / fp).toFloat())
-                else Vec2((px - scene.width / 2.0).toFloat(), (py - scene.height / 2.0).toFloat())
-            }
-            val needsBake = (pivot[0] != 0.0 || pivot[1] != 0.0) && (scaleA.keyframes.isNotEmpty() || rotA.keyframes.isNotEmpty())
-            val positionA = if (!needsBake) {
-                // The offset R·S·pivot is constant (or zero), so the location keyframes carry over one to one.
-                val sc = scaleA.value; val ro = rotA.value
-                locA.mapValues { landing(it, sc, ro) }
-            } else {
-                val bake = bakePosition(locA, scaleA, rotA, dur, ::landing)
-                report.add(ReportKind.APPROXIMATED, "layer:${l.label}/location", "posição com pivô e escala/rotação animadas: calculada em ${bake.keyframes.size} keyframes")
-                bake
-            }
-            val layer = common.copy(
-                start = l.startMs / 1000.0, duration = dur, parent = parentKid,
-                transform = Transform2D(
-                    anchor = anim(Vec2((pivot[0] / f).toFloat(), (pivot[1] / f).toFloat())),
-                    position = positionA,
-                    scale = scaleA.mapValues { Vec2((it.x * f).toFloat(), (it.y * f).toFloat()) },
-                    rotation = rotA,
-                    opacity = opacityA,
-                ),
-            )
-            kinesisId[l.id] = layer.id
-            out += layer
-            report.add(ReportKind.CONVERTED, "layer:${l.label}", "convertida")
+        fun finish() {
+            if (stats.elastic > 0) report.add(ReportKind.APPROXIMATED, "easing", "${stats.elastic} keyframes com easing elastic: aproximados por easeOutElastic (os parâmetros do Alight não estão documentados)")
+            if (stats.cyclic > 0) report.add(ReportKind.APPROXIMATED, "easing", "${stats.cyclic} keyframes com easing cyclic: ciclos estimados a partir do primeiro pico (0,5 ÷ pico)")
+            for (u in stats.unknown) report.add(ReportKind.WARNING, "easing", "easing \"$u\" desconhecido: usado linear")
         }
 
-        if (stats.elastic > 0) report.add(ReportKind.APPROXIMATED, "easing", "${stats.elastic} keyframes com easing elastic: aproximados por easeOutElastic (os parâmetros do Alight não estão documentados)")
-        if (stats.cyclic > 0) report.add(ReportKind.APPROXIMATED, "easing", "${stats.cyclic} keyframes com easing cyclic: ciclos estimados a partir do primeiro pico (0,5 ÷ pico)")
-        for (u in stats.unknown) report.add(ReportKind.WARNING, "easing", "easing \"$u\" desconhecido: usado linear")
-        project = project.copy(layers = out, assets = assets.values.toList())
-        return AlightConversion(project, report, assetUris)
+        /**
+         * Layers of [sc] as Kinesis layers. Times become relative to the start of the group that holds them: [shiftSec]
+         * is where in the scene's own time the group begins (`inTime`), and [speed] the accumulated playback speed of
+         * the enclosing pre-compositions (a layer lasts 1/speed as long). Parent ids are resolved inside this scene
+         * instance only, so the ids that repeat across copies of a pre-composition never collide.
+         */
+        fun layers(sc: AlightScene, shiftSec: Double, speed: Double, depth: Int, path: String = ""): List<Layer> {
+            val byId = sc.layers.associateBy { it.id }
+            val kinesisId = HashMap<String, String>()
+            val out = ArrayList<Layer>()
+            for (l in sc.layers) {
+                val where = "layer:$path${l.label}"
+                if (++layerCount > MAX_LAYERS) { report.add(ReportKind.WARNING, where, "limite de $MAX_LAYERS camadas atingido: o resto foi ignorado"); break }
+                if (l.kind == AlightLayerKind.AUDIO) { report.add(ReportKind.UNSUPPORTED, where, "áudio ainda não é convertido"); continue }
+                val isEmbed = l.kind == AlightLayerKind.EMBED
+                val sub = l.scene
+                if (isEmbed && (sub == null || depth >= 24)) { report.add(ReportKind.UNSUPPORTED, where, "pré-composição sem cena válida: ignorada"); continue }
+                val boxW: Double; val boxH: Double
+                if (isEmbed) { boxW = sub!!.width.toDouble(); boxH = sub.height.toDouble() } else {
+                    val box = l.size
+                    if (box == null || box.size < 2 || box[0] <= 0 || box[1] <= 0) { report.add(ReportKind.UNSUPPORTED, where, "forma sem tamanho (property size) válido: ignorada"); continue }
+                    boxW = 2 * box[0]; boxH = 2 * box[1]
+                }
+                val parentSrc = l.parentId?.let { byId[it] }
+                val parentKid = parentSrc?.let { kinesisId[it.id] }
+                if (l.parentId != null && parentKid == null) report.add(ReportKind.WARNING, where, "camada-pai ${l.parentId} não foi convertida: a camada ficou sem pai")
+                val fp = if (parentKid != null) factor(parentSrc!!) else 1.0
+
+                val start = (l.startMs / 1000.0 - shiftSec) / speed
+                val dur = (l.endMs - l.startMs) / 1000.0 / speed
+                val tr = l.transform
+                val locA = AlightAnimation.build(tr.location, dur, Vec2.ZERO, stats) { Vec2(it.getOrElse(0) { 0.0 }.toFloat() + 0f, it.getOrElse(1) { 0.0 }.toFloat() + 0f) }
+                val scaleA = AlightAnimation.build(tr.scale, dur, Vec2.ONE, stats) { Vec2(it.getOrElse(0) { 1.0 }.toFloat() + 0f, it.getOrElse(1) { 1.0 }.toFloat() + 0f) }
+                val rotA = AlightAnimation.build(tr.rotation, dur, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat() + 0f }
+                val opacityA = AlightAnimation.build(tr.opacity, dur, 1f, stats) { it.getOrElse(0) { 1.0 }.toFloat().coerceIn(0f, 1f) }
+                val pivotP = tr.pivot
+                if (pivotP != null && pivotP.animated) report.add(ReportKind.APPROXIMATED, "$where/pivot", "pivô animado: usado só o primeiro valor")
+                val pv = pivotP?.static ?: pivotP?.keyframes?.firstOrNull()?.value
+                val pivot = doubleArrayOf(pv?.getOrNull(0) ?: 0.0, pv?.getOrNull(1) ?: 0.0)
+
+                val id = Ids.newId(TimelineOps.prefixFor(if (isEmbed) LayerType.GROUP else LayerType.SHAPE), taken).also { taken += it }
+                var f = 1.0
+                val common: Layer
+                if (isEmbed) {
+                    val inSec = (l.inTimeMs ?: 0L) / 1000.0
+                    val spd = l.speed?.takeIf { it > 0.0 && it.isFinite() } ?: 1.0
+                    val children = layers(sub!!, inSec, speed * spd, depth + 1, "$path${l.label}/").toMutableList()
+                    if (argb(sub.background).a > 0.01f) {
+                        val bgId = Ids.newId(TimelineOps.prefixFor(LayerType.SHAPE), taken).also { taken += it }
+                        children.add(0, Layer(
+                            id = bgId, type = LayerType.SHAPE, name = "Fundo", start = 0.0, duration = dur,
+                            shape = ShapeContent(kind = ShapeKind.RECTANGLE, size = anim(Vec2(boxW.toFloat(), boxH.toFloat())), fill = FillSpec(color = anim(argb(sub.background)))),
+                        ))
+                    }
+                    if (l.linkId != null) report.add(ReportKind.APPROXIMATED, where, "pré-composição vinculada (link): importada como cópia independente")
+                    // A pre-composition shows only what is inside its frame.
+                    common = Layer(id = id, type = LayerType.GROUP, name = l.label, layers = children, masks = listOf(Mask(size = anim(Vec2(boxW.toFloat(), boxH.toFloat())))))
+                } else {
+                    val media = l.mediaUri?.let { mediaByUri[it] }
+                    val file = if (l.fillType == "media") fileOf(l) else null
+                    if (l.fillType == "media" && media == null) report.add(ReportKind.WARNING, where, "mídia ${l.mediaUri} não está declarada no projeto: placeholder")
+                    when {
+                        l.fillType == "color" -> {
+                            common = Layer(
+                                id = id, type = LayerType.SHAPE, name = l.label,
+                                shape = ShapeContent(kind = ShapeKind.RECTANGLE, size = anim(Vec2(boxW.toFloat(), boxH.toFloat())), fill = FillSpec(color = anim(Color.WHITE))),
+                            )
+                            report.add(ReportKind.APPROXIMATED, where, "a cor da forma não está no XML: usado branco")
+                        }
+                        file != null && media != null -> {
+                            f = factor(l)
+                            val asset = assetFor(l.mediaUri!!, media)
+                            val isVideo = asset.type == AssetType.VIDEO
+                            val cropW = boxW / f; val cropH = boxH / f
+                            val crop = abs(cropW - file.width!!) > 0.5 || abs(cropH - file.height!!) > 0.5
+                            common = Layer(
+                                id = id, type = if (isVideo) LayerType.VIDEO else LayerType.IMAGE, name = l.label,
+                                image = if (isVideo) null else ImageContent(asset.id),
+                                video = if (isVideo) MediaContent(asset.id) else null,
+                                masks = if (crop) listOf(Mask(size = anim(Vec2(cropW.toFloat(), cropH.toFloat())))) else emptyList(),
+                            )
+                            if (isVideo && (l.inTimeMs != null || l.outTimeMs != null || (l.speed != null && abs(l.speed - 1.0) > 1e-6))) {
+                                report.add(ReportKind.APPROXIMATED, where, "retime do vídeo (inTime/outTime/speed) ainda não é aplicado")
+                            }
+                        }
+                        else -> {
+                            common = Layer(
+                                id = id, type = LayerType.SHAPE, name = l.label,
+                                shape = ShapeContent(kind = ShapeKind.RECTANGLE, size = anim(Vec2(boxW.toFloat(), boxH.toFloat())), fill = FillSpec(color = anim(PLACEHOLDER))),
+                            )
+                            report.add(ReportKind.MISSING_MEDIA, where, "mídia \"${media?.filename ?: l.mediaUri}\" não encontrada: placeholder")
+                        }
+                    }
+                }
+
+                // Alight: centre at `location`, rotation and scale around `pivot` (which does not move the layer). Kinesis:
+                // position is where the anchor lands, so the anchor goes to location + R·S·pivot.
+                fun landing(loc: Vec2, sc2: Vec2, rotDeg: Float): Vec2 {
+                    val a = Math.toRadians(rotDeg.toDouble())
+                    val sx = sc2.x * pivot[0]; val sy = sc2.y * pivot[1]
+                    val px = loc.x + sx * cos(a) - sy * sin(a)
+                    val py = loc.y + sx * sin(a) + sy * cos(a)
+                    return if (parentKid != null) Vec2((px / fp).toFloat(), (py / fp).toFloat())
+                    else Vec2((px - sc.width / 2.0).toFloat(), (py - sc.height / 2.0).toFloat())
+                }
+                val needsBake = (pivot[0] != 0.0 || pivot[1] != 0.0) && (scaleA.keyframes.isNotEmpty() || rotA.keyframes.isNotEmpty())
+                val positionA = if (!needsBake) {
+                    val s0 = scaleA.value; val r0 = rotA.value
+                    locA.mapValues { landing(it, s0, r0) }
+                } else {
+                    val bake = bakePosition(locA, scaleA, rotA, dur, ::landing)
+                    report.add(ReportKind.APPROXIMATED, "$where/location", "posição com pivô e escala/rotação animadas: calculada em ${bake.keyframes.size} keyframes")
+                    bake
+                }
+                val layer = common.copy(
+                    start = start, duration = dur, parent = parentKid,
+                    transform = Transform2D(
+                        anchor = anim(Vec2((pivot[0] / f).toFloat(), (pivot[1] / f).toFloat())),
+                        position = positionA,
+                        scale = scaleA.mapValues { Vec2((it.x * f).toFloat(), (it.y * f).toFloat()) },
+                        rotation = rotA,
+                        opacity = opacityA,
+                    ),
+                )
+                kinesisId[l.id] = layer.id
+                out += layer
+                report.add(ReportKind.CONVERTED, where, if (isEmbed) "pré-composição convertida em grupo (${layer.layers.size} camadas)" else "convertida")
+            }
+            return out
+        }
     }
+
+    private const val MAX_LAYERS = 5000
 
     /**
      * Position when scale or rotation move a pivot that is not the centre: it depends on all three at once, so it is
