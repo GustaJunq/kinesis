@@ -36,6 +36,17 @@ data class AlightShadow(
     val offset: AlightProp? = null,
 )
 
+/** An `<effect>` of a layer: numeric properties (constant or animated) and the text of bool/colour properties. */
+@Serializable
+data class AlightEffect(
+    /** Full id, e.g. `com.alightcreative.effects.gaussianblur`. */
+    val id: String,
+    val props: Map<String, AlightProp> = emptyMap(),
+    val text: Map<String, String> = emptyMap(),
+) {
+    val name get() = id.substringAfterLast('.')
+}
+
 enum class AlightLayerKind { SHAPE, EMBED, AUDIO }
 
 /** One keyframe: [t] is 0..1 of the layer's duration (the file lists them out of order), [easing] the raw `e` text. */
@@ -89,6 +100,7 @@ data class AlightLayer(
     /** Shape type written in `s` (`.rect` for rectangles), null when absent. */
     val shapeType: String? = null,
     val shadows: List<AlightShadow> = emptyList(),
+    val effects: List<AlightEffect> = emptyList(),
     val transform: AlightTransform = AlightTransform(),
 )
 

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "comment": "What the Alight Motion importer does with each effect. action: map (a Kinesis effect), bake (turned into keyframes of the layer), flag (a layer switch) or unsupported (reported, not converted). Unknown ids are reported too.",
+  "effects": {
+    "gaussianblur": { "action": "map", "kinesis": "blur", "note": "strength becomes the blur radius in pixels (the unit of Alight's strength is not documented)" },
+    "hueshift": { "action": "map", "kinesis": "hueShift", "note": "hue in degrees, same meaning" },
+    "invert": { "action": "map", "kinesis": "invert", "note": "only when red, green and blue are all inverted" },
+    "mosaic": { "action": "map", "kinesis": "pixelate", "note": "cell size in pixels" },
+    "solidcolor": { "action": "map", "kinesis": "fill", "note": "colour and alpha; the blend mode is not carried" },
+    "motionblur4": { "action": "flag", "kinesis": "motionBlur", "note": "turns on the layer's motion blur; tune and the position/scale/angle switches are not carried" },
+    "swing2": { "action": "bake", "target": "rotation", "note": "rotation swings between a1 and a2 degrees at freq Hz" },
+    "oscillate3": { "action": "bake", "target": "position", "note": "position moves back and forth by mag pixels along angle at freq Hz" },
+    "scaleassist": { "action": "bake", "target": "scale", "note": "its scale multiplies the layer's scale" },
+    "offset": { "action": "bake", "target": "position", "note": "its offset is added to the layer's position; feather and mask are not carried" },
+    "colorize": { "action": "unsupported", "reason": "the meaning of its tint (three numbers) is not documented, and Kinesis' tint takes a colour" },
+    "bendwarp": { "action": "unsupported", "reason": "Kinesis has no bend warp" },
+    "threshold": { "action": "unsupported", "reason": "Kinesis has no black-and-white threshold" }
+  }
+}

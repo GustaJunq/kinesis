@@ -26,6 +26,7 @@ import dev.kinesis.core.model.ShapeContent
 import dev.kinesis.core.model.ShapeKind
 import dev.kinesis.core.model.Transform2D
 import java.time.Instant
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
@@ -122,6 +123,106 @@ object AlightConverter {
             )
         }
 
+        /** A Kinesis effect with only the parameters that differ from the defaults (the file format leaves those out). */
+        fun makeEffect(type: String, colors: Map<String, Color> = emptyMap(), nums: Map<String, AnimFloat> = emptyMap()): Effect {
+            var e = Effect.create(type)
+            for ((n, c) in colors) {
+                val d = (EffectValue.default(e.spec.param(n)) as EffectValue.Col).anim
+                val a = anim(c)
+                if (a != d) e = e.withColor(n, a)
+            }
+            for ((n, a) in nums) {
+                val d = (EffectValue.default(e.spec.param(n)) as EffectValue.Num).anim
+                if (a != d) e = e.withNumber(n, a)
+            }
+            return e
+        }
+
+        class Fx(val loc: Animatable<Vec2>, val scale: Animatable<Vec2>, val rot: Animatable<Float>, val effects: List<Effect>, val motionBlur: Boolean)
+
+        private val sampleF: (Animatable<Float>, Double) -> Float = { a, t -> a.at(t) }
+        private val sampleV: (Animatable<Vec2>, Double) -> Vec2 = { a, t -> a.at(t) }
+
+        /**
+         * The effects of [l] in file order, following `effects_map.json`: mapped to Kinesis effects, baked into the
+         * transform ([speed] converts layer time back to Alight time) or reported.
+         */
+        fun applyEffects(l: AlightLayer, where: String, dur: Double, speed: Double, loc0: Animatable<Vec2>, scale0: Animatable<Vec2>, rot0: Animatable<Float>): Fx {
+            var loc = loc0; var scale = scale0; var rot = rot0
+            var motionBlur = false
+            val out = ArrayList<Effect>()
+            fun num(e: AlightEffect, n: String, def: Double): Double {
+                val p = e.props[n] ?: return def
+                if (p.animated) report.add(ReportKind.APPROXIMATED, "$where/${e.name}/$n", "$n animado: usado só o primeiro valor")
+                return (p.static ?: p.keyframes.firstOrNull()?.value)?.firstOrNull() ?: def
+            }
+            fun anim1(e: AlightEffect, n: String, def: Float): AnimFloat =
+                AlightAnimation.build(e.props[n], dur, def, stats) { it.getOrElse(0) { def.toDouble() }.toFloat() + 0f }
+            for (e in l.effects) {
+                val at = "$where/effect:${e.name}"
+                val rule = AlightEffectsMap.rule(e.name)
+                if (rule == null) { report.add(ReportKind.UNSUPPORTED, at, "efeito \"${e.id}\" desconhecido: ignorado"); continue }
+                when (rule.action) {
+                    "unsupported" -> report.add(ReportKind.UNSUPPORTED, at, "${e.name} não convertido: ${rule.reason ?: "sem equivalente"}")
+                    "flag" -> { motionBlur = true; report.add(ReportKind.APPROXIMATED, at, "desfoque de movimento ligado na camada; ${rule.note ?: ""}".trim()) }
+                    "map" -> {
+                        val fx: Effect? = when (e.name) {
+                            "gaussianblur" -> makeEffect("blur", nums = mapOf("radius" to anim1(e, "strength", 0f).mapValues { it * BLUR_PX_PER_STRENGTH }))
+                            "hueshift" -> makeEffect("hueShift", nums = mapOf("hue" to anim1(e, "hue", 0f)))
+                            "mosaic" -> makeEffect("pixelate", nums = mapOf("size" to anim1(e, "size", 16f).mapValues { it.coerceAtLeast(1f) }))
+                            "invert" -> {
+                                val on = listOf("invertRed", "invertGreen", "invertBlue").map { e.text[it] != "false" }
+                                if (on.all { it }) Effect.create("invert")
+                                else if (on.none { it }) null
+                                else { report.add(ReportKind.UNSUPPORTED, at, "inversão de só alguns canais (R/G/B) não convertida: o efeito do Kinesis inverte todos"); null }
+                            }
+                            "solidcolor" -> {
+                                if ((e.props["blendMode"]?.static?.firstOrNull() ?: 0.0) != 0.0) report.add(ReportKind.APPROXIMATED, at, "modo de mistura da cor sólida não é carregado")
+                                makeEffect("fill", colors = mapOf("color" to argb(e.text["color"] ?: "#ffffffff").let { Color(it.r, it.g, it.b) }), nums = mapOf("amount" to anim1(e, "alpha", 1f)))
+                            }
+                            else -> { report.add(ReportKind.UNSUPPORTED, at, "${e.name}: regra sem conversão"); null }
+                        }
+                        if (fx != null) {
+                            out += fx
+                            report.add(if (e.name == "invert" || e.name == "hueshift") ReportKind.CONVERTED else ReportKind.APPROXIMATED, at, "convertido em ${rule.kinesis}: ${rule.note ?: ""}".trim())
+                        }
+                    }
+                    "bake" -> when (e.name) {
+                        "offset" -> {
+                            val off = AlightAnimation.build(e.props["offset"], dur, Vec2.ZERO, stats) { Vec2(it.getOrElse(0) { 0.0 }.toFloat() + 0f, it.getOrElse(1) { 0.0 }.toFloat() + 0f) }
+                            loc = AlightBake.combine(loc, off, dur, sampleV, sampleV) { a, b -> Vec2(a.x + b.x, a.y + b.y) }
+                            report.add(ReportKind.CONVERTED, at, "deslocamento somado à posição da camada")
+                            if (e.text["mask"] == "true" || (e.props["feather"]?.static?.firstOrNull() ?: 0.0) != 0.0) report.add(ReportKind.APPROXIMATED, at, "feather/máscara do deslocamento não são carregados")
+                        }
+                        "swing2" -> {
+                            val f = num(e, "freq", 1.0).coerceAtLeast(1e-3); val a1 = num(e, "a1", 0.0); val a2 = num(e, "a2", 0.0); val ph = Math.toRadians(num(e, "phase", 0.0))
+                            val mid = ((a1 + a2) / 2).toFloat(); val amp = (a1 - a2) / 2
+                            rot = AlightBake.overlay(rot, dur, 1.0 / f, sampleF) { v, t -> v + mid + (amp * sin(2 * PI * f * t * speed + ph)).toFloat() }
+                            report.add(ReportKind.APPROXIMATED, at, "balanço assado em ${rot.keyframes.size} keyframes de rotação (senoide entre $a1° e $a2°, ${f} Hz; o formato exato do Alight não é documentado)")
+                        }
+                        "oscillate3" -> {
+                            val f = num(e, "freq", 1.0).coerceAtLeast(1e-3); val mag = num(e, "mag", 0.0); val ph = Math.toRadians(num(e, "phase", 0.0))
+                            val ang = anim1(e, "angle", 0f)
+                            if ((e.props["direction"]?.static?.firstOrNull() ?: 0.0) != 0.0) report.add(ReportKind.APPROXIMATED, at, "direção diferente de 0: usado o ângulo")
+                            loc = AlightBake.overlay(loc, dur, 1.0 / f, sampleV) { v, t ->
+                                val k = mag * sin(2 * PI * f * t * speed + ph); val a = Math.toRadians(ang.at(t).toDouble())
+                                Vec2((v.x + k * cos(a)).toFloat(), (v.y + k * sin(a)).toFloat())
+                            }
+                            report.add(ReportKind.APPROXIMATED, at, "oscilação assada em ${loc.keyframes.size} keyframes de posição (senoide de $mag px, $f Hz; o formato exato do Alight não é documentado)")
+                        }
+                        "scaleassist" -> {
+                            val m = anim1(e, "scale", 1f); val axis = (e.props["axis"]?.static?.firstOrNull() ?: 3.0).toInt()
+                            scale = AlightBake.combine(scale, m, dur, sampleV, sampleF) { s0, k -> Vec2(if (axis == 2) s0.x else s0.x * k, if (axis == 1) s0.y else s0.y * k) }
+                            report.add(ReportKind.APPROXIMATED, at, "escala multiplicada na camada (${scale.keyframes.size} keyframes); eixo $axis: 1 = X, 2 = Y, outro = os dois")
+                        }
+                        else -> report.add(ReportKind.UNSUPPORTED, at, "${e.name}: regra de bake desconhecida")
+                    }
+                    else -> report.add(ReportKind.WARNING, at, "ação \"${rule.action}\" desconhecida em effects_map.json")
+                }
+            }
+            return Fx(loc, scale, rot, out, motionBlur)
+        }
+
         /** `<shadow>` → `dropShadow` effects. An inside shadow has no Kinesis counterpart. */
         fun shadowEffects(l: AlightLayer, where: String, durSec: Double): List<Effect> = l.shadows.mapIndexedNotNull { i, sh ->
             val at = "$where/shadow${if (l.shadows.size > 1) " ${i + 1}" else ""}"
@@ -135,16 +236,11 @@ object AlightConverter {
             val opacity = AlightAnimation.build(sh.opacity, durSec, 1f, stats) { it.getOrElse(0) { 1.0 }.toFloat().coerceIn(0f, 1f) + 0f }
             val size = AlightAnimation.build(sh.size, durSec, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat().coerceAtLeast(0f) + 0f }
             report.add(ReportKind.APPROXIMATED, at, "sombra convertida em dropShadow: o tamanho do Alight vira a suavidade (o desfoque pode diferir)")
-            // Parameters at their default are left out, as the file format writes them (keeps the round trip exact).
-            var fx = Effect.create("dropShadow")
-            fun num(name: String, a: AnimFloat) {
-                val d = (EffectValue.default(fx.spec.param(name)) as EffectValue.Num).anim
-                if (a != d) fx = fx.withNumber(name, a)
-            }
             val c = argb(sh.color)
-            if (c.r != 0f || c.g != 0f || c.b != 0f) fx = fx.withColor("color", anim(Color(c.r, c.g, c.b)))
-            num("opacity", opacity); num("angle", anim(angle)); num("distance", anim(dist)); num("softness", size)
-            fx
+            makeEffect(
+                "dropShadow", colors = mapOf("color" to Color(c.r, c.g, c.b)),
+                nums = mapOf("opacity" to opacity, "angle" to anim(angle), "distance" to anim(dist), "softness" to size),
+            )
         }
 
         fun finish() {
@@ -184,10 +280,12 @@ object AlightConverter {
                 val start = (l.startMs / 1000.0 - shiftSec) / speed
                 val dur = (l.endMs - l.startMs) / 1000.0 / speed
                 val tr = l.transform
-                val locA = AlightAnimation.build(tr.location, dur, Vec2.ZERO, stats) { Vec2(it.getOrElse(0) { 0.0 }.toFloat() + 0f, it.getOrElse(1) { 0.0 }.toFloat() + 0f) }
-                val scaleA = AlightAnimation.build(tr.scale, dur, Vec2.ONE, stats) { Vec2(it.getOrElse(0) { 1.0 }.toFloat() + 0f, it.getOrElse(1) { 1.0 }.toFloat() + 0f) }
-                val rotA = AlightAnimation.build(tr.rotation, dur, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat() + 0f }
+                var locA = AlightAnimation.build(tr.location, dur, Vec2.ZERO, stats) { Vec2(it.getOrElse(0) { 0.0 }.toFloat() + 0f, it.getOrElse(1) { 0.0 }.toFloat() + 0f) }
+                var scaleA = AlightAnimation.build(tr.scale, dur, Vec2.ONE, stats) { Vec2(it.getOrElse(0) { 1.0 }.toFloat() + 0f, it.getOrElse(1) { 1.0 }.toFloat() + 0f) }
+                var rotA = AlightAnimation.build(tr.rotation, dur, 0f, stats) { it.getOrElse(0) { 0.0 }.toFloat() + 0f }
                 val opacityA = AlightAnimation.build(tr.opacity, dur, 1f, stats) { it.getOrElse(0) { 1.0 }.toFloat().coerceIn(0f, 1f) }
+                val fx = applyEffects(l, where, dur, speed, locA, scaleA, rotA)
+                locA = fx.loc; scaleA = fx.scale; rotA = fx.rot
                 val pivotP = tr.pivot
                 if (pivotP != null && pivotP.animated) report.add(ReportKind.APPROXIMATED, "$where/pivot", "pivô animado: usado só o primeiro valor")
                 val pv = pivotP?.static ?: pivotP?.keyframes?.firstOrNull()?.value
@@ -274,7 +372,8 @@ object AlightConverter {
                 }
                 val layer = common.copy(
                     start = start, duration = dur, parent = parentKid,
-                    effects = common.effects + shadowEffects(l, where, dur),
+                    effects = common.effects + fx.effects + shadowEffects(l, where, dur),
+                    motionBlur = fx.motionBlur,
                     transform = Transform2D(
                         anchor = anim(Vec2((pivot[0] / f).toFloat(), (pivot[1] / f).toFloat())),
                         position = positionA,
@@ -294,6 +393,12 @@ object AlightConverter {
     private const val MAX_LAYERS = 5000
 
     /**
+     * Alight's blur strength has no documented unit. Calibrated on the fixture's reference frame at 3 s (the blurred
+     * background): the smallest error falls at a radius of 50-75 px for strength 0.5, so 140 px per unit of strength.
+     */
+    private const val BLUR_PX_PER_STRENGTH = 140f
+
+    /**
      * Position when scale or rotation move a pivot that is not the centre: it depends on all three at once, so it is
      * sampled at every keyframe of the three and at a few points between them (linear between samples).
      */
@@ -304,7 +409,7 @@ object AlightConverter {
         val marks = (loc.keyframes.map { it.time } + scale.keyframes.map { it.time } + rot.keyframes.map { it.time }).sorted()
         val times = ArrayList<Double>()
         for ((i, t) in marks.withIndex()) {
-            if (times.isNotEmpty() && t - times.last() < 1e-6) continue
+            if (times.isNotEmpty() && t - times.last() < 2 * Animatable.KEYFRAME_EPSILON) continue
             if (i > 0 && times.isNotEmpty()) {
                 val from = times.last()
                 val gap = t - from

@@ -60,8 +60,8 @@ class AlightConvertTest {
         assertTrue(p.assets.isNotEmpty() && p.assets.size == r.media.size)
         for (a in p.assets) assertNotNull(r.media[a.path])
         assertEquals(0, r.report.count(ReportKind.MISSING_MEDIA))
-        // Embedded scenes and audio are reported until their steps exist; nothing is dropped silently.
-        assertEquals(0, r.report.count(ReportKind.UNSUPPORTED))
+        // Nothing is dropped silently: the effects Kinesis cannot do are the only unsupported entries (2 colorize, 6 bendwarp, 1 threshold).
+        assertEquals(9, r.report.count(ReportKind.UNSUPPORTED))
     }
 
     @Test

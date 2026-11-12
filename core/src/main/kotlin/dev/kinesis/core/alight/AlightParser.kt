@@ -182,6 +182,17 @@ object AlightParser {
             scene = if (kind == AlightLayerKind.EMBED) children(e, "scene").firstOrNull()?.let { readScene(it, report, depth + 1) } else null,
             linkId = e.getAttribute("link").ifBlank { null },
             shapeType = if (kind == AlightLayerKind.SHAPE) e.getAttribute("s").ifBlank { null } else null,
+            effects = children(e, "effect").map { fx ->
+                val fid = fx.getAttribute("id")
+                val props = LinkedHashMap<String, AlightProp>(); val text = LinkedHashMap<String, String>()
+                for (pe in children(fx, "property")) {
+                    val n = pe.getAttribute("name")
+                    if (n.isBlank()) continue
+                    if (pe.getAttribute("type") in setOf("bool", "color", "string")) text[n] = pe.getAttribute("value")
+                    else readProp(pe, "layer:$label/effect/${fid.substringAfterLast('.')}/$n", report)?.let { props[n] = it }
+                }
+                AlightEffect(fid, props, text)
+            },
             shadows = children(e, "shadow").map { sh ->
                 fun sp(n: String) = children(sh, n).firstOrNull()?.let { readProp(it, "layer:$label/shadow/$n", report) }
                 AlightShadow(
