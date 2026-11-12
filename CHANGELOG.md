@@ -2,6 +2,11 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## Não lançado
+
+### Alterado
+- **Dobrar (`bendWarp`) refeito** como o efeito de dobra do Alight Motion: a camada é uma barra presa por um lado (esquerda, direita, topo ou base) e, do ponto inicial até a ponta oposta, curva o ângulo todo. Parâmetros: lado fixo, ângulo, ponto inicial, o que fazer antes do início (congelar, dobrar igual ou oposto), tamanho no eixo, âncora, deslocamento lateral e limites alto/baixo. Projetos que já usavam o Dobrar da 0.2.1 precisam reajustar os parâmetros.
+
 ## 0.2.1
 
 ### Adicionado

@@ -651,10 +651,15 @@ Tabela completa (gerada a partir do registro de efeitos do core):
 |  |  | `complexity` | `3` | inteiro 1..8 — com `mode: "fractal"` |
 |  |  | `evolution` | `0` | -3600..3600 ° — com `mode: "fractal"` |
 |  |  | `seed` | `0` | inteiro 0..99999 |
-| `bendWarp` (Dobrar) | Distorção | `angle` | `45` | -170..170 ° |
-|  |  | `axis` | `90` | -3600..3600 ° |
-|  |  | `length` | `400` | 1..8000 px |
-|  |  | `offset` | `0` | -8000..8000 px |
+| `bendWarp` (Dobrar) | Distorção | `side` | `"bottom"` | `left`, `right`, `top`, `bottom` (estático) |
+|  |  | `angle` | `45` | -180..180 ° |
+|  |  | `start` | `0` | 0..1 % |
+|  |  | `before` | `"freeze"` | `freeze`, `same`, `opposite` (estático) |
+|  |  | `size` | `600` | 1..16000 px |
+|  |  | `anchor` | `0.5` | -2..3 % |
+|  |  | `lateral` | `0` | -8000..8000 px |
+|  |  | `highLimit` | `0.75` | 0..1 % |
+|  |  | `lowLimit` | `0.25` | 0..1 % |
 | `mirror` (Espelhar) | Distorção | `axis` | `"horizontal"` | `horizontal`, `vertical`, `both` (estático) |
 |  |  | `center` | `[0, 0]` | `[x, y]` px relativos à origem da camada |
 |  |  | `angle` | `0` | -3600..3600 ° |

@@ -1087,22 +1087,39 @@
             "enabled": {
               "type": "boolean"
             },
+            "side": {
+              "type": "string",
+              "enum": ["left", "right", "top", "bottom"]
+            },
             "angle": {
               "$ref": "#/$defs/animFloat"
             },
-            "axis": {
+            "start": {
               "$ref": "#/$defs/animFloat"
             },
-            "length": {
+            "before": {
+              "type": "string",
+              "enum": ["freeze", "same", "opposite"]
+            },
+            "size": {
               "$ref": "#/$defs/animFloat"
             },
-            "offset": {
+            "anchor": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "lateral": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "highLimit": {
+              "$ref": "#/$defs/animFloat"
+            },
+            "lowLimit": {
               "$ref": "#/$defs/animFloat"
             }
           },
           "additionalProperties": false,
           "required": ["type"],
-          "description": "Bend Warp (Distort). Bends the content into an arc along an axis; the ends carry on straight."
+          "description": "Bend Warp (Distort). Bends the layer like a bar held at one side: from the start point to the far end it curves by the whole angle."
         },
         {
           "type": "object",
