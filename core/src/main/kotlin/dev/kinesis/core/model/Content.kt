@@ -283,7 +283,7 @@ data class RotoStroke(
     val points: List<Vec2> = emptyList(),
 )
 
-/** The strokes painted on one frame, [time] seconds after [RotoBrush.sourceStart]. */
+/** The strokes painted on one frame, [time] seconds after [CutoutBrush.sourceStart]. */
 @Serializable
 data class RotoFrame(val time: Double, val strokes: List<RotoStroke> = emptyList())
 
@@ -293,7 +293,7 @@ data class RotoFrame(val time: Double, val strokes: List<RotoStroke> = emptyList
  * video of the layer is the result; this is what is needed to make it again.
  */
 @Serializable
-data class RotoBrush(
+data class CutoutBrush(
     /** Asset id of the source video. */
     val source: String,
     /** Seconds into the source where the cut-out starts. */
@@ -331,8 +331,13 @@ data class MediaContent(
     val alphaPacked: Boolean = false,
     /** Parametric equalizer (format v8), applied after the volume of the clip; empty = off. */
     val eq: List<EqBand> = emptyList(),
-    /** Cut-out Brush (format v9): how this packed-alpha video was cut out, so it can be edited again. */
-    val roto: RotoBrush? = null,
+    /**
+     * Cut-out Brush (format v9; called `roto` up to v11, which is still read): how this packed-alpha video was cut out,
+     * so it can be edited again.
+     */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.json.JsonNames("roto")
+    val cutout: CutoutBrush? = null,
 ) {
     /** Media time (seconds) shown at layer-local time [local]. */
     fun sourceTime(local: Double): Double = sourceStart + local * speed

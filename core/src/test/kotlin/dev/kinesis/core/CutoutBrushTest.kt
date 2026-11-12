@@ -8,7 +8,7 @@ import dev.kinesis.core.math.Vec2
 import dev.kinesis.core.model.Asset
 import dev.kinesis.core.model.AssetType
 import dev.kinesis.core.model.MediaContent
-import dev.kinesis.core.model.RotoBrush
+import dev.kinesis.core.model.CutoutBrush
 import dev.kinesis.core.model.RotoFrame
 import dev.kinesis.core.model.RotoMode
 import dev.kinesis.core.model.RotoStroke
@@ -23,7 +23,7 @@ import org.junit.Test
 import kotlin.math.abs
 import kotlin.math.hypot
 
-class RotoBrushTest {
+class CutoutBrushTest {
     private val w = 120
     private val h = 80
 
@@ -163,19 +163,37 @@ class RotoBrushTest {
         val p0 = Factory.newProject("t", 1080, 1920, 30.0, 4.0, Color.parse("#000000"), null, "test")
         val src = Asset("src", AssetType.VIDEO, "assets/a.mp4", width = 1080, height = 1920, duration = 4.0)
         val cut = Asset("cut", AssetType.VIDEO, "assets/b.mp4", width = 2160, height = 1920, duration = 4.0)
-        val roto = RotoBrush("src", 0.5, 3.0, listOf(RotoFrame(0.0, listOf(RotoStroke(RotoMode.ADD, 0.05f, listOf(Vec2(0.4f, 0.5f), Vec2(0.5f, 0.55f)))))))
-        val layer = Factory.video(p0.copy(assets = listOf(src, cut)), 0.0, cut, "cut").let { it.copy(video = MediaContent("cut", alphaPacked = true, roto = roto)) }
+        val roto = CutoutBrush("src", 0.5, 3.0, listOf(RotoFrame(0.0, listOf(RotoStroke(RotoMode.ADD, 0.05f, listOf(Vec2(0.4f, 0.5f), Vec2(0.5f, 0.55f)))))))
+        val layer = Factory.video(p0.copy(assets = listOf(src, cut)), 0.0, cut, "cut").let { it.copy(video = MediaContent("cut", alphaPacked = true, cutout = roto)) }
         val project = p0.copy(assets = listOf(src, cut), layers = listOf(layer))
         assertTrue(ProjectValidator.validate(project).errors.toString(), ProjectValidator.validate(project).isValid)
         val back = KnsprojJson.decode(KnsprojJson.encode(project))
-        assertEquals(roto, back.layers[0].video!!.roto)
+        assertEquals(roto, back.layers[0].video!!.cutout)
         // Problems are reported.
-        fun codes(r: RotoBrush) = ProjectValidator.validate(project.copy(layers = listOf(layer.copy(video = layer.video!!.copy(roto = r))))).errors.map { it.code }
+        fun codes(r: CutoutBrush) = ProjectValidator.validate(project.copy(layers = listOf(layer.copy(video = layer.video!!.copy(cutout = r))))).errors.map { it.code }
         assertEquals(listOf("roto.source"), codes(roto.copy(source = "nope")))
         assertEquals(listOf("roto.time"), codes(roto.copy(frames = listOf(RotoFrame(9.0, roto.frames[0].strokes)))))
         assertEquals(listOf("roto.stroke"), codes(roto.copy(frames = listOf(RotoFrame(0.0, listOf(RotoStroke(points = listOf(Vec2(2f, 0.5f)))))))))
         assertEquals(listOf("roto.stroke"), codes(roto.copy(frames = listOf(RotoFrame(0.0, listOf(RotoStroke(points = emptyList())))))))
         assertEquals(listOf("roto.range"), codes(roto.copy(duration = 0.0)))
         assertNotNull(back.layers[0].video)
+    }
+
+    /** Format v12 calls the recipe `cutout`; a v11 project (`roto`) is migrated, and `roto` is still read in a v12 file. */
+    @Test
+    fun theOldRotoKeyIsMigratedAndStillRead() {
+        fun doc(version: Int) = """{"format":"knsproj","formatVersion":$version,"composition":{"width":100,"height":100,"fps":30,"duration":2},
+            "assets":[{"id":"src","type":"video","path":"assets/src.mp4"},{"id":"cut","type":"video","path":"assets/cut.mp4"}],
+            "layers":[{"id":"v","type":"video","duration":2,"video":{"asset":"cut","alphaPacked":true,
+            "roto":{"source":"src","duration":1.5,"frames":[{"time":0,"strokes":[{"points":[[0.5,0.5]]}]}]}}}]}"""
+        for (v in listOf(11, 12)) {
+            val p = dev.kinesis.core.format.KnsprojJson.decode(doc(v))
+            val c = p.layers.single().video!!.cutout
+            assertEquals("v$v", "src", c?.source)
+            assertEquals(1, c!!.frames.size)
+            // It is written back under the new name only.
+            val out = dev.kinesis.core.format.KnsprojJson.encode(p)
+            assertTrue(out.contains("\"cutout\"") && !out.contains("\"roto\""))
+        }
     }
 }

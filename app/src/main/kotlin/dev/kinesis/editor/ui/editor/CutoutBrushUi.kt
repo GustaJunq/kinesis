@@ -58,7 +58,7 @@ import dev.kinesis.core.model.RotoMode
 import dev.kinesis.core.model.RotoStroke
 import dev.kinesis.core.video.RotoOps
 import dev.kinesis.editor.R
-import dev.kinesis.editor.media.RotoBrushSession
+import dev.kinesis.editor.media.CutoutBrushSession
 import dev.kinesis.editor.ui.common.PillChip
 import dev.kinesis.editor.ui.common.kSliderColors
 import dev.kinesis.editor.ui.theme.KColors
@@ -84,11 +84,11 @@ private sealed class RotoBusy(val label: Int) {
  * packed-alpha layer, and the strokes stay in the project so it can be reopened.
  */
 @Composable
-fun RotoBrushScreen(vm: EditorViewModel, request: RotoRequest, onClose: () -> Unit) {
+fun CutoutBrushScreen(vm: EditorViewModel, request: RotoRequest, onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val work = remember { File(context.cacheDir, "roto/${vm.projectId}_${System.nanoTime()}") }
-    val session = remember { runCatching { RotoBrushSession(context, request.sourceFile, request.startUs, request.endUs, work) }.getOrNull() }
+    val session = remember { runCatching { CutoutBrushSession(context, request.sourceFile, request.startUs, request.endUs, work) }.getOrNull() }
     if (session == null) {
         AlertDialog(
             onDismissRequest = onClose, confirmButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.close)) } },
@@ -206,7 +206,7 @@ fun RotoBrushScreen(vm: EditorViewModel, request: RotoRequest, onClose: () -> Un
             // Top bar
             Row(Modifier.fillMaxWidth().background(KColors.Bar).padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { closing = true; onClose() }) { Text(stringResource(R.string.cancel)) }
-                Text(stringResource(R.string.roto_brush), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.cutout_brush), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                 Button(onClick = { apply() }, enabled = busy == null && session.cutCount > 0) { Text(stringResource(R.string.roto_apply)) }
             }
             // View modes
@@ -236,9 +236,9 @@ fun RotoBrushScreen(vm: EditorViewModel, request: RotoRequest, onClose: () -> Un
                 TextButton(onClick = { frame = min(session.frameCount - 1, frame + 1) }) { Text("▶") }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.roto_brush_size), fontSize = 12.sp, color = KColors.TextSecondary)
+                Text(stringResource(R.string.cutout_brush_size), fontSize = 12.sp, color = KColors.TextSecondary)
                 Slider(
-                    value = brush, onValueChange = { brush = it }, valueRange = RotoBrushRange, colors = kSliderColors(),
+                    value = brush, onValueChange = { brush = it }, valueRange = CutoutBrushRange, colors = kSliderColors(),
                     modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                 )
             }
@@ -278,12 +278,12 @@ fun RotoBrushScreen(vm: EditorViewModel, request: RotoRequest, onClose: () -> Un
     }
 }
 
-private val RotoBrushRange = 0.01f..0.3f
+private val CutoutBrushRange = 0.01f..0.3f
 
 /** The frame (as chosen view) with the strokes of this frame and the stroke being drawn. Strokes are normalised to the frame. */
 @Composable
 private fun RotoCanvas(
-    session: RotoBrushSession, frame: Int, revision: Int, view: RotoOps.View, tool: RotoMode, brush: Float,
+    session: CutoutBrushSession, frame: Int, revision: Int, view: RotoOps.View, tool: RotoMode, brush: Float,
     live: List<Vec2>, saved: List<RotoStroke>, onLive: (List<Vec2>) -> Unit, onCommit: (List<Vec2>) -> Unit, modifier: Modifier,
 ) {
     val w = session.width
@@ -356,7 +356,7 @@ private fun RotoCanvas(
 
 /** One tick per frame: no cut-out, followed, followed but lost (a guess), painted. Tap or drag to go to a frame. */
 @Composable
-private fun RotoStrip(session: RotoBrushSession, frame: Int, revision: Int, painted: Set<Int>, onSeek: (Int) -> Unit, modifier: Modifier) {
+private fun RotoStrip(session: CutoutBrushSession, frame: Int, revision: Int, painted: Set<Int>, onSeek: (Int) -> Unit, modifier: Modifier) {
     val count = session.frameCount
     Canvas(
         modifier

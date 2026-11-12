@@ -1008,7 +1008,7 @@ def _content2d(ctx, l, t):
         v = l.get("video") or {}
         if not v.get("asset"):
             return None
-        if v.get("roto"):
+        if v.get("cutout") or v.get("roto"):
             NOTES.add("recorte do Pincel de recorte não é aplicado (mostra o vídeo inteiro)")
         src_t = max(0.0, float(v.get("sourceStart", 0)) + t * float(v.get("speed", 1.0)))
         return {"kind": "video", "asset": v["asset"], "time": src_t, "alphaPacked": bool(v.get("alphaPacked", False))}

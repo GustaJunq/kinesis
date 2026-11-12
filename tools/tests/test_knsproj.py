@@ -442,10 +442,10 @@ class Format9Tests(unittest.TestCase):
 
     def roto_project(self, roto):
         assets = [{"id": "src", "type": "video", "path": "assets/a.mp4"}, {"id": "cut", "type": "video", "path": "assets/b.mp4"}]
-        layer = {"id": "v", "type": "video", "video": {"asset": "cut", "alphaPacked": True, "roto": roto}}
+        layer = {"id": "v", "type": "video", "video": {"asset": "cut", "alphaPacked": True, "cutout": roto}}
         return minimal(assets=assets, layers=[layer])
 
-    def test_roto_brush(self):
+    def test_cutout_brush(self):
         good = {"source": "src", "sourceStart": 0.5, "duration": 3, "frames": [
             {"time": 0, "strokes": [{"mode": "add", "size": 0.05, "points": [[0.4, 0.5], [0.5, 0.55]]}]}]}
         self.assertEqual([], self.codes(self.roto_project(good)))
@@ -481,7 +481,23 @@ class FormatV11Tests(unittest.TestCase):
         self.assertEqual(11, migrated["formatVersion"])
 
     def test_current_version_is_11(self):
-        self.assertEqual(11, cli.FORMAT_VERSION)
+        self.assertTrue(cli.FORMAT_VERSION >= 11)
+
+
+class FormatV12Tests(unittest.TestCase):
+    """Format v12: the cut-out recipe of a clip is `cutout` (it was `roto`)."""
+
+    def test_version_11_roto_moves_to_cutout(self):
+        doc = minimal(formatVersion=11)
+        doc["layers"] = [{"id": "v", "type": "video", "video": {"asset": "a", "alphaPacked": True, "roto": {"source": "s", "duration": 1}}}]
+        migrated = kns_migrate.migrate(doc, 12)
+        self.assertEqual(12, migrated["formatVersion"])
+        video = migrated["layers"][0]["video"]
+        self.assertNotIn("roto", video)
+        self.assertEqual({"source": "s", "duration": 1}, video["cutout"])
+
+    def test_current_version_is_12(self):
+        self.assertEqual(12, cli.FORMAT_VERSION)
 
 
 class ExampleTests(unittest.TestCase):

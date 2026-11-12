@@ -60,10 +60,10 @@ class MediaSwapTest {
     @Test
     fun aHandMadeCutOutCarriesItsRotoRecipe() {
         val (p, id) = base()
-        val roto = dev.kinesis.core.model.RotoBrush("vid1", 0.0, 4.0, listOf(dev.kinesis.core.model.RotoFrame(0.0, listOf(dev.kinesis.core.model.RotoStroke(points = listOf(dev.kinesis.core.math.Vec2(0.5f, 0.5f)))))))
-        val (q, newId) = MediaSwap.replace(p, id, cut, "clip (roto)", sourceStart = 0.0, alphaPacked = true, roto = roto)
-        assertEquals(roto, LayerTree.find(q, newId)!!.video!!.roto)
-        assertEquals(null, LayerTree.find(q, id)!!.video!!.roto)
+        val roto = dev.kinesis.core.model.CutoutBrush("vid1", 0.0, 4.0, listOf(dev.kinesis.core.model.RotoFrame(0.0, listOf(dev.kinesis.core.model.RotoStroke(points = listOf(dev.kinesis.core.math.Vec2(0.5f, 0.5f)))))))
+        val (q, newId) = MediaSwap.replace(p, id, cut, "clip (roto)", sourceStart = 0.0, alphaPacked = true, cutout = roto)
+        assertEquals(roto, LayerTree.find(q, newId)!!.video!!.cutout)
+        assertEquals(null, LayerTree.find(q, id)!!.video!!.cutout)
         assertTrue(ProjectValidator.validate(q).errors.toString(), ProjectValidator.validate(q).isValid)
     }
 }

@@ -411,9 +411,11 @@ def validate(project, available_files=None):
                 f, g, q = band.get("frequency", 1000), band.get("gain", 0), band.get("q", 1)
                 if not (20 <= f <= 20000 and -24 <= g <= 24 and 0.1 <= q <= 10):
                     err("audio.eq", f"{p}.eq[{bi}]", "frequency 20-20000 Hz, gain ±24 dB and q 0.1-10 are required")
-            roto = (layer.get("video") or {}).get("roto")
+            video = layer.get("video") or {}
+            key = "cutout" if "cutout" in video else "roto"  # `roto` up to format v11
+            roto = video.get(key)
             if isinstance(roto, dict):
-                rp = f"{p}.video.roto"
+                rp = f"{p}.video.{key}"
                 if ltype != "video" or not (layer.get("video") or {}).get("alphaPacked"):
                     warn("roto.layer", rp, "roto only describes packed-alpha video layers")
                 if assets_by_id.get(roto.get("source")) != "video":

@@ -1034,13 +1034,13 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     fun canRemoveBackground(layer: Layer?): Boolean = layer != null && MediaSwap.canSwap(layer)
     fun canStabilize(layer: Layer?): Boolean = layer?.type == LayerType.VIDEO && layer.video != null && VideoStabilizer.supported
 
-    fun canRotoBrush(layer: Layer?): Boolean = layer?.type == LayerType.VIDEO && layer.video != null
+    fun canCutoutBrush(layer: Layer?): Boolean = layer?.type == LayerType.VIDEO && layer.video != null
 
     /** Opens the Cut-out Brush on a video layer (or on a Cut-out Brush result, with its saved strokes); null if the source is not readable. */
     fun rotoRequest(layerId: String): RotoRequest? {
         val layer = LayerTree.find(current, layerId) ?: return null
         val media = layer.video ?: return null
-        val roto = media.roto
+        val roto = media.cutout
         val sourceId = roto?.source ?: media.asset
         val file = files.file(sourceId)?.takeIf { it.isFile } ?: return null
         val asset = current.asset(sourceId) ?: return null
@@ -1058,14 +1058,14 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
      * Puts a finished Cut-out Brush cut-out in the project: a new layer above the original (which is hidden), or the layer being
      * edited gets the new video and strokes. One undo step.
      */
-    suspend fun finishRoto(request: RotoRequest, recipe: dev.kinesis.core.model.RotoBrush, file: File, result: PackedAlpha.Result) {
+    suspend fun finishRoto(request: RotoRequest, recipe: dev.kinesis.core.model.CutoutBrush, file: File, result: PackedAlpha.Result) {
         val newAsset = withContext(Dispatchers.IO) { store.importMedia(projectId, current, Uri.fromFile(file), AssetType.VIDEO) }
         val layer = LayerTree.find(current, request.layerId) ?: return
         var newId: String? = null
         if (request.replacing) {
             edit { p ->
                 val withAsset = if (p.assets.any { it.id == newAsset.id }) p else p.copy(assets = p.assets + newAsset)
-                LayerTree.update(withAsset, request.layerId) { l -> l.copy(video = l.video?.copy(asset = newAsset.id, roto = recipe, alphaPacked = true, sourceStart = 0.0)) }
+                LayerTree.update(withAsset, request.layerId) { l -> l.copy(video = l.video?.copy(asset = newAsset.id, cutout = recipe, alphaPacked = true, sourceStart = 0.0)) }
             }
             newId = request.layerId
         } else {
@@ -1074,7 +1074,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
                 LayerTree.find(p, request.layerId) ?: return@edit p
                 MediaSwap.replace(
                     p, request.layerId, newAsset, name, sourceStart = 0.0, scale = result.scale, alphaPacked = true,
-                    muted = !result.hasAudio || layer.video?.muted == true, roto = recipe,
+                    muted = !result.hasAudio || layer.video?.muted == true, cutout = recipe,
                 ).also { newId = it.second }.first
             }
         }

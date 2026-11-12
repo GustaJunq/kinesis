@@ -13,7 +13,7 @@ import kotlin.math.roundToInt
 const val FORMAT_ID = "knsproj"
 
 /** Format version written by this build. Older versions are migrated on load; newer ones are rejected. */
-const val FORMAT_VERSION = 11
+const val FORMAT_VERSION = 12
 
 /** Root of a `.knsproj` document (`project.json`). */
 @Serializable

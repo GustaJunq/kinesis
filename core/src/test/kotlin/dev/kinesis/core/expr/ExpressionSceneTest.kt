@@ -239,7 +239,7 @@ class ExpressionSceneTest {
         assertEquals("Bounce", back.layers[1].text!!.propertyAnimators[0].name)
         // Valid against the official schema, and the format version is 8.
         val schema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
-            .getSchema(File(TestProjects.repoRoot, "schema/knsproj-v11.schema.json").readText())
+            .getSchema(File(TestProjects.repoRoot, "schema/knsproj-v12.schema.json").readText())
         val errors = schema.validate(ObjectMapper().readTree(json)).map { it.message }
         assertEquals(emptyList<String>(), errors)
         assertTrue(json.contains("\"formatVersion\": ${dev.kinesis.core.model.FORMAT_VERSION}"))

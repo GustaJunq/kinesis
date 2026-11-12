@@ -553,7 +553,7 @@
     <string name="real_camera_again">Record again</string>
     <string name="real_camera_keep">Keep</string>
     <!-- 0.1.6: Cut-out Brush -->
-    <string name="roto_brush">Cut-out Brush</string>
+    <string name="cutout_brush">Cut-out Brush</string>
     <string name="roto_apply">Apply</string>
     <string name="roto_preparing">Preparing frames…</string>
     <string name="roto_propagating">Following the object…</string>
@@ -570,7 +570,7 @@
     <string name="roto_frame_info">Frame %1$d of %2$d · %3$d with a cut-out</string>
     <string name="roto_add">Add</string>
     <string name="roto_remove">Remove</string>
-    <string name="roto_brush_size">Brush</string>
+    <string name="cutout_brush_size">Brush</string>
     <string name="roto_undo_stroke">Undo stroke</string>
     <string name="roto_clear_frame">Clear frame</string>
     <string name="roto_follow">Follow forward</string>

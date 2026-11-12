@@ -553,7 +553,7 @@
     <string name="real_camera_again">Gravar de novo</string>
     <string name="real_camera_keep">Manter</string>
     <!-- 0.1.6: Pincel de recorte -->
-    <string name="roto_brush">Pincel de recorte</string>
+    <string name="cutout_brush">Pincel de recorte</string>
     <string name="roto_apply">Aplicar</string>
     <string name="roto_preparing">Preparando os quadros…</string>
     <string name="roto_propagating">Seguindo o objeto…</string>
@@ -570,7 +570,7 @@
     <string name="roto_frame_info">Quadro %1$d de %2$d · %3$d com recorte</string>
     <string name="roto_add">Adicionar</string>
     <string name="roto_remove">Remover</string>
-    <string name="roto_brush_size">Pincel</string>
+    <string name="cutout_brush_size">Pincel</string>
     <string name="roto_undo_stroke">Desfazer pincelada</string>
     <string name="roto_clear_frame">Limpar quadro</string>
     <string name="roto_follow">Seguir adiante</string>

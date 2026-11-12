@@ -1,6 +1,6 @@
 {
   "format": "knsproj",
-  "formatVersion": 9,
+  "formatVersion": 12,
   "generator": "knsproj skill examples",
   "meta": { "title": "Recorte com o Pincel de recorte" },
   "composition": { "width": 480, "height": 270, "fps": 30, "duration": 4, "background": "#101522" },
@@ -32,7 +32,7 @@
       "video": {
         "asset": "recorte",
         "alphaPacked": true,
-        "roto": {
+        "cutout": {
           "source": "origem",
           "sourceStart": 0,
           "duration": 4,

@@ -1,10 +1,10 @@
-# Formato `.knsproj` — versão 11
+# Formato `.knsproj` — versão 12
 
 O `.knsproj` é o formato de projeto aberto do Kinesis Editor. Ele guarda uma composição completa — camadas,
 keyframes, curvas, efeitos, objetos 3D, materiais, hierarquias e as mídias usadas — em um único arquivo que
 pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplicativo nem de serviços online.
 
-- **Schema oficial:** [`schema/knsproj-v11.schema.json`](../schema/knsproj-v11.schema.json) (JSON Schema draft 2020-12);
+- **Schema oficial:** [`schema/knsproj-v12.schema.json`](../schema/knsproj-v12.schema.json) (JSON Schema draft 2020-12);
   os das versões 1 a 5 continuam em [`schema/`](../schema)
 - **Validador de referência:** `python3 tools/knsproj validate <projeto>` (só biblioteca padrão do Python)
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
@@ -315,7 +315,7 @@ A semântica completa e o exemplo clássico de texto que quica estão em [`expre
 `type` (`peak`, `lowShelf` ou `highShelf`; padrão `peak`), `frequency` (20 a 20000 Hz, padrão 1000), `gain` (−24 a 24 dB, padrão 0) e `q` (0,1 a 10, padrão 1;
 maior = mais estreito). Ausente ou vazio = desligado. É não destrutivo (o arquivo de mídia não muda) e vale no preview e na exportação.
 
-`roto` (formato v9, em `video` com `alphaPacked`): a receita de um recorte feito com o Pincel de recorte, para poder editá-lo de novo.
+`cutout` (formato v9; até a v11 se chamava `roto`, nome que ainda é lido; em `video` com `alphaPacked`): a receita de um recorte feito com o Pincel de recorte, para poder editá-lo de novo.
 `{ "source": "<id do vídeo de origem>", "sourceStart": 0, "duration": 4, "frames": [ { "time": 0, "strokes": [ { "mode": "add", "size": 0.06, "points": [[0.45, 0.5], [0.5, 0.55]] } ] } ] }`.
 `source` é um asset de vídeo do projeto; `sourceStart` e `duration` (s) dizem que trecho dele foi recortado; cada item de `frames`
 é um quadro pintado (`time` em segundos depois de `sourceStart`, de 0 a `duration`; no máximo 240) com até 64 pinceladas. Uma pincelada
@@ -904,7 +904,7 @@ faz a média (no preview usa no máximo 3 amostras durante a reprodução).
 
 Um projeto é válido quando:
 
-1. `project.json` respeita o [schema](../schema/knsproj-v11.schema.json) da sua versão (o schema rejeita campos desconhecidos para
+1. `project.json` respeita o [schema](../schema/knsproj-v12.schema.json) da sua versão (o schema rejeita campos desconhecidos para
    pegar erros de digitação);
 2. passa nas regras semânticas abaixo (códigos estáveis, iguais no app e na CLI):
 
@@ -949,6 +949,7 @@ Erros da versão 6 e 7: `text3d.range` (`fontSize`, `depth`, `bevel`, `lineHeigh
   **v9** → `editorView` na raiz (seção 2), o efeito `timeSlice` (seção 7, efeitos de tempo) e os recortes do Pincel de recorte (seção 5.4; só campos novos, documentos v8 abrem sem mudança).
   **v10** → efeitos de estilo e glitch retrô: `eightBit`, `pixDither`, `pixelEncoder`, `kernel`, `signalAnalog`, `glitchify` e `dissolveShake` (seção 7; só efeitos novos, documentos v9 abrem sem mudança).
   **v11** → o efeito `copyBackground` (Copiar fundo, seção 7; só um efeito novo, documentos v10 abrem sem mudança).
+  **v12** → a receita do recorte (`video.roto`) passa a se chamar `video.cutout` (seção 5.4). A migração move a chave, então os recortes de projetos v11 continuam editáveis; o leitor ainda aceita `roto`.
   A CLI converte com `python3 tools/knsproj migrate <pasta>`.
 - Valores iguais ao padrão podem ser omitidos; `format`, `formatVersion`, `meta`, `composition`, `layers` e, em cada
   camada, `id`, `type`, `name`, `start` e `duration` são sempre escritos pelo app.
