@@ -109,10 +109,8 @@ class UiSmokeTest {
         rule.onNodeWithContentDescription("Undo").assertExists()
 
         // Layer editor: a fresh shape, its category grid and the color, border, blending and motion pages.
-        click("Deselect")
-        click("Shape")
-        click("Flower")
-        click("Properties")
+        click("Star") // the star's clip in the timeline: selects it and opens its editor
+        Thread.sleep(4500) // let the snackbar from the split above go away (it covers the grid)
         shot("ui-layer-grid")
         for ((tile, name) in listOf("Color & fill" to "color", "Border & shadow" to "border", "Blending & opacity" to "blend", "Motion & transform" to "move")) {
             click(tile)
