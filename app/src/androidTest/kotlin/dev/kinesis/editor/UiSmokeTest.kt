@@ -107,6 +107,18 @@ class UiSmokeTest {
         click("Properties")
         shot("ui-editor-properties")
         rule.onNodeWithContentDescription("Undo").assertExists()
+
+        // Layer editor: a fresh shape, its category grid and the color, border, blending and motion pages.
+        click("Deselect")
+        click("Shape")
+        click("Flower")
+        click("Properties")
+        shot("ui-layer-grid")
+        for ((tile, name) in listOf("Color & fill" to "color", "Border & shadow" to "border", "Blending & opacity" to "blend", "Motion & transform" to "move")) {
+            click(tile)
+            shot("ui-layer-$name")
+            click("Back")
+        }
         shot("ui-editor-after-ops")
     }
 }
