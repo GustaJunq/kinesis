@@ -279,6 +279,15 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         val boxMaxHeight = maxHeight
         val sheetHeight = boxMaxHeight * 0.62f
         LaunchedEffect(selection) { if (selection == null) propsDocked = false }
+        // Back closes what is open in the editor before it leaves it: drawing, full screen, the docked properties, the selection.
+        androidx.activity.compose.BackHandler(enabled = drawMode != null || fullscreen || propsDocked || selection != null) {
+            when {
+                drawMode != null -> drawMode = null
+                fullscreen -> fullscreen = false
+                propsDocked -> propsDocked = false
+                else -> vm.select(null)
+            }
+        }
         Column(Modifier.fillMaxSize()) {
             EditorTopBar(
                 title = project.meta.title,

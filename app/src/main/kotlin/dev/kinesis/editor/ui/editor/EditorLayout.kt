@@ -2,6 +2,7 @@ package dev.kinesis.editor.ui.editor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -137,8 +138,9 @@ fun PreviewArea(
                 }
             }
         }
+        // Scrolls when the preview is short (properties docked, small split).
         Column(
-            Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+            Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {

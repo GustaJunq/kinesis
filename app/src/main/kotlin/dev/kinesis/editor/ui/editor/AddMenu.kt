@@ -234,7 +234,7 @@ private fun ShapePages(onShape: (ShapePreset) -> Unit) {
     val state = rememberPagerState { pages.size }
     Column(Modifier.fillMaxSize()) {
         HorizontalPager(state, Modifier.weight(1f).fillMaxWidth()) { page ->
-            Column(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp), verticalArrangement = Arrangement.SpaceEvenly) {
+            Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 4.dp), verticalArrangement = Arrangement.SpaceEvenly) {
                 for (r in pages[page].chunked(SHAPE_COLUMNS)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         for (preset in r) ShapeTile(preset, Modifier.weight(1f)) { onShape(preset) }
@@ -259,13 +259,13 @@ private fun ShapePages(onShape: (ShapePreset) -> Unit) {
 private fun ShapeTile(preset: ShapePreset, modifier: Modifier, onClick: () -> Unit) {
     val label = stringResource(preset.label)
     Box(
-        modifier.padding(3.dp).aspectRatio(1f).clip(KShapes.Tile)
+        modifier.padding(2.dp).aspectRatio(1f).clip(KShapes.Tile).background(KColors.Field)
             .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.fillMaxSize().padding(8.dp)) {
-            val s = size.minDimension
+        Canvas(Modifier.fillMaxSize().padding(6.dp)) {
+            val s = size.minDimension * 0.95f
             val c = Offset(size.width / 2f, size.height / 2f)
             fun at(v: Vec2) = Offset(c.x + v.x * s, c.y + v.y * s)
             val color = KColors.TextSoft
@@ -293,8 +293,8 @@ private fun ShapeTile(preset: ShapePreset, modifier: Modifier, onClick: () -> Un
             if (preset.strokeOnly) drawPath(path, color, style = Stroke(width = s * 0.08f)) else drawPath(path, color)
             if (preset.isPath) {
                 for (p in preset.points) {
-                    drawCircle(KColors.Sheet, 3.dp.toPx(), at(p.point))
-                    drawCircle(KColors.TextPrimary, 2.dp.toPx(), at(p.point))
+                    drawCircle(KColors.Field, 2.dp.toPx(), at(p.point))
+                    drawCircle(KColors.TextPrimary, 1.3.dp.toPx(), at(p.point))
                 }
             }
         }
