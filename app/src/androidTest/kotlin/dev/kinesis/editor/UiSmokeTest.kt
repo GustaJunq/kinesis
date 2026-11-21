@@ -110,7 +110,7 @@ class UiSmokeTest {
 
         // Layer editor: a fresh shape, its category grid and the color, border, blending and motion pages.
         click("Star") // the star's clip in the timeline: selects it and opens its editor
-        Thread.sleep(4500) // let the snackbar from the split above go away (it covers the grid)
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("Move the playhead", substring = true).fetchSemanticsNodes().isEmpty() }
         shot("ui-layer-grid")
         for ((tile, name) in listOf("Color & fill" to "color", "Border & shadow" to "border", "Blending & opacity" to "blend", "Motion & transform" to "move")) {
             click(tile)

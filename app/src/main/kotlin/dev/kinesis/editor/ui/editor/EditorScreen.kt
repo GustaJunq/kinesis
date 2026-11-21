@@ -178,6 +178,8 @@ private fun EditorContent(projectId: String, onClose: () -> Unit) {
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(vm) { vm.notices.collect { snackbar.showSnackbar(it.text) } }
+    // A notice about the previous layer goes away when another layer is picked (it would cover the layer editor).
+    LaunchedEffect(vm.selection.collectAsState().value) { snackbar.currentSnackbarData?.dismiss() }
     DisposableEffect(vm) { onDispose { vm.pause(); vm.flushSave() } }
     val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle, vm) {
