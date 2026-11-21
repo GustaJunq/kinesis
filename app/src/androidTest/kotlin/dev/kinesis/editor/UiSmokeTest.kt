@@ -121,7 +121,7 @@ class UiSmokeTest {
                 for (tool in listOf("position", "rotation", "scale", "anchor")) {
                     click(tool)
                     rule.onNodeWithText(tool.let { mapOf("position" to "Swipe here to move the layer", "rotation" to "Swipe here to rotate the layer", "scale" to "Swipe here to resize the layer", "anchor" to "Swipe here to move the anchor point")[it]!! })
-                        .performTouchInput { swipe(center, center + androidx.compose.ui.geometry.Offset(160f, -60f), 400) }
+                        .performTouchInput { down(center); repeat(10) { moveBy(androidx.compose.ui.geometry.Offset(16f, -6f)) }; up() }
                     rule.waitForIdle()
                     shot("ui-layer-move-$tool")
                 }
