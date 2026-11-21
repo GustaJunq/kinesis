@@ -51,7 +51,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -115,11 +115,12 @@ fun AddMenu(initial: AddTab, actions: AddMenuActions, onDismiss: () -> Unit) {
     var tab by remember { mutableStateOf(initial) }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = KColors.Sheet, shape = KShapes.Sheet, dragHandle = null) {
         Column(Modifier.fillMaxWidth().height(340.dp)) {
-            // Tabs share the width (labels may take two lines, never cut); the X closes the menu.
+            // Tabs scroll sideways so every label stays on one line, whole; the X closes the menu.
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TabRow(
+                ScrollableTabRow(
                     selectedTabIndex = tab.ordinal,
                     modifier = Modifier.weight(1f),
+                    edgePadding = 8.dp,
                     containerColor = KColors.Sheet,
                     contentColor = KColors.TextPrimary,
                     indicator = { pos -> TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(pos[tab.ordinal]), color = KColors.Primary) },
@@ -129,7 +130,7 @@ fun AddMenu(initial: AddTab, actions: AddMenuActions, onDismiss: () -> Unit) {
                         Tab(
                             selected = t == tab,
                             onClick = { tab = t },
-                            text = { Text(stringResource(t.label), maxLines = 2, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall) },
+                            text = { Text(stringResource(t.label), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelLarge) },
                             selectedContentColor = KColors.Accent,
                             unselectedContentColor = KColors.TextSecondary,
                         )
