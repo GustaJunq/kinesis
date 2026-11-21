@@ -2,6 +2,18 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.2.5
+
+### Alterado
+- **Novo layout do editor.** De cima para baixo: barra superior com o nome do projeto editável ali mesmo, configurações e exportar; a prévia ocupando a maior parte da tela, com botões flutuantes à direita (guias, alças e contornos, vista 3D do editor, câmera e zoom em %); uma alça para dividir o espaço entre a prévia e a timeline; a barra de transporte (desfazer, refazer · início, play, fim · marcador, duplicar, tela cheia); a régua com o timecode fixo no centro e o playhead parado no meio, com a timeline correndo por baixo; e a barra de atalhos (Forma, Mídia, Áudio, Texto, Elemento) com o botão "+".
+- **Timeline:** cada camada tem uma coluna fixa com o olho (visibilidade) e o ícone do tipo (a seta de expandir nos grupos); clipes com cor por tipo, losangos de keyframe no clipe, ≡ à direita para subir ou descer a camada, bordas arrastáveis para cortar. Arrastar a régua ou uma faixa anda no tempo; pinça dá zoom no tempo.
+- **Seleção:** tocar num clipe seleciona a camada e abre as propriedades no lugar da barra de atalhos; toque longo soma camadas à seleção.
+- **Prévia:** pinça longe da camada selecionada dá zoom e move o canvas (toque no % para ajustar de novo).
+
+### Adicionado
+- **Menu de adicionar:** abas Forma, Mídia, Áudio, Objeto / Elemento e Modelo, e uma coluna com Desenho à mão livre, Desenho vetorial, Texto e Fechar. A aba Forma tem páginas de formas (círculo, quadrado, cruz, anel, triângulo, balão, seta, estrela, coração…); as formas de caminho já vêm com os pontos editáveis.
+- **Desenho à mão livre e vetorial:** um traço com o dedo, ou pontos tocados um a um (tocar no primeiro fecha a forma), viram uma camada de forma.
+
 ## 0.2.1-hotfix
 
 ### Alterado (nomes neutros)
