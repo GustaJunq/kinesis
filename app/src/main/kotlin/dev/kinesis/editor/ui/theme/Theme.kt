@@ -95,7 +95,7 @@ val EditorPalette = KPalette(
     accent = Color(0xFF9B85FF), chipActive = Color(0xFF2A2638), onChipActive = Color(0xFFF1EEFF),
     keyframe = Color(0xFF9B85FF), teal = Color(0xFF4FD1C5), pink = Color(0xFFFF6B8B), selection = Color(0xFF7C5CFF),
     surfaceAlt = Color(0xFF1C1926), lane = Color(0xFF1C1926),
-    primary = Color(0xFF7C5CFF), onPrimary = Color(0xFF0E0A1F),
+    primary = Color(0xFF7C5CFF), onPrimary = Color(0xFF000000),
 )
 
 /**
