@@ -1,5 +1,6 @@
 package dev.kinesis.core.scene
 
+import dev.kinesis.core.knsfx.KnsfxScripts
 import dev.kinesis.core.anim.at
 import dev.kinesis.core.expr.ExprScope
 import dev.kinesis.core.expr.ExpressionResolver
@@ -96,10 +97,11 @@ object SceneEvaluator {
         matte: MatteRef?,
     ): RenderNode? {
         val containerTime = posterized(layer0, containerTime0)
-        val layer = ExpressionResolver.resolve(layer0, siblings, containerTime, comp)
-        val t = layer.localTime(containerTime)
+        val t = layer0.localTime(containerTime)
+        // Expressions first, then the scripts of custom (.knsfx) effects, which act on the resolved transform.
+        val layer = KnsfxScripts.apply(ExpressionResolver.resolve(layer0, siblings, containerTime, comp), t, comp)
         val transition = Transitions.evaluate(layer, t, comp)
-        fun effects(toComp: Affine2D) = resolveEffects(layer.effects, t, toComp, timeSlice = { index ->
+        fun effects(toComp: Affine2D) = resolveEffects(layer.effects, t, toComp, duration = layer.duration, timeSlice = { index ->
             val base = layer.copy(effects = layer.effects.take(index))
             TimeSliceSource(layer.id, Math.round(containerTime * comp.fps).toInt()) { back ->
                 val ct = containerTime - back * comp.frameDuration
@@ -255,7 +257,7 @@ object SceneEvaluator {
     /** [layer] with its expressions evaluated at [containerTime] (unchanged outside an evaluation or without expressions). */
     private fun resolved(layer: Layer, siblings: Map<String, Layer>, containerTime: Double): Layer {
         val comp = ExprScope.comp ?: return layer
-        return ExpressionResolver.resolve(layer, siblings, containerTime, comp)
+        return KnsfxScripts.apply(ExpressionResolver.resolve(layer, siblings, containerTime, comp), layer.localTime(containerTime), comp)
     }
 
     private fun parentChain(layer: Layer, siblings: Map<String, Layer>): List<Layer> {
@@ -332,6 +334,8 @@ object SceneEvaluator {
         effects: List<Effect>,
         t: Double,
         toComp: Affine2D = Affine2D.IDENTITY,
+        /** Layer duration: gives custom shaders their `uProgress`. */
+        duration: Double = 0.0,
         timeSlice: (index: Int) -> TimeSliceSource? = { null },
         echoes: (index: Int, delay: Double, count: Int, decay: Float) -> List<EchoSample> = { _, _, _, _ -> emptyList() },
     ): List<ResolvedEffect> {
@@ -352,7 +356,8 @@ object SceneEvaluator {
                     ParamType.STOPS -> e.stops(p.name).sortedBy { it.offset }
                 }
             }
-            var r = ResolvedEffect(e.type, values, t, origin)
+            val progress = if (duration > 0) (t / duration).coerceIn(0.0, 1.0).toFloat() else 0f
+            var r = ResolvedEffect(e.type, values, t, origin, progress = progress)
             when (e.type) {
                 "echo" -> r = ResolvedEffect(e.type, values, t, origin, echoes = echoes(index, r.f("delay").toDouble(), r.i("count"), r.f("decay")))
                 "timeSlice" -> r = ResolvedEffect(e.type, values, t, origin, slices = timeSlice(index))

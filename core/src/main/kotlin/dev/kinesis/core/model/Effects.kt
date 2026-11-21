@@ -54,6 +54,11 @@ data class Effect(
     val type: String,
     val enabled: Boolean = true,
     val params: Map<String, EffectValue> = emptyMap(),
+    /**
+     * A custom (`.knsfx`) effect whose package is not available: its JSON is kept as read and written back unchanged,
+     * and the effect is skipped when rendering.
+     */
+    val raw: JsonObject? = null,
 ) {
     val spec: EffectSpec get() = EffectRegistry.require(type)
 
@@ -114,7 +119,11 @@ object EffectSerializer : KSerializer<Effect> {
 
     override fun serialize(encoder: Encoder, value: Effect) {
         val json = (encoder as JsonEncoder).json
-        val spec = value.spec
+        val spec = EffectRegistry.get(value.type)
+        if (spec == null) {
+            encoder.encodeJsonElement(value.raw ?: throw SerializationException("unknown effect type '${value.type}'"))
+            return
+        }
         val obj = buildJsonObject {
             put("type", JsonPrimitive(value.type))
             if (!value.enabled) put("enabled", JsonPrimitive(false))
@@ -143,9 +152,11 @@ object EffectSerializer : KSerializer<Effect> {
         val obj = decoder.decodeJsonElement() as? JsonObject ?: throw SerializationException("an effect must be an object")
         val type = (obj["type"] as? JsonPrimitive)?.takeIf { it.isString }?.content
             ?: throw SerializationException("effect is missing \"type\"")
+        val enabled = obj["enabled"]?.let { (it as? JsonPrimitive)?.booleanOrNull ?: throw SerializationException("$type.enabled must be true or false") } ?: true
+        // A custom effect whose package is missing still opens: it is kept as is (and not rendered).
+        if (EffectRegistry.get(type) == null && EffectRegistry.isCustomId(type)) return Effect(type, enabled, raw = obj)
         val spec = EffectRegistry.get(type)
             ?: throw SerializationException("unknown effect type '$type'. Valid types: ${EffectRegistry.all.joinToString { it.id }}")
-        val enabled = obj["enabled"]?.let { (it as? JsonPrimitive)?.booleanOrNull ?: throw SerializationException("$type.enabled must be true or false") } ?: true
         val params = LinkedHashMap<String, EffectValue>()
         for (p in spec.params) {
             val e = obj[p.name] ?: continue

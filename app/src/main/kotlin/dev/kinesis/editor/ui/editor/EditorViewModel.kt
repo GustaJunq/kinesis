@@ -192,6 +192,15 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     private val exportDispatcher = Executors.newSingleThreadExecutor { r -> Thread(r, "kinesis-export") }.asCoroutineDispatcher()
 
     init {
+        // A custom effect whose script fails (error, or too slow) is turned off on that layer, with a warning.
+        dev.kinesis.core.knsfx.KnsfxScripts.reset()
+        dev.kinesis.core.knsfx.KnsfxScripts.onFailure = { layerId, effectId, reason ->
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                updateLayer(layerId) { l -> l.copy(effects = l.effects.map { e -> if (e.type == effectId) e.withEnabled(false) else e }) }
+                val name = dev.kinesis.core.model.EffectRegistry.get(effectId)?.namePt ?: effectId
+                notify(getApplication<Application>().getString(R.string.fx_script_off, name, reason), error = true)
+            }
+        }
         var error: String? = null
         val loaded = try {
             fitDuration(store.load(projectId))
@@ -1351,6 +1360,7 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     }
 
     override fun onCleared() {
+        dev.kinesis.core.knsfx.KnsfxScripts.onFailure = null
         captionCancelled = true
         whisper?.cancel()
         previewAudio.stop()

@@ -1,5 +1,7 @@
 package dev.kinesis.editor.ui.home
 
+import dev.kinesis.editor.effects.KnsfxImportDialog
+import dev.kinesis.editor.effects.KnsfxLibrary
 import dev.kinesis.core.edit.FrameRate
 import androidx.compose.material3.Slider
 import android.app.Application
@@ -269,12 +271,17 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
 
     LaunchedEffect(Unit) { vm.refresh() }
     var pluginUri by remember { mutableStateOf<Uri?>(null) }
+    var knsfxUri by remember { mutableStateOf<Uri?>(null) }
     var showPlugins by remember { mutableStateOf(false) }
     val resolver = LocalContext.current.contentResolver
     LaunchedEffect(incoming) {
         if (incoming != null) {
-            // A .knsplugin opened from the file manager goes to the plugin installer, anything else is a project.
-            if (withContext(Dispatchers.IO) { isPluginPackage(resolver, incoming) }) pluginUri = incoming else vm.import(incoming, onOpen)
+            // A .knsfx goes to the effect library, a .knsplugin to the plugin installer, anything else is a project.
+            when {
+                withContext(Dispatchers.IO) { KnsfxLibrary.isKnsfx(resolver, incoming) } -> knsfxUri = incoming
+                withContext(Dispatchers.IO) { isPluginPackage(resolver, incoming) } -> pluginUri = incoming
+                else -> vm.import(incoming, onOpen)
+            }
             onIncomingHandled()
         }
     }
@@ -283,7 +290,17 @@ fun HomeScreen(onOpen: (String) -> Unit, incoming: Uri? = null, onIncomingHandle
     val scope = rememberCoroutineScope()
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
-            if (withContext(Dispatchers.IO) { isPluginPackage(resolver, uri) }) pluginUri = uri else vm.import(uri, onOpen)
+            when {
+                withContext(Dispatchers.IO) { KnsfxLibrary.isKnsfx(resolver, uri) } -> knsfxUri = uri
+                withContext(Dispatchers.IO) { isPluginPackage(resolver, uri) } -> pluginUri = uri
+                else -> vm.import(uri, onOpen)
+            }
+        }
+    }
+    knsfxUri?.let { uri ->
+        KnsfxImportDialog(uri) { message ->
+            knsfxUri = null
+            if (message != null) scope.launch { snackbar.showSnackbar(message) }
         }
     }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->

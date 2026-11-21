@@ -106,6 +106,8 @@ class ResolvedEffect(
     val echoes: List<EchoSample> = emptyList(),
     /** TimeSlice: access to the layer at earlier frames. */
     val slices: TimeSliceSource? = null,
+    /** Position in the layer's clip, 0..1 (custom shaders: `uProgress`). */
+    val progress: Float = 0f,
 ) {
     fun f(name: String): Float = values[name] as Float
     fun i(name: String): Int = Math.round(values[name] as Float)

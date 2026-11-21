@@ -112,6 +112,20 @@ fun AddEffectSheet(
     var query by rememberSaveable { mutableStateOf("") }
     val current = EffectCategory.entries.firstOrNull { it.id == category }
     val inCategory = current != null && query.isEmpty()
+    // Custom (.knsfx) effects: import from a file, listed on top of the categories.
+    var importUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var customRevision by remember { mutableStateOf(0) }
+    var importMessage by remember { mutableStateOf<String?>(null) }
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importUri = uri
+    }
+    importUri?.let { uri ->
+        dev.kinesis.editor.effects.KnsfxImportDialog(uri) { message ->
+            importUri = null
+            customRevision++
+            importMessage = message
+        }
+    }
 
     Dialog(
         onDismissRequest = { if (inCategory) category = null else onDismiss() },
@@ -135,7 +149,7 @@ fun AddEffectSheet(
                 val q = fold(query.trim())
                 when {
                     q.isNotEmpty() -> {
-                        val found = EffectRegistry.all.filter { s -> fold(s.namePt).contains(q) || fold(s.nameEn).contains(q) || fold(s.id).contains(q) }
+                        val found = (EffectRegistry.all + EffectRegistry.customSpecs).filter { s -> fold(s.namePt).contains(q) || fold(s.nameEn).contains(q) || fold(s.id).contains(q) }
                         val shortcuts = EffectShortcut.entries.filter { fold(it.namePt).contains(q) || fold(it.nameEn).contains(q) }
                         if (found.isEmpty() && shortcuts.isEmpty()) {
                             Text(stringResource(R.string.fx_no_results), color = KColors.TextSecondary, modifier = Modifier.padding(24.dp))
@@ -143,7 +157,18 @@ fun AddEffectSheet(
                             EffectGrid(found, shortcuts, layer, pt, onAdd, onShortcut)
                         }
                     }
-                    current == null -> CategoryGrid(pt) { category = it.id }
+                    current == null -> CategoryGrid(pt, header = {
+                        Column {
+                            importMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = KColors.Accent, modifier = Modifier.padding(bottom = 8.dp)) }
+                            dev.kinesis.editor.effects.CustomEffectsSection(
+                                pt, customRevision,
+                                onImport = { importLauncher.launch(arrayOf("*/*")) },
+                                onAdd = { id -> if (effectUnavailableReason(EffectRegistry.require(id), layer) == null) onAdd(id) },
+                                onRemoved = { customRevision++ },
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }) { category = it.id }
                     else -> EffectGrid(EffectRegistry.inCategory(current), EffectRegistry.shortcuts(current), layer, pt, onAdd, onShortcut)
                 }
             }
@@ -189,7 +214,7 @@ private fun BasicSearchField(value: String, onChange: (String) -> Unit, modifier
 }
 
 @Composable
-private fun CategoryGrid(pt: Boolean, onOpen: (EffectCategory) -> Unit) {
+private fun CategoryGrid(pt: Boolean, header: @Composable () -> Unit = {}, onOpen: (EffectCategory) -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(KDims.Gutter, 4.dp, KDims.Gutter, 16.dp),
@@ -197,6 +222,7 @@ private fun CategoryGrid(pt: Boolean, onOpen: (EffectCategory) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
+        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { header() }
         items(EffectCategory.entries, key = { it.id }) { c ->
             val count = EffectRegistry.inCategory(c).size + EffectRegistry.shortcuts(c).size
             Tile(

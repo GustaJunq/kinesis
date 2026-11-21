@@ -825,6 +825,38 @@ class Compositor(private val res: RenderResources) {
         return dst
     }
 
+    /**
+     * A custom (.knsfx) shader pass, with the contract of `docs/knsfx.md`: uTexture, uResolution, uTime, uProgress,
+     * vTexCoord and one uniform per parameter. Same code for preview and export.
+     */
+    private fun knsfx(spec: EffectSpec, e: ResolvedEffect, src: RenderTarget, ctx: Ctx): RenderTarget {
+        val program = res.shaders.custom(spec.knsfx!!) ?: return src
+        val dst = res.pool.acquire()
+        dst.bind()
+        GLES30.glDisable(GLES30.GL_BLEND)
+        program.use()
+        bindTexture2D(0, src.texture)
+        program.set1i("uTexture", 0)
+        program.set2f("uResolution", ctx.width.toFloat(), ctx.height.toFloat())
+        program.set1f("uTime", e.time.toFloat())
+        program.set1f("uProgress", e.progress)
+        for (p in spec.params) {
+            when (p.type) {
+                ParamType.NUMBER -> program.set1f(p.name, e.f(p.name))
+                ParamType.INTEGER -> program.set1i(p.name, e.i(p.name))
+                ParamType.BOOLEAN -> program.set1i(p.name, if (e.flag(p.name)) 1 else 0)
+                ParamType.CHOICE -> e.choice(p.name).let { v -> program.set1i(p.name, v.toIntOrNull() ?: p.choices.indexOfFirst { it.id == v }) }
+                ParamType.COLOR -> e.color(p.name).let { c -> program.set4f(p.name, c.r, c.g, c.b, c.a) }
+                // Points: target pixels, with the same orientation as vTexCoord * uResolution (origin at the bottom left).
+                ParamType.POINT -> e.point(p.name).let { v -> program.set2f(p.name, v.x * ctx.scale, ctx.height - v.y * ctx.scale) }
+                ParamType.STOPS -> {}
+            }
+        }
+        res.quad.draw()
+        res.pool.release(src)
+        return dst
+    }
+
     /** Draws [src] into [dst] unchanged (the frames TimeSlice keeps). */
     private fun copyTo(src: RenderTarget, dst: RenderTarget) {
         dst.bind()
@@ -891,7 +923,10 @@ class Compositor(private val res: RenderResources) {
                     "pixelEncoder" -> pixelEncoder(cur, e, spec, ctx)
                     "copyBackground" -> copyBackground(cur, e, spec, ctx, ctx.backdrop ?: below)
                     "posterizeTime", "depthMap" -> cur // handled by scene evaluation / 3D drawing
-                    else -> generic(spec, e, cur, ctx)
+                    else -> when {
+                        spec.knsfx != null -> if (spec.knsfx!!.shader != null) knsfx(spec, e, cur, ctx) else cur // scripts act in the scene evaluator
+                        else -> generic(spec, e, cur, ctx)
+                    }
                 }
             }
         }

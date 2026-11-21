@@ -36,6 +36,24 @@
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
+            <!-- Custom effects (.knsfx) opened from a file manager. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.knsfx" />
+                <data android:pathPattern=".*\\..*\\.knsfx" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/vnd.kinesis.effect+zip" />
+            </intent-filter>
             <!-- Plugin packages (.knsplugin) opened from a file manager. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

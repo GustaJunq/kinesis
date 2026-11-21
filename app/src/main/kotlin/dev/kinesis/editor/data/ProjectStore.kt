@@ -15,6 +15,9 @@ import dev.kinesis.core.edit.Factory
 import dev.kinesis.core.format.AureaFormatException
 import dev.kinesis.core.format.AureaImport
 import dev.kinesis.core.format.KnsprojArchive
+import dev.kinesis.core.knsfx.KnsfxPackage
+import dev.kinesis.core.knsfx.KnsfxRegistry
+import dev.kinesis.editor.effects.KnsfxLibrary
 import dev.kinesis.core.format.KnsprojFormatException
 import dev.kinesis.core.format.KnsprojJson
 import dev.kinesis.core.format.ProjectValidator
@@ -59,6 +62,31 @@ class ProjectImportException(message: String, val issues: List<ValidationIssue> 
 class ProjectStore(private val context: Context) {
     val root: File = File(context.filesDir, "projects").apply { mkdirs() }
 
+    init {
+        KnsfxLibrary.ensureLoaded(context)
+    }
+
+    /** `effects/<id>.knsfx` of a project: its own copy of each custom effect it uses. */
+    private fun effectFile(dir: File, effectId: String) = File(dir, "${KnsprojArchive.EFFECTS_DIR}$effectId.${KnsfxPackage.EXTENSION}")
+
+    /** Registers the custom effects a project carries that are not installed, before its project.json is read. */
+    private fun registerEmbedded(dir: File) {
+        File(dir, KnsprojArchive.EFFECTS_DIR).listFiles { f -> f.isFile && f.name.endsWith(".${KnsfxPackage.EXTENSION}") }.orEmpty().forEach { f ->
+            if (KnsfxRegistry.get(f.name.removeSuffix(".${KnsfxPackage.EXTENSION}")) == null) KnsfxRegistry.registerEmbedded(f.readBytes())
+        }
+    }
+
+    /** Keeps a copy of every custom effect [project] uses inside its folder, so removing it from the library is safe. */
+    private fun embedEffects(dir: File, project: KnsProject) {
+        for (effectId in KnsfxRegistry.usedIn(project)) {
+            val pkg = KnsfxRegistry.get(effectId) ?: continue
+            val f = effectFile(dir, effectId)
+            if (f.isFile && f.length() == pkg.bytes.size.toLong() && f.readBytes().contentEquals(pkg.bytes)) continue
+            f.parentFile?.mkdirs()
+            SafeFile.write(f, keepBackup = false) { it.write(pkg.bytes) }
+        }
+    }
+
     fun dir(id: String) = File(root, id)
     fun projectFile(id: String) = File(dir(id), KnsprojArchive.PROJECT_ENTRY)
     fun thumbnailFile(id: String) = File(dir(id), KnsprojArchive.THUMBNAIL_ENTRY)
@@ -73,6 +101,7 @@ class ProjectStore(private val context: Context) {
             val pf = File(d, KnsprojArchive.PROJECT_ENTRY)
             if (!pf.isFile) return@mapNotNull null
             try {
+                registerEmbedded(d)
                 val p = KnsprojJson.decode(pf.readText())
                 ProjectSummary(
                     d.name, p.meta.title, p.composition.width, p.composition.height, p.composition.duration,
@@ -94,6 +123,7 @@ class ProjectStore(private val context: Context) {
     /** Loads a project; falls back to the backup written by the previous save if the main file is unreadable. */
     fun load(id: String): KnsProject {
         val f = projectFile(id)
+        registerEmbedded(dir(id))
         return try {
             KnsprojJson.decode(f.readText())
         } catch (e: Exception) {
@@ -105,6 +135,7 @@ class ProjectStore(private val context: Context) {
     fun save(id: String, project: KnsProject) {
         val stamped = project.copy(meta = project.meta.copy(modifiedAt = Instant.now().toString()))
         SafeFile.writeText(projectFile(id), KnsprojJson.encode(stamped))
+        runCatching { embedEffects(dir(id), project) }
     }
 
     fun saveThumbnail(id: String, jpeg: ByteArray) = SafeFile.write(thumbnailFile(id), keepBackup = false) { it.write(jpeg) }
@@ -194,7 +225,7 @@ class ProjectStore(private val context: Context) {
         tmp.mkdirs()
         try {
             val result = KnsprojArchive.read(input) { path, data ->
-                if (path.startsWith(KnsprojArchive.ASSETS_DIR) || path == KnsprojArchive.THUMBNAIL_ENTRY) {
+                if (path.startsWith(KnsprojArchive.ASSETS_DIR) || path.startsWith(KnsprojArchive.EFFECTS_DIR) || path == KnsprojArchive.THUMBNAIL_ENTRY) {
                     val target = File(tmp, path)
                     target.parentFile?.mkdirs()
                     target.outputStream().use { data.copyTo(it) }
@@ -220,7 +251,10 @@ class ProjectStore(private val context: Context) {
     fun export(id: String, out: OutputStream) {
         val project = load(id)
         val thumb = thumbnailFile(id).takeIf { it.isFile }?.readBytes()
-        KnsprojArchive.write(project, { a -> assetFile(id, a).takeIf { it.isFile }?.inputStream() }, out, thumb)
+        KnsprojArchive.write(
+            project, { a -> assetFile(id, a).takeIf { it.isFile }?.inputStream() }, out, thumb,
+            effects = { effectId -> effectFile(dir(id), effectId).takeIf { it.isFile }?.readBytes() ?: KnsfxRegistry.bytes(effectId) },
+        )
         out.flush()
     }
 

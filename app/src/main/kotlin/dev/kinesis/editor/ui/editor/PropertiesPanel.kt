@@ -56,6 +56,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -271,7 +273,13 @@ fun PropRow(vm: EditorViewModel, layer: Layer, prop: AnimProp<*>, local: Double,
                     display = kind.display,
                     suffix = unitSuffix(kind.unit),
                     min = kind.min, max = kind.max,
-                    onChange = { vm.setProperty(layer.id, p, if (kind.integer) Math.round(it).toFloat() else it, key) },
+                    step = kind.step,
+                    onChange = { v ->
+                        // Ticks (custom effects): the slider snaps to a mark within 2% of its range.
+                        val snap = (kind.sliderMax - kind.sliderMin) * 0.02f
+                        val snapped = kind.ticks.minByOrNull { kotlin.math.abs(it - v) }?.takeIf { kotlin.math.abs(it - v) <= snap } ?: v
+                        vm.setProperty(layer.id, p, if (kind.integer) Math.round(snapped).toFloat() else snapped, key)
+                    },
                     onDone = { vm.endGesture() },
                 )
             }
@@ -338,7 +346,7 @@ private fun AxisField(
 @Composable
 private fun LabeledSliderNoLabel(
     value: Float, range: ClosedFloatingPointRange<Float>, display: Float, suffix: String, min: Float, max: Float,
-    onChange: (Float) -> Unit, onDone: () -> Unit,
+    onChange: (Float) -> Unit, onDone: () -> Unit, step: Float? = null,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Slider(
@@ -350,7 +358,7 @@ private fun LabeledSliderNoLabel(
             colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = KColors.Accent, activeTrackColor = KColors.Accent),
         )
         Spacer(Modifier.width(6.dp))
-        ScrubNumber(value, onChange, onDone, Modifier.width(72.dp), step = (range.endInclusive - range.start) / 100f, display = display, min = min, max = max, suffix = suffix)
+        ScrubNumber(value, onChange, onDone, Modifier.width(72.dp), step = step ?: ((range.endInclusive - range.start) / 100f), display = display, min = min, max = max, suffix = suffix)
     }
 }
 
@@ -728,7 +736,11 @@ internal fun EffectsBlock(vm: EditorViewModel, layer: Layer, local: Double, onEd
                 }
                 IconButton(onClick = { move(i - 1) }, enabled = i > 0, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.move_up)) }
                 IconButton(onClick = { move(i + 1) }, enabled = i < layer.effects.lastIndex, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.move_down)) }
-                Switch(checked = e.enabled, onCheckedChange = { on -> upd { it.withEnabled(on) } })
+                Switch(checked = e.enabled, onCheckedChange = { on ->
+                    // Turning a custom effect back on gives its script another chance.
+                    if (on) dev.kinesis.core.knsfx.KnsfxScripts.reset(layer.id)
+                    upd { it.withEnabled(on) }
+                })
                 IconButton(onClick = { vm.updateLayer(layer.id) { l -> l.copy(effects = l.effects.filterIndexed { j, _ -> j != i }) } }) {
                     Icon(Icons.Filled.Delete, stringResource(R.string.delete), tint = KColors.TextSecondary)
                 }
@@ -737,7 +749,8 @@ internal fun EffectsBlock(vm: EditorViewModel, layer: Layer, local: Double, onEd
             val props = section(i)?.props.orEmpty()
             for (param in spec.params) {
                 if (!param.isVisible { name -> e.choice(name) }) continue
-                when (param.type) {
+                // Custom effects: a parameter switched off by a selector (enableTargets) is shown greyed out.
+                DisabledWhen(!param.isEnabled { name -> e.choice(name) }) { when (param.type) {
                     ParamType.CHOICE -> {
                         SmallLabel(param.label(pt))
                         ChoiceChips(param.choices.map { it.id to it.label(pt) }, e.choice(param.name), { v -> upd { it.with(param.name, EffectValue.Choice(v)) } })
@@ -746,7 +759,7 @@ internal fun EffectsBlock(vm: EditorViewModel, layer: Layer, local: Double, onEd
                     ParamType.BOOLEAN -> SwitchRow(param.label(pt), e.flag(param.name)) { v -> upd { it.with(param.name, EffectValue.Flag(v)) } }
                     ParamType.STOPS -> StopsEditor(vm, param.label(pt), e.stops(param.name)) { stops -> upd { it.with(param.name, EffectValue.Stops(stops)) } }
                     else -> props.firstOrNull { it.id == "effects.$i.${param.name}" }?.let { PropRow(vm, layer, it, local, onEditCurve) }
-                }
+                } }
             }
         }
     }
@@ -1038,4 +1051,18 @@ private fun Card(content: @Composable () -> Unit) {
             .background(KColors.Surface)
             .padding(10.dp),
     ) { content() }
+}
+
+/** Greys [content] out and swallows its touches while [disabled]. */
+@Composable
+private fun DisabledWhen(disabled: Boolean, content: @Composable () -> Unit) {
+    if (!disabled) { content(); return }
+    Box(Modifier.alpha(0.38f)) {
+        Column { content() }
+        Box(
+            Modifier.matchParentSize().pointerInput(Unit) {
+                awaitPointerEventScope { while (true) awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial).changes.forEach { it.consume() } }
+            },
+        )
+    }
 }

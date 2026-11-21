@@ -534,6 +534,19 @@ class RegistryArtifactsTest {
         val mprops = LinkedHashMap<String, JsonElement>()
         for ((k, v) in media.getValue("properties").jsonObject) mprops[if (k == "roto") "cutout" else k] = v
         defs["mediaContent"] = JsonObject(media + ("properties" to JsonObject(mprops)))
+        // 0.2.6: custom effects (.knsfx). Their type is a reverse-domain id; their parameters are defined by the package
+        // stored in effects/<id>.knsfx inside the .knsproj, so the schema only checks the shape.
+        val effect = defs.getValue("effect").jsonObject
+        val custom = obj(
+            "type" to str("object"),
+            "properties" to obj(
+                "type" to obj("type" to str("string"), "pattern" to str("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$")),
+                "enabled" to obj("type" to str("boolean")),
+            ),
+            "required" to JsonArray(listOf(str("type"))),
+            "description" to str("Custom effect from a .knsfx package (see docs/knsfx.md); its parameters follow the package's params.xml."),
+        )
+        defs["effect"] = JsonObject(effect + ("oneOf" to JsonArray(effect.getValue("oneOf").jsonArray + custom)))
         // 0.2.5: 2D layers can be skewed (an optional field; older files read as no skew).
         val t2 = defs.getValue("transform2d").jsonObject
         defs["transform2d"] = JsonObject(

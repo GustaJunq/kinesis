@@ -1,0 +1,14 @@
+{
+  "format": "knsfx",
+  "formatVersion": 1,
+  "id": "dev.kinesis.examples.chromatic",
+  "name": "Chromatic",
+  "description": "Aberração cromática: separa os canais vermelho e azul a partir do centro.",
+  "author": "Kinesis",
+  "version": "1.0.0",
+  "category": "stylize",
+  "tags": ["color", "glitch"],
+  "minKinesis": "0.2.6",
+  "params": "params.xml",
+  "shader": "effect.frag"
+}
