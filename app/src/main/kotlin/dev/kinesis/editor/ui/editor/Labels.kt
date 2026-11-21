@@ -21,6 +21,7 @@ fun propLabelRes(key: String): Int = when (key) {
     "transform.rotation", "transform3d.rotation", "camera.rotation" -> R.string.prop_rotation
     "transform.opacity", "transform3d.opacity", "mask.opacity", "effect.opacity" -> R.string.opacity
     "transform.anchor", "transform3d.anchor" -> R.string.prop_anchor
+    "transform.skew" -> R.string.prop_skew
     "text.fontSize" -> R.string.prop_font_size
     "text.color", "material.color", "light.color", "effect.color" -> R.string.color
     "text.letterSpacing" -> R.string.prop_letter_spacing

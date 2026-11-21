@@ -182,7 +182,7 @@ object ProjectValidator {
                 with(layer.transform) {
                     checkAnimatable(anchor, "$p.transform.anchor", d); checkAnimatable(position, "$p.transform.position", d)
                     checkAnimatable(scale, "$p.transform.scale", d); checkAnimatable(rotation, "$p.transform.rotation", d)
-                    checkAnimatable(opacity, "$p.transform.opacity", d)
+                    checkAnimatable(opacity, "$p.transform.opacity", d); checkAnimatable(skew, "$p.transform.skew", d)
                 }
                 with(layer.transform3d) {
                     checkAnimatable(anchor, "$p.transform3d.anchor", d); checkAnimatable(position, "$p.transform3d.position", d)

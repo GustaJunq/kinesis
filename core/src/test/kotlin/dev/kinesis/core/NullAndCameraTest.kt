@@ -253,7 +253,7 @@ class NullAndCameraTest {
         assertEquals(listOf("camera.position", "camera.rotation", "camera.fov"), ids(factory))
         val target = factory.copy(camera = factory.camera!!.copy(aim = CameraAim.TARGET))
         assertEquals(listOf("camera.position", "camera.target", "camera.fov"), ids(target))
-        assertEquals(listOf("transform.position", "transform.scale", "transform.rotation", "transform.anchor"), ids(Factory.nullObject(project(), 0.0, false, "Null")))
+        assertEquals(listOf("transform.position", "transform.scale", "transform.rotation", "transform.anchor", "transform.skew"), ids(Factory.nullObject(project(), 0.0, false, "Null")))
         assertEquals(listOf("transform3d.position", "transform3d.rotation", "transform3d.scale", "transform3d.anchor"), ids(Factory.nullObject(project(), 0.0, true, "Null")))
     }
 

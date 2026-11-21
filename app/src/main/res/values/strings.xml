@@ -752,4 +752,7 @@
     <string name="le_color">Color</string>
     <string name="le_saved_hint">Long-press a saved color to remove it</string>
     <string name="le_height">Height</string>
+    <string name="prop_skew">Skew</string>
+    <string name="le_skew_x">Skew X</string>
+    <string name="le_skew_y">Skew Y</string>
 </resources>

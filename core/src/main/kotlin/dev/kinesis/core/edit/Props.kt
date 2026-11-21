@@ -129,6 +129,7 @@ object LayerProps {
             fprop("transform.rotation", ROTATION, { it.transform.rotation }, { l, a -> l.copy(transform = l.transform.copy(rotation = a)) }),
             if (withOpacity) fprop("transform.opacity", OPACITY, { it.transform.opacity }, { l, a -> l.copy(transform = l.transform.copy(opacity = a)) }) else null,
             v2prop("transform.anchor", Vec2Kind(), { it.transform.anchor }, { l, a -> l.copy(transform = l.transform.copy(anchor = a)) }),
+            v2prop("transform.skew", Vec2Kind(PropUnit.DEG, 1f, -80f, 80f), { it.transform.skew }, { l, a -> l.copy(transform = l.transform.copy(skew = a)) }),
         ),
     )
 

@@ -752,4 +752,7 @@
     <string name="le_color">Cor</string>
     <string name="le_saved_hint">Toque longo numa cor salva para removê-la</string>
     <string name="le_height">Altura</string>
+    <string name="prop_skew">Inclinação</string>
+    <string name="le_skew_x">Inclinação X</string>
+    <string name="le_skew_y">Inclinação Y</string>
 </resources>

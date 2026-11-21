@@ -225,7 +225,7 @@ object SceneEvaluator {
 
     fun localMatrix2D(layer: Layer, t: Double): Affine2D {
         val tr = layer.transform
-        return Affine2D.layer(tr.position.at(t), tr.anchor.at(t), tr.scale.at(t), tr.rotation.at(t))
+        return Affine2D.layer(tr.position.at(t), tr.anchor.at(t), tr.scale.at(t), tr.rotation.at(t), tr.skew.at(t))
     }
 
     fun localMatrix3D(layer: Layer, t: Double): Mat4 {

@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.BorderStyle
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.FormatColorFill
+import androidx.compose.material.icons.outlined.FormatItalic
 import androidx.compose.material.icons.outlined.Gradient
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.OpenInFull
@@ -149,7 +150,7 @@ private fun opacityProp(layer: Layer): AnimProp<*>? =
 /** Position, rotation, scale and anchor of the layer (2D or 3D), in that order; missing ones are skipped. */
 private fun moveProps(layer: Layer): List<Pair<String, AnimProp<*>>> {
     val prefix = if (LayerProps.find(layer, "transform3d.position") != null) "transform3d" else "transform"
-    return listOf("position", "rotation", "scale", "anchor").mapNotNull { n -> LayerProps.find(layer, "$prefix.$n")?.let { n to it } }
+    return listOf("position", "rotation", "scale", "skew", "anchor").mapNotNull { n -> LayerProps.find(layer, "$prefix.$n")?.let { n to it } }
 }
 
 /** Layer editing: a grid of categories (color, border, blending, motion, ...), each opening a page with a rail on its left. */
@@ -699,6 +700,7 @@ private fun MovePage(vm: EditorViewModel, project: KnsProject, layer: Layer, loc
         when {
             name == "rotation" && value is Float -> RotationDial(value, display, { set(it) }, done)
             name == "scale" && value is Vec2 -> ScaleControls(value, step, display, suffix, { set(it) }, done)
+            name == "skew" && value is Vec2 -> SkewControls(value, { set(it) }, done)
             else -> Column(Modifier.fillMaxSize().padding(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
                     val axes = if (comps.size == 1) listOf(toolLabel(name)) else listOf("X", "Y", "Z")
@@ -784,6 +786,24 @@ private fun RotationDial(value: Float, display: Float, onChange: (Float) -> Unit
     }
 }
 
+/** Skew X and Y, each with its value and a ruler of its own. */
+@Composable
+private fun SkewControls(value: Vec2, onChange: (Vec2) -> Unit, onDone: () -> Unit) {
+    val cur by rememberUpdatedState(value)
+    fun setX(x: Float) = onChange(Vec2(x.coerceIn(-80f, 80f), cur.y))
+    fun setY(y: Float) = onChange(Vec2(cur.x, y.coerceIn(-80f, 80f)))
+    Column(Modifier.fillMaxSize().padding(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+            ValueBox(value.x, stringResource(R.string.le_skew_x), 0.5f, 1f, "°", ::setX, onDone)
+            ValueBox(value.y, stringResource(R.string.le_skew_y), 0.5f, 1f, "°", ::setY, onDone)
+        }
+        Spacer(Modifier.height(6.dp))
+        TickRuler(value.x, -80f, 80f, 0.5f, ::setX, onDone, Modifier.weight(1f).fillMaxWidth())
+        Box(Modifier.fillMaxWidth().height(1.dp).background(KColors.Line))
+        TickRuler(value.y, -80f, 80f, 0.5f, ::setY, onDone, Modifier.weight(1f).fillMaxWidth())
+    }
+}
+
 /** Width and height with a link between them: linked, one ruler scales both; unlinked, one ruler each. */
 @Composable
 private fun ScaleControls(value: Vec2, step: Float, display: Float, suffix: String, onChange: (Vec2) -> Unit, onDone: () -> Unit) {
@@ -816,12 +836,13 @@ private fun toolIcon(name: String): ImageVector = when (name) {
     "position" -> Icons.Outlined.OpenWith
     "rotation" -> Icons.Outlined.Rotate90DegreesCw
     "scale" -> Icons.Outlined.OpenInFull
+    "skew" -> Icons.Outlined.FormatItalic
     else -> Icons.Outlined.CenterFocusStrong
 }
 
 @Composable
 private fun toolLabel(name: String): String = stringResource(
-    when (name) { "position" -> R.string.le_position; "rotation" -> R.string.le_rotation; "scale" -> R.string.le_scale; else -> R.string.le_anchor },
+    when (name) { "position" -> R.string.le_position; "rotation" -> R.string.le_rotation; "scale" -> R.string.le_scale; "skew" -> R.string.prop_skew; else -> R.string.le_anchor },
 )
 
 private fun dragHint(name: String): Int = when (name) {

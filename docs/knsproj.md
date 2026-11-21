@@ -212,8 +212,9 @@ cujo conteúdo é `layers`. No tipo `null` o objeto `"null"` é opcional.
 | `scale` | `[x, y]` | `[1, 1]` | |
 | `rotation` | número | `0` | graus, horário |
 | `opacity` | número | `1` | 0..1 |
+| `skew` | `[x, y]` | `[0, 0]` | inclinação em graus (x inclina para os lados, y para cima e para baixo; até ±80) |
 
-Matriz: `T(position) · R(rotation) · S(scale) · T(−anchor)`.
+Matriz: `T(position) · R(rotation) · K(skew) · S(scale) · T(−anchor)`.
 
 `transform3d`: `anchor`, `position`, `rotation`, `scale` (todos `[x, y, z]`) e `opacity`.
 Matriz: `T(position) · Rz · Ry · Rx · S(scale) · T(−anchor)`.

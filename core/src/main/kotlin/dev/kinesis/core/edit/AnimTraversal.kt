@@ -25,7 +25,7 @@ fun Layer.mapAnimatables(m: AnimMapper): Layer {
     return copy(
         transform = transform.copy(
             anchor = v2(transform.anchor), position = v2(transform.position), scale = v2(transform.scale),
-            rotation = f(transform.rotation), opacity = f(transform.opacity),
+            rotation = f(transform.rotation), opacity = f(transform.opacity), skew = v2(transform.skew),
         ),
         transform3d = transform3d.copy(
             anchor = v3(transform3d.anchor), position = v3(transform3d.position), rotation = v3(transform3d.rotation),

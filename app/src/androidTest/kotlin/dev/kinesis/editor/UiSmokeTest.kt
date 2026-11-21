@@ -118,7 +118,7 @@ class UiSmokeTest {
             shot("ui-layer-$name")
             if (name == "move") {
                 // Drag on the pad, then each tool of the right rail (rotation, scale, anchor) with a drag of its own.
-                for (tool in listOf("position", "rotation", "scale", "anchor")) {
+                for (tool in listOf("position", "rotation", "scale", "skew", "anchor")) {
                     click(tool)
                     if (tool == "position" || tool == "anchor") {
                         rule.onNodeWithText(if (tool == "position") "Swipe here to move the layer" else "Swipe here to move the anchor point")
