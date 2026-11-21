@@ -146,6 +146,12 @@ object KColors {
     /** Timeline clips: indigo for everything, red for sound. */
     val ClipIndigo = Color(0xFF4A35B8)
     val ClipAudio = Color(0xFFC2385E)
+    /** Pictures and video clips. */
+    val ClipMedia = Color(0xFF3E5BD8)
+    /** Groups (pre-compositions). */
+    val ClipGroup = Color(0xFF465170)
+    /** Cameras, lights and nulls. */
+    val ClipScene = Color(0xFF5A4F86)
 
     // Legacy names still used by some panels
     val Surface: Color get() = Card

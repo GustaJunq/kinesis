@@ -77,6 +77,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -160,6 +161,13 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     var showGraph by remember { mutableStateOf(false) }
     var renderError by remember { mutableStateOf<String?>(null) }
     var tool3D by remember { mutableStateOf(Tool3D.MOVE) }
+    /** The properties of the selected layer, docked where the shortcut bar is. */
+    var propsDocked by remember { mutableStateOf(false) }
+    var fullscreen by rememberSaveable { mutableStateOf(false) }
+    var addTab by remember { mutableStateOf<AddTab?>(null) }
+    var drawMode by remember { mutableStateOf<DrawMode?>(null) }
+    /** Share of the preview in the space it splits with the timeline (the handle between them changes it). */
+    var previewShare by rememberSaveable { mutableStateOf(0.56f) }
     var textureTarget by remember { mutableStateOf<String?>(null) }
     val snackbar = remember { SnackbarHostState() }
 
@@ -270,204 +278,127 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().background(KColors.Background)) {
         val boxMaxHeight = maxHeight
         val sheetHeight = boxMaxHeight * 0.62f
+        LaunchedEffect(selection) { if (selection == null) propsDocked = false }
         Column(Modifier.fillMaxSize()) {
             EditorTopBar(
                 title = project.meta.title,
-                width = project.composition.width,
-                height = project.composition.height,
-                fps = project.composition.fps,
                 onClose = { vm.flushSave(); onClose() },
-                onRename = { renaming = true },
+                onRename = { vm.rename(it.ifBlank { project.meta.title }) },
                 onSettings = { vm.pause(); showSettings = true },
                 onExport = { vm.pause(); showExport = true },
             )
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = KColors.Primary)
 
-            // Preview across the whole width (any composition shape fits as large as the screen allows); the camera /
-            // editor-view pill floats over its right edge and can be switched off.
-            var viewPillShown by rememberSaveable { mutableStateOf(true) }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                // The dark panel is only there while the project is empty; with layers the preview has no border at all.
-                val empty = project.layers.isEmpty()
-                Box(
-                    Modifier.fillMaxSize().padding(start = PREVIEW_GUTTER, end = PREVIEW_GUTTER, top = 4.dp, bottom = 4.dp)
-                        .then(if (empty) Modifier.background(KColors.Preview, RoundedCornerShape(PREVIEW_RADIUS)) else Modifier),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (empty) {
-                        Text(stringResource(R.string.no_layers_now), color = KColors.White, fontSize = 14.sp)
-                    } else {
-                        Viewport(
-                            vm, project, time, playing, selection, mediaRevision, tool3D,
-                            onRenderError = { renderError = it },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                        renderError?.let { msg ->
-                            Text(
-                                stringResource(R.string.render_error, msg), color = KColors.White, fontSize = 12.sp,
-                                modifier = Modifier.align(Alignment.TopCenter).padding(8.dp).background(KColors.Danger.copy(alpha = 0.85f)).padding(8.dp)
-                                    .clickable { renderError = null },
-                            )
-                        }
-                        RealCameraOverlay(vm, Modifier.matchParentSize())
-                        if (selectedLayer?.hasTransform3D == true) {
-                            IconButton(
-                                onClick = { tool3D = if (tool3D == Tool3D.MOVE) Tool3D.ROTATE else Tool3D.MOVE },
-                                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(KColors.Bar.copy(alpha = 0.85f), KShapes.Tile),
-                            ) {
-                                Icon(
-                                    if (tool3D == Tool3D.MOVE) Icons.Filled.OpenWith else Icons.Filled.ScreenRotation,
-                                    stringResource(if (tool3D == Tool3D.MOVE) R.string.tool_move else R.string.tool_rotate),
-                                    tint = KColors.Accent,
-                                )
-                            }
-                        }
-                    }
+            // Preview and timeline share the space between the bars; the handle between them moves the split.
+            var splitPx by remember { mutableStateOf(1f) }
+            Column(Modifier.weight(1f).fillMaxWidth().onSizeChanged { splitPx = it.height.toFloat().coerceAtLeast(1f) }) {
+                Box(Modifier.weight(if (fullscreen) 1f else previewShare).fillMaxWidth()) {
+                    PreviewArea(
+                        vm = vm, project = project, time = time, playing = playing, selection = selection,
+                        mediaRevision = mediaRevision, tool3D = tool3D, onTool3D = { tool3D = it },
+                        renderError = renderError, onRenderError = { renderError = it },
+                        drawMode = drawMode,
+                        onDrawn = { pts, closed -> drawMode = null; addDrawing(vm, context, pts, closed) },
+                        onDrawCancel = { drawMode = null },
+                    )
                 }
-                if (viewPillShown) ViewModePill(vm, Modifier.align(Alignment.CenterEnd).padding(end = PREVIEW_GUTTER + 6.dp))
-            }
-
-            EditorControls(
-                time = time,
-                fps = project.composition.fps,
-                canUndo = canUndo,
-                canRedo = canRedo,
-                hasSelection = selectedLayer != null,
-                onMarker = {
-                    // A marker already at the playhead is edited instead of duplicated.
-                    val here = Markers.at(project, time, window = 0.5 / project.composition.fps)
-                    if (here != null) editingMarker = here.id else vm.addMarkerAtPlayhead()
-                },
-                onUndo = { vm.undo() },
-                onRedo = { vm.redo() },
-                onDuplicate = { vm.duplicateSelected() },
-                viewPillShown = viewPillShown,
-                onToggleViewPill = { viewPillShown = !viewPillShown },
-            )
-
-            // Timeline (always visible)
-            Timeline(vm, project, time, playing, selection, multi, onEditMarker = { editingMarker = it }, modifier = Modifier.fillMaxWidth().height(boxMaxHeight * 0.28f))
-
-            if (selectedLayer != null) {
-                SelectionActions(
-                    onProperties = { vm.pause(); propsFocus = null; showProps = true },
-                    hasKeyframeHere = vm.hasKeyframeAtPlayhead(project, time),
-                    onAddKeyframe = { vm.toggleKeyframeAtPlayhead() },
-                    onSplit = { vm.splitSelected() },
-                    onGroup = { vm.groupSelection() },
-                    onDelete = { vm.deleteSelection() },
-                    loop = loop,
-                    onLoop = { vm.loopPlayback.value = !loop },
-                    onAudio = if (selectedLayer.media != null) ({ showAudio = true }) else null,
-                    onExtractAudio = if (vm.canExtractAudio(selectedLayer)) ({ vm.extractAudio(selectedLayer.id) }) else null,
-                    onRemoveBackground = if (vm.canRemoveBackground(selectedLayer)) ({ vm.removeBackground(selectedLayer.id) }) else null,
-                    onStabilize = if (vm.canStabilize(selectedLayer)) ({ stabilizeTarget = selectedLayer.id }) else null,
-                    onCutoutBrush = if (vm.canCutoutBrush(selectedLayer)) ({
-                        vm.pause()
-                        rotoRequest = vm.rotoRequest(selectedLayer.id) ?: run { vm.notifyUser(context.getString(R.string.roto_open_failed), true); null }
-                    }) else null,
-                    onRealCamera = if (selectedLayer.type == LayerType.CAMERA && vm.realCamera.available) ({ vm.pause(); showRealCamera = true }) else null,
+                if (!fullscreen) {
+                    SplitHandle(onDrag = { dy -> previewShare = (previewShare + dy / splitPx).coerceIn(0.22f, 0.8f) })
+                }
+                TransportBar(
+                    playing = playing,
+                    canUndo = canUndo,
+                    canRedo = canRedo,
+                    hasSelection = selectedLayer != null,
+                    fullscreen = fullscreen,
+                    onUndo = { vm.undo() },
+                    onRedo = { vm.redo() },
+                    onStart = { vm.pause(); vm.seek(0.0) },
+                    onPlay = { vm.togglePlay() },
+                    onEnd = { vm.pause(); vm.seek(project.composition.duration) },
+                    onMarker = {
+                        // A marker already at the playhead is edited instead of duplicated.
+                        val here = Markers.at(project, time, window = 0.5 / project.composition.fps)
+                        if (here != null) editingMarker = here.id else vm.addMarkerAtPlayhead()
+                    },
+                    onDuplicate = { vm.duplicateSelected() },
+                    onFullscreen = { fullscreen = !fullscreen },
                 )
+                if (!fullscreen) {
+                    Timeline(
+                        vm, project, time, playing, selection, multi,
+                        onEditMarker = { editingMarker = it },
+                        onClipTap = { id -> vm.select(id); propsFocus = null; propsDocked = true },
+                        onOpenLayers = { vm.pause(); showLayers = true },
+                        modifier = Modifier.weight(1f - previewShare).fillMaxWidth(),
+                    )
+                }
             }
-            val activeTool = when {
-                showLayers -> EditorTool.LAYERS
-                addSection == AddSection.SHAPES -> EditorTool.SHAPES
-                addSection == AddSection.MEDIA -> EditorTool.MEDIA
-                addSection == AddSection.MODEL3D -> EditorTool.MODEL3D
-                addSection == AddSection.SCENE -> EditorTool.CAMERA
-                showEffects -> EditorTool.EFFECTS
-                showProps -> EditorTool.MOTION
-                showAudio -> EditorTool.AUDIO
-                showCaptions -> EditorTool.CAPTIONS
-                showElements -> EditorTool.ELEMENTS
-                showPlugins -> EditorTool.PLUGINS
-                else -> EditorTool.LAYERS
+
+            if (!fullscreen) {
+                if (selectedLayer != null) {
+                    SelectionActions(
+                        onProperties = { vm.pause(); propsFocus = null; propsDocked = !propsDocked },
+                        onEffects = if (selectedLayer.type.isVisual) ({ vm.pause(); showEffects = true }) else null,
+                        hasKeyframeHere = vm.hasKeyframeAtPlayhead(project, time),
+                        onAddKeyframe = { vm.toggleKeyframeAtPlayhead() },
+                        onSplit = { vm.splitSelected() },
+                        onGroup = { vm.groupSelection() },
+                        onDelete = { vm.deleteSelection() },
+                        loop = loop,
+                        onLoop = { vm.loopPlayback.value = !loop },
+                        onAudio = if (selectedLayer.media != null) ({ showAudio = true }) else null,
+                        onExtractAudio = if (vm.canExtractAudio(selectedLayer)) ({ vm.extractAudio(selectedLayer.id) }) else null,
+                        onRemoveBackground = if (vm.canRemoveBackground(selectedLayer)) ({ vm.removeBackground(selectedLayer.id) }) else null,
+                        onStabilize = if (vm.canStabilize(selectedLayer)) ({ stabilizeTarget = selectedLayer.id }) else null,
+                        onCutoutBrush = if (vm.canCutoutBrush(selectedLayer)) ({
+                            vm.pause()
+                            rotoRequest = vm.rotoRequest(selectedLayer.id) ?: run { vm.notifyUser(context.getString(R.string.roto_open_failed), true); null }
+                        }) else null,
+                        onRealCamera = if (selectedLayer.type == LayerType.CAMERA && vm.realCamera.available) ({ vm.pause(); showRealCamera = true }) else null,
+                        onClose = { vm.select(null) },
+                    )
+                    if (propsDocked) {
+                        // The properties take the place of the shortcut bar while a layer is selected.
+                        Column(Modifier.fillMaxWidth().height(boxMaxHeight * 0.36f).background(KColors.Sheet)) {
+                            PropertiesPanel(
+                                vm, project, time, selection,
+                                onEditCurve = { curveTarget = it },
+                                onPickTexture = { id -> textureTarget = id; pickTexture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                                onPickFont = { pickFont.launch(arrayOf("font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream", "*/*")) },
+                                modifier = Modifier.weight(1f),
+                                onAddEffect = { showEffects = true },
+                                focusSection = propsFocus,
+                            )
+                            CurveEditors(vm, project, curveTarget, showGraph, onShowGraph = { showGraph = it }, onClose = { curveTarget = null })
+                        }
+                    }
+                } else {
+                    ShortcutBar(
+                        onShape = { vm.pause(); addTab = AddTab.SHAPE },
+                        onMedia = { vm.pause(); addTab = AddTab.MEDIA },
+                        onAudio = { vm.pause(); addTab = AddTab.AUDIO },
+                        onText = { vm.pause(); handleAdd(AddAction.TEXT) },
+                        onElement = { vm.pause(); addTab = AddTab.OBJECT },
+                        onAdd = { vm.pause(); addTab = AddTab.SHAPE },
+                    )
+                }
             }
-            EditorBottomBar(
-                playing = playing,
-                canNavigate = selectedLayer != null || project.markers.isNotEmpty(),
-                active = activeTool,
-                enabled = { tool ->
-                    when (tool) {
-                        EditorTool.EFFECTS -> selectedLayer?.type?.isVisual == true
-                        EditorTool.MOTION -> selectedLayer != null
-                        else -> true
-                    }
-                },
-                // Previous / next go to the nearest marker or keyframe of the selected layer, whichever comes first.
-                onPrev = {
-                    val l = selectedLayer
-                    val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
-                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
-                    vm.seek(Markers.previous(project, time, own) ?: 0.0)
-                },
-                onPlay = { vm.togglePlay() },
-                onNext = {
-                    val l = selectedLayer
-                    val offset = if (l == null) 0.0 else LayerTree.containerOffset(project, l.id) + l.start
-                    val own = if (l == null) emptyList() else KeyframeNav.stops(l).map { it + offset }
-                    Markers.next(project, time, own)?.let { vm.seek(it) }
-                },
-                onTool = { tool ->
-                    vm.pause()
-                    when (tool) {
-                        EditorTool.LAYERS -> showLayers = true
-                        EditorTool.TEXT -> handleAdd(AddAction.TEXT)
-                        EditorTool.SHAPES -> addSection = AddSection.SHAPES
-                        EditorTool.MEDIA -> addSection = AddSection.MEDIA
-                        EditorTool.MODEL3D -> addSection = AddSection.MODEL3D
-                        EditorTool.AUDIO -> handleAdd(AddAction.AUDIO)
-                        EditorTool.CAMERA -> addSection = AddSection.SCENE
-                        EditorTool.EFFECTS -> showEffects = true
-                        EditorTool.MOTION -> { propsFocus = null; showProps = true }
-                        EditorTool.CAPTIONS -> showCaptions = true
-                        EditorTool.ELEMENTS -> showElements = true
-                        EditorTool.PLUGINS -> showPlugins = true
-                    }
-                },
-            )
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = EDITOR_BOTTOM_HEIGHT + 8.dp))
 
-        if (showProps || showSettings) {
-            ModalBottomSheet(onDismissRequest = { showProps = false; showSettings = false; propsFocus = null }, containerColor = KColors.Sheet, shape = KShapes.Sheet) {
+        if (showSettings) {
+            ModalBottomSheet(onDismissRequest = { showSettings = false; propsFocus = null }, containerColor = KColors.Sheet, shape = KShapes.Sheet) {
                 Column(Modifier.fillMaxWidth().height(sheetHeight)) {
                     PropertiesPanel(
-                        vm, project, time, if (showSettings) null else selection,
+                        vm, project, time, null,
                         onEditCurve = { curveTarget = it },
                         onPickTexture = { id -> textureTarget = id; pickTexture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         onPickFont = { pickFont.launch(arrayOf("font/*", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream", "*/*")) },
                         modifier = Modifier.weight(1f),
-                        onAddEffect = { showProps = false; showEffects = true },
-                        focusSection = propsFocus,
+                        onAddEffect = {},
+                        focusSection = null,
                     )
-                    curveTarget?.let { target ->
-                        val layer = LayerTree.find(project, target.layerId)
-                        val prop = layer?.let { LayerProps.find(it, target.propId) }
-                        val animatable = layer?.let { l -> prop?.get(l) }
-                        val keyframe = animatable?.keyframes?.getOrNull(target.keyIndex)
-                        if (layer == null || prop == null || animatable == null || keyframe == null) {
-                            curveTarget = null
-                            showGraph = false
-                        } else if (showGraph) {
-                            GraphEditorPanel(vm, layer, prop, stringResource(propLabelRes(prop.labelKey)), onClose = { showGraph = false })
-                        } else {
-                            CurveEditorPanel(
-                                easing = keyframe.easing,
-                                loop = animatable.loop,
-                                onEasing = { vm.setEasing(layer.id, prop, target.keyIndex, it) },
-                                onLoop = { vm.setLoop(layer.id, prop, it) },
-                                onClose = { curveTarget = null },
-                                saved = AppSettings.savedEasings,
-                                onSave = { AppSettings.saveEasing(context, it) },
-                                onDeleteSaved = { AppSettings.deleteEasing(context, it) },
-                                clipboard = vm.easingClipboard,
-                                onCopy = { vm.copyEasing(it) },
-                                onApplyAll = { vm.setEasingAll(layer.id, prop, it) },
-                                onGraph = { showGraph = true },
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -482,6 +413,26 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         TextInputDialog(stringResource(R.string.rename), project.meta.title, onDismiss = { renaming = false }) { vm.rename(it.ifBlank { project.meta.title }); renaming = false }
     }
     addSection?.let { section -> AddSheet(section, onDismiss = { addSection = null }, onAdd = ::handleAdd) }
+    addTab?.let { tab ->
+        AddMenu(
+            tab,
+            AddMenuActions(
+                onAction = { addTab = null; handleAdd(it) },
+                onShape = { preset ->
+                    addTab = null
+                    val p = vm.current
+                    val size = minOf(p.composition.width, p.composition.height) * 0.35f
+                    vm.addLayer(preset.apply(Factory.shape(p, vm.time.value, preset.kind, context.getString(preset.label)), size))
+                },
+                onElements = { addTab = null; showElements = true },
+                onCaptions = { addTab = null; showCaptions = true },
+                onPlugins = { addTab = null; showPlugins = true },
+                onFreehand = { addTab = null; vm.select(null); fullscreen = false; drawMode = DrawMode.FREEHAND },
+                onVector = { addTab = null; vm.select(null); fullscreen = false; drawMode = DrawMode.VECTOR },
+            ),
+            onDismiss = { addTab = null },
+        )
+    }
     val effectsTarget = selection?.let { LayerTree.find(project, it) }
     if (showEffects && effectsTarget != null) {
         AddEffectSheet(
@@ -491,7 +442,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                 vm.updateLayer(effectsTarget.id) { it.copy(effects = it.effects + Effect.create(type)) }
                 showEffects = false
                 propsFocus = "effects"
-                showProps = true
+                propsDocked = true
             },
             onShortcut = { shortcut ->
                 showEffects = false
@@ -504,7 +455,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     EffectShortcut.TRANSITIONS -> "transitions"
                     EffectShortcut.TEXT_ANIMATORS -> "animators"
                 }
-                showProps = true
+                propsDocked = true
             },
         )
     }
@@ -526,4 +477,56 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
         if (marker == null) editingMarker = null else MarkerDialog(vm, marker, project.composition.fps, time, onDismiss = { editingMarker = null })
     }
     if (showExport) ExportDialog(vm, project, exportState, onDismiss = { showExport = false })
+}
+
+/** The curve editor (or the graph editor) of the keyframe picked in the properties, under them. */
+@Composable
+private fun CurveEditors(vm: EditorViewModel, project: dev.kinesis.core.model.KnsProject, target: CurveTarget?, showGraph: Boolean, onShowGraph: (Boolean) -> Unit, onClose: () -> Unit) {
+    val context = LocalContext.current
+    target ?: return
+    val layer = LayerTree.find(project, target.layerId)
+    val prop = layer?.let { LayerProps.find(it, target.propId) }
+    val animatable = layer?.let { l -> prop?.get(l) }
+    val keyframe = animatable?.keyframes?.getOrNull(target.keyIndex)
+    if (layer == null || prop == null || animatable == null || keyframe == null) {
+        LaunchedEffect(target) { onShowGraph(false); onClose() }
+    } else if (showGraph) {
+        GraphEditorPanel(vm, layer, prop, stringResource(propLabelRes(prop.labelKey)), onClose = { onShowGraph(false) })
+    } else {
+        CurveEditorPanel(
+            easing = keyframe.easing,
+            loop = animatable.loop,
+            onEasing = { vm.setEasing(layer.id, prop, target.keyIndex, it) },
+            onLoop = { vm.setLoop(layer.id, prop, it) },
+            onClose = onClose,
+            saved = AppSettings.savedEasings,
+            onSave = { AppSettings.saveEasing(context, it) },
+            onDeleteSaved = { AppSettings.deleteEasing(context, it) },
+            clipboard = vm.easingClipboard,
+            onCopy = { vm.copyEasing(it) },
+            onApplyAll = { vm.setEasingAll(layer.id, prop, it) },
+            onGraph = { onShowGraph(true) },
+        )
+    }
+}
+
+/**
+ * A drawn path becomes a shape layer: the points are kept relative to their centre, which becomes the layer's
+ * position. A closed path is filled; an open one (a stroke by hand, an open vector path) is a line.
+ */
+private fun addDrawing(vm: EditorViewModel, context: android.content.Context, points: List<Vec2>, closed: Boolean) {
+    if (points.size < 2) return
+    val p = vm.current
+    val cx = points.sumOf { it.x.toDouble() }.toFloat() / points.size
+    val cy = points.sumOf { it.y.toDouble() }.toFloat() / points.size
+    val base = Factory.shape(p, vm.time.value, ShapeKind.PATH, context.getString(R.string.layer_drawing))
+    vm.addLayer(
+        base.updateShape { c ->
+            c.copy(
+                path = PathSpec(closed = closed, points = points.map { PathPoint(Vec2(it.x - cx, it.y - cy)) }),
+                fill = if (closed) c.fill else FillSpec(enabled = false, color = c.fill.color),
+                stroke = if (closed) c.stroke else StrokeSpec(color = c.fill.color, width = anim(10f)),
+            )
+        }.let { it.copy(transform = it.transform.copy(position = anim(Vec2(cx, cy)))) },
+    )
 }
