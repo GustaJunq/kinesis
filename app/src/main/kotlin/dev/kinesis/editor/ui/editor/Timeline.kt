@@ -102,6 +102,17 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import kotlin.math.abs
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.drag
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /** A visible timeline row: a layer, its nesting depth and the absolute start of its container. */
@@ -202,6 +213,27 @@ fun Timeline(
             if (vm.playing.value) vm.pause()
             vm.seek(vm.time.value - dx / currentPx)
         }
+        // One scrub for the ruler and the lanes: a horizontal drag anywhere moves the time under the fixed playhead,
+        // and a flick keeps it going with inertia.
+        val flingScope = rememberCoroutineScope()
+        var flingJob by remember { mutableStateOf<Job?>(null) }
+        val scrubbing = remember {
+            TimelineScrub(
+                onStart = { flingJob?.cancel() },
+                onScrub = { scrub(it) },
+                onFling = { velocity ->
+                    flingJob = flingScope.launch {
+                        var last = 0f
+                        AnimationState(0f, velocity).animateDecay(exponentialDecay()) {
+                            val before = vm.time.value
+                            scrub(value - last)
+                            last = value
+                            if (vm.time.value == before) cancelAnimation() // reached the start or the end
+                        }
+                    }
+                },
+            )
+        }
 
         Column(
             Modifier
@@ -235,7 +267,7 @@ fun Timeline(
                         duration = duration, scale = scale, fps = fps, markers = project.markers,
                         markerHitPx = markerHitPx,
                         onSeek = { if (vm.playing.value) vm.pause(); vm.seek(it) },
-                        onScrub = scrub,
+                        scrubbing = scrubbing,
                         onAddMarker = { vm.addMarker(it) },
                         onEditMarker = onEditMarker,
                         modifier = Modifier.fillMaxSize(),
@@ -248,7 +280,8 @@ fun Timeline(
                     )
                 }
             }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+            // The lanes: horizontal drags scrub (anywhere, clips included), vertical drags scroll the layers.
+            Box(Modifier.weight(1f).fillMaxWidth().timelineScrub(scrubbing)) {
                 LazyColumn(Modifier.fillMaxSize()) {
                     items(rows, key = { it.layer.id }) { row ->
                         LayerRow(
@@ -262,7 +295,6 @@ fun Timeline(
                             scale = scale,
                             trackWidthPx = trackWidthPx,
                             audioRevision = audioRevision,
-                            onScrub = scrub,
                             onClipTap = onClipTap,
                         )
                     }
@@ -328,13 +360,12 @@ private fun Ruler(
     markers: List<Marker>,
     markerHitPx: Float,
     onSeek: (Double) -> Unit,
-    onScrub: (Float) -> Unit,
+    scrubbing: TimelineScrub,
     onAddMarker: (Double) -> Unit,
     onEditMarker: (String) -> Unit,
     modifier: Modifier,
 ) {
     val seek by rememberUpdatedState(onSeek)
-    val scrub by rememberUpdatedState(onScrub)
     val addMarker by rememberUpdatedState(onAddMarker)
     val editMarker by rememberUpdatedState(onEditMarker)
     val currentScale by rememberUpdatedState(scale)
@@ -355,13 +386,8 @@ private fun Ruler(
                     },
                 )
             }
-            .pointerInput(Unit) {
-                // The playhead stays put: dragging the ruler moves the time under it.
-                detectHorizontalDragGestures { change, dx ->
-                    change.consume()
-                    scrub(dx)
-                }
-            },
+            // The playhead stays put: dragging the ruler moves the time under it (the same scrub as the lanes).
+            .timelineScrub(scrubbing),
     ) {
         val pxPerSecond = scale.pxPerSecond
         val scrollPx = scale.scrollPx
@@ -424,12 +450,10 @@ private fun LayerRow(
     scale: TimelineScale,
     trackWidthPx: Float,
     audioRevision: Int,
-    onScrub: (Float) -> Unit,
     onClipTap: (String) -> Unit,
 ) {
     val layer = row.layer
     val density = LocalDensity.current
-    val scrub by rememberUpdatedState(onScrub)
     val rowPx = with(density) { ROW_HEIGHT.toPx() }
     var dragY by remember(layer.id) { mutableFloatStateOf(0f) }
     Row(
@@ -468,7 +492,7 @@ private fun LayerRow(
                 Icon(layerIcon(layer), null, tint = clipColor(layer.type).copy(alpha = 1f).let { if (layer.visible) KColors.TextSoft else KColors.Disabled }, modifier = Modifier.size(20.dp))
             }
         }
-        // Lane: the clip at its real time; dragging the empty lane scrubs.
+        // Lane: the clip at its real time (dragging it sideways scrubs: see timelineScrub on the lanes).
         Box(
             Modifier
                 .weight(1f)
@@ -477,12 +501,6 @@ private fun LayerRow(
                 .clip(RoundedCornerShape(topEnd = LANE_RADIUS, bottomEnd = LANE_RADIUS))
                 .background(KColors.Lane)
                 .clipToBounds()
-                .pointerInput(layer.id) {
-                    detectHorizontalDragGestures { change, dx ->
-                        change.consume()
-                        scrub(dx)
-                    }
-                }
                 .pointerInput(layer.id) { detectTapGestures(onTap = { onClipTap(layer.id) }, onLongPress = { vm.select(layer.id, additive = true) }) },
         ) {
             ClipView(vm, project, row, selected, inMulti, scale, trackWidthPx, audioRevision, onClipTap)
@@ -568,48 +586,61 @@ private fun ClipView(
                 color = if (selected || inMulti) KColors.Primary else Color.Transparent,
                 shape = shape,
             )
-            .pointerInput(layer.id) { detectTapGestures(onTap = { onClipTap(layer.id) }, onLongPress = { vm.select(layer.id, additive = true) }) }
+            .pointerInput(layer.id) { detectTapGestures(onTap = { onClipTap(layer.id) }) }
             .pointerInput(layer.id, selected) {
+                // Trim: a selected clip's ends (when on screen) follow the finger at once.
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val mode = when {
+                        !selected -> return@awaitEachGesture
+                        !cutStart && down.position.x < handleW -> 1
+                        !cutEnd && down.position.x > size.width - handleW -> 2
+                        else -> return@awaitEachGesture
+                    }
+                    val current = LayerTree.find(vm.current, layer.id) ?: return@awaitEachGesture
+                    if (current.locked) return@awaitEachGesture
+                    val start = current.start
+                    val dur = current.duration
+                    val key = "clip:${layer.id}:${System.nanoTime()}"
+                    var accum = 0f
+                    val slop = awaitTouchSlopOrCancellation(down.id) { change, over -> change.consume(); accum += over.x } ?: return@awaitEachGesture
+                    fun apply() {
+                        val dt = accum / px
+                        if (mode == 1) {
+                            val target = snap(start + dt, layer.id)
+                            val now = LayerTree.find(vm.current, layer.id) ?: return
+                            vm.trimLayerStart(layer.id, target - now.start, key)
+                        } else {
+                            vm.trimLayerEnd(layer.id, snap(start + dur + dt, layer.id) - start, key)
+                        }
+                    }
+                    apply()
+                    drag(slop.id) { change -> accum += change.positionChange().x; change.consume(); apply() }
+                    vm.endGesture()
+                }
+            }
+            .pointerInput(layer.id) {
+                // Move: long press, then drag (a plain drag scrubs the timeline instead).
                 var startStart = 0.0
                 var accum = 0f
                 var key = ""
-                var mode = 0 // 0 move, 1 trim start, 2 trim end
-                var startDuration = 0.0
-                detectDragGestures(
-                    onDragStart = { pos ->
-                        if (vm.selection.value != layer.id) vm.select(layer.id)
-                        val current = LayerTree.find(vm.current, layer.id) ?: return@detectDragGestures
-                        startStart = current.start
-                        startDuration = current.duration
+                var locked = false
+                detectDragGesturesAfterLongPress(
+                    onDragStart = {
+                        val current = LayerTree.find(vm.current, layer.id)
+                        locked = current == null || current.locked
+                        if (current != null && vm.selection.value != layer.id) vm.select(layer.id)
+                        startStart = current?.start ?: 0.0
                         accum = 0f
                         key = "clip:${layer.id}:${System.nanoTime()}"
-                        // The handles are the real ends of the clip: when an end is off-screen it cannot be grabbed.
-                        mode = when {
-                            current.locked -> -1
-                            !cutStart && pos.x < handleW -> 1
-                            !cutEnd && pos.x > size.width - handleW -> 2
-                            else -> 0
-                        }
                     },
                     onDragEnd = { vm.endGesture() },
                     onDragCancel = { vm.endGesture() },
                 ) { change, drag ->
                     change.consume()
-                    if (mode < 0) return@detectDragGestures
+                    if (locked) return@detectDragGesturesAfterLongPress
                     accum += drag.x
-                    val dt = accum / px
-                    when (mode) {
-                        0 -> vm.moveLayerTime(layer.id, snap(startStart + dt, layer.id), key)
-                        1 -> {
-                            val target = snap(startStart + dt, layer.id)
-                            val current = LayerTree.find(vm.current, layer.id) ?: return@detectDragGestures
-                            vm.trimLayerStart(layer.id, target - current.start, key)
-                        }
-                        2 -> {
-                            val end = snap(startStart + startDuration + dt, layer.id)
-                            vm.trimLayerEnd(layer.id, end - startStart, key)
-                        }
-                    }
+                    vm.moveLayerTime(layer.id, snap(startStart + accum / px, layer.id), key)
                 }
             },
     ) {
@@ -716,5 +747,55 @@ fun layerDisplayName(layer: Layer): String = layer.name.ifBlank {
     when (layer.type) {
         LayerType.TEXT -> layer.text?.content?.lineSequence()?.firstOrNull()?.take(24) ?: "Text"
         else -> layer.type.name.lowercase().replaceFirstChar { it.uppercase() }
+    }
+}
+
+/** Callbacks of the shared scrub gesture (see [timelineScrub]). */
+class TimelineScrub(val onStart: () -> Unit, val onScrub: (Float) -> Unit, val onFling: (Float) -> Unit)
+
+/**
+ * Scrub gesture shared by the ruler and the lanes. After the touch slop the axis is locked: a horizontal move scrubs
+ * (and takes the gesture away from the list and the clips), a vertical one is left to the list's scroll. A press held
+ * still past the long-press timeout is left to the clip (long press then drag moves it); two fingers are the pinch zoom.
+ * Released with speed, the time keeps going with inertia.
+ */
+fun Modifier.timelineScrub(scrub: TimelineScrub): Modifier = pointerInput(scrub) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        scrub.onStart()
+        val tracker = VelocityTracker()
+        tracker.addPosition(down.uptimeMillis, down.position)
+        val slop = viewConfiguration.touchSlop
+        var total = Offset.Zero
+        // 1. Decide the axis (or give up: consumed by a child, a second finger, a lift, a long press).
+        val horizontal = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            var result = false
+            while (true) {
+                val event = awaitPointerEvent()
+                val c = event.changes.firstOrNull { it.id == down.id }
+                if (c == null || !c.pressed || c.isConsumed || event.changes.count { it.pressed } > 1) break
+                total += c.positionChange()
+                tracker.addPosition(c.uptimeMillis, c.position)
+                if (total.getDistance() > slop) { result = abs(total.x) > abs(total.y); break }
+            }
+            result
+        } ?: false
+        if (!horizontal) return@awaitEachGesture
+        // 2. Scrub: read the moves before the children (Initial pass) and consume them, so the list does not scroll.
+        while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            if (event.changes.count { it.pressed } > 1) return@awaitEachGesture
+            val c = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+            if (!c.pressed) {
+                c.consume()
+                val v = tracker.calculateVelocity().x
+                if (abs(v) > 50f) scrub.onFling(v)
+                return@awaitEachGesture
+            }
+            tracker.addPosition(c.uptimeMillis, c.position)
+            val dx = c.positionChange().x
+            c.consume()
+            if (dx != 0f) scrub.onScrub(dx)
+        }
     }
 }
