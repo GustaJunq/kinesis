@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -54,6 +55,10 @@ class KPalette(
     val surfaceAlt: Color,
     /** The lane behind each layer of the timeline. */
     val lane: Color,
+    /** Filled buttons and the playhead's accent (play, export, selection). */
+    val primary: Color = Color(0xFF8B5CF6),
+    /** Text and icons on [primary]. */
+    val onPrimary: Color = Color(0xFFFFFFFF),
 )
 
 val DarkPalette = KPalette(
@@ -77,12 +82,36 @@ val LightPalette = KPalette(
 )
 
 /**
+ * The editor: black around the preview, near-black panels, one raised surface, hairline dividers and one purple for
+ * what is active (play, export, the selection, the active tab, the playhead). Contrast: primary text 15:1 or more on
+ * every surface, secondary text 5.2:1 on the raised surface; text on the purple is dark (4.8:1), since white on
+ * #7C5CFF stays under 4.5:1.
+ */
+val EditorPalette = KPalette(
+    isDark = true,
+    background = Color(0xFF000000), bar = Color(0xFF121018), sheet = Color(0xFF121018), card = Color(0xFF121018),
+    field = Color(0xFF1C1926), line = Color(0xFF2A2638), lineStrong = Color(0xFF3A3550),
+    textPrimary = Color(0xFFF1EEFF), textSoft = Color(0xFFB9B4D6), textSecondary = Color(0xFF8F88B8), disabled = Color(0xFF5E577F),
+    accent = Color(0xFF9B85FF), chipActive = Color(0xFF2A2638), onChipActive = Color(0xFFF1EEFF),
+    keyframe = Color(0xFF9B85FF), teal = Color(0xFF4FD1C5), pink = Color(0xFFFF6B8B), selection = Color(0xFF7C5CFF),
+    surfaceAlt = Color(0xFF1C1926), lane = Color(0xFF1C1926),
+    primary = Color(0xFF7C5CFF), onPrimary = Color(0xFF0E0A1F),
+)
+
+/**
  * Every colour, type style and dimension of the UI. Screens use these tokens only (no hex values elsewhere).
  * The colours that depend on the theme read [palette], which is Compose state: screens recompose when it changes.
  * Contrast (dark): TextPrimary/TextSoft/TextSecondary and Accent pass 4.5:1 on Background, Bar, Sheet and Card.
  */
 object KColors {
-    var palette: KPalette by mutableStateOf(DarkPalette)
+    private var basePalette: KPalette by mutableStateOf(DarkPalette)
+
+    /** Set while the editor is shown ([EditorTheme]): it wins over the app's light or dark palette. */
+    var override: KPalette? by mutableStateOf(null)
+
+    var palette: KPalette
+        get() = override ?: basePalette
+        set(value) { basePalette = value }
 
     // Surfaces
     val Background: Color get() = palette.background
@@ -142,16 +171,24 @@ object KColors {
     /** Behind the preview, in both themes. */
     val Preview = Color(0xFF0E1016)
     /** Main action and selected state of the editor (Export, active tool, selected clip). */
-    val Primary = Color(0xFF8B5CF6)
+    val Primary: Color get() = palette.primary
+    val OnPrimary: Color get() = palette.onPrimary
     /** Timeline clips: indigo for everything, red for sound. */
     val ClipIndigo = Color(0xFF4A35B8)
     val ClipAudio = Color(0xFFC2385E)
+    // Timeline clips, muted so the content stays readable (white text 6.5:1 or more on each).
+    /** Shapes and 3D objects. */
+    val ClipShape = Color(0xFF6B4A5C)
+    /** Text. */
+    val ClipText = Color(0xFF4E4A82)
     /** Pictures and video clips. */
-    val ClipMedia = Color(0xFF3E5BD8)
+    val ClipMedia = Color(0xFF3E5A7A)
+    /** Sound (drawn with its waveform). */
+    val ClipSound = Color(0xFF2F6660)
     /** Groups (pre-compositions). */
-    val ClipGroup = Color(0xFF465170)
+    val ClipGroup = Color(0xFF4A4E5E)
     /** Cameras, lights and nulls. */
-    val ClipScene = Color(0xFF5A4F86)
+    val ClipScene = Color(0xFF4A4458)
 
     // Legacy names still used by some panels
     val Surface: Color get() = Card
@@ -318,7 +355,7 @@ private val shapes = Shapes(
 fun KinesisTheme(dark: Boolean = true, content: @Composable () -> Unit) {
     val palette = if (dark) DarkPalette else LightPalette
     // Set before the content composes so that every token read below sees the right palette.
-    if (KColors.palette !== palette) KColors.palette = palette
+    KColors.palette = palette
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -330,6 +367,16 @@ fun KinesisTheme(dark: Boolean = true, content: @Composable () -> Unit) {
     }
     MaterialTheme(colorScheme = remember(dark) { scheme(palette) }, typography = typography, shapes = shapes) {
         // Icons and text outside a Surface would otherwise default to the wrong colour.
+        CompositionLocalProvider(LocalContentColor provides KColors.TextPrimary, content = content)
+    }
+}
+
+/** The editor's colours (see [EditorPalette]) for everything inside it, sheets and dialogs included. */
+@Composable
+fun EditorTheme(content: @Composable () -> Unit) {
+    if (KColors.override !== EditorPalette) KColors.override = EditorPalette
+    DisposableEffect(Unit) { onDispose { KColors.override = null } }
+    MaterialTheme(colorScheme = remember { scheme(EditorPalette) }, typography = typography, shapes = shapes) {
         CompositionLocalProvider(LocalContentColor provides KColors.TextPrimary, content = content)
     }
 }

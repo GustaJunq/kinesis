@@ -60,13 +60,25 @@ import dev.kinesis.editor.R
 import dev.kinesis.editor.ui.theme.KColors
 import dev.kinesis.editor.ui.theme.KShapes
 
+/** Height of [SplitHandle]. */
+val SPLIT_HANDLE_HEIGHT = 24.dp
+
+/** The timeline never gets smaller than four layers and its ruler. */
+val TIMELINE_MIN_HEIGHT = 240.dp
+
+/** A 1 px hairline between panels. */
+@Composable
+fun PanelDivider() {
+    Box(Modifier.fillMaxWidth().height(1.dp).background(KColors.Line))
+}
+
 /** The bar between the preview and the timeline: drag it up or down to give one more room than the other. */
 @Composable
 fun SplitHandle(onDrag: (Float) -> Unit) {
     val drag by rememberUpdatedState(onDrag)
     val label = stringResource(R.string.resize_panels)
     Box(
-        Modifier.fillMaxWidth().height(20.dp)
+        Modifier.fillMaxWidth().height(SPLIT_HANDLE_HEIGHT).background(KColors.Bar)
             .semantics { contentDescription = label }
             .pointerInput(Unit) {
                 detectVerticalDragGestures { change, dy ->
@@ -76,7 +88,7 @@ fun SplitHandle(onDrag: (Float) -> Unit) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.width(40.dp).height(4.dp).clip(KShapes.Pill).background(KColors.LineStrong))
+        Box(Modifier.width(56.dp).height(5.dp).clip(KShapes.Pill).background(KColors.TextSecondary))
     }
 }
 
@@ -107,7 +119,7 @@ fun PreviewArea(
     var showOverlays by rememberSaveable { mutableStateOf(true) }
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
-    Box(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(KColors.Preview)) {
+    Box(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(KColors.Background)) {
         if (project.layers.isEmpty() && drawMode == null) {
             Text(stringResource(R.string.no_layers_now), color = KColors.White, fontSize = 14.sp, modifier = Modifier.align(Alignment.Center))
         } else {
@@ -162,7 +174,7 @@ fun PreviewArea(
             }
             val fit = stringResource(R.string.view_fit)
             Box(
-                Modifier.height(36.dp).widthIn(min = 48.dp).clip(KShapes.Pill).background(KColors.Bar.copy(alpha = 0.9f))
+                Modifier.height(36.dp).widthIn(min = 48.dp).clip(KShapes.Pill).background(KColors.SurfaceAlt)
                     .clickable(role = Role.Button, onClickLabel = fit) { zoom = 1f; pan = Offset.Zero }
                     .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
@@ -177,11 +189,11 @@ fun PreviewArea(
 @Composable
 private fun FloatingToggle(icon: ImageVector, label: String, on: Boolean, onClick: () -> Unit) {
     Box(
-        Modifier.size(40.dp).clip(CircleShape).background(if (on) KColors.Primary else KColors.Bar.copy(alpha = 0.9f))
+        Modifier.size(40.dp).clip(CircleShape).background(if (on) KColors.Primary else KColors.SurfaceAlt)
             .clickable(role = Role.Switch, onClickLabel = label, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, tint = if (on) KColors.White else KColors.TextPrimary, modifier = Modifier.size(20.dp))
+        Icon(icon, null, tint = if (on) KColors.OnPrimary else KColors.TextPrimary, modifier = Modifier.size(20.dp))
     }
 }

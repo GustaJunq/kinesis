@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.Brush
 import androidx.compose.material.icons.outlined.CameraAlt
@@ -142,7 +144,7 @@ fun EditorTopBar(
                 Modifier.height(40.dp).clip(KShapes.Pill).background(KColors.Primary).padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.export), color = KColors.White, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                Text(stringResource(R.string.export), color = KColors.OnPrimary, style = MaterialTheme.typography.labelLarge, maxLines = 1)
             }
         }
     }
@@ -186,7 +188,7 @@ fun TransportBar(
     onFullscreen: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(TRANSPORT_BAR_HEIGHT).padding(horizontal = 4.dp),
+        Modifier.fillMaxWidth().height(TRANSPORT_BAR_HEIGHT).background(KColors.Bar).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TransportIcon(Lucide.Undo2, stringResource(R.string.undo), onUndo, enabled = canUndo)
@@ -202,7 +204,7 @@ fun TransportBar(
             Box(Modifier.size(42.dp).clip(CircleShape).background(KColors.Primary), contentAlignment = Alignment.Center) {
                 Icon(
                     if (playing) Lucide.Pause else Lucide.Play, stringResource(if (playing) R.string.pause else R.string.play),
-                    tint = KColors.White, modifier = Modifier.size(22.dp),
+                    tint = KColors.OnPrimary, modifier = Modifier.size(22.dp),
                 )
             }
         }
@@ -228,7 +230,7 @@ fun ShortcutBar(
     onAdd: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(SHORTCUT_BAR_HEIGHT).padding(horizontal = 8.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth().height(SHORTCUT_BAR_HEIGHT).background(KColors.Bar).padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
@@ -248,7 +250,7 @@ fun ShortcutBar(
                 .clickable(role = Role.Button, onClickLabel = add, onClick = onAdd),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Filled.Add, add, tint = KColors.White, modifier = Modifier.size(28.dp))
+            Icon(Icons.Filled.Add, add, tint = KColors.OnPrimary, modifier = Modifier.size(28.dp))
         }
     }
 }
@@ -266,13 +268,18 @@ private fun ShortcutItem(icon: ImageVector, label: Int, onClick: () -> Unit, mod
     }
 }
 
-/** Actions on the selected layer (shown only while a layer is selected). */
+/**
+ * Actions on the selected layer (shown only while a layer is selected): one row of icons with a small label, all of the
+ * same weight. Properties is purple while they are open.
+ */
 @Composable
 fun SelectionActions(
     onProperties: () -> Unit,
+    /** Whether the properties are docked under this row. */
+    propertiesOpen: Boolean = false,
     /** Opens the effect picker for the selected layer (visual layers only). */
     onEffects: (() -> Unit)? = null,
-    /** Whether the selected layer has a keyframe at the playhead (the "+ ◆" chip then removes it). */
+    /** Whether the selected layer has a keyframe at the playhead (the keyframe item then removes it). */
     hasKeyframeHere: Boolean,
     onAddKeyframe: () -> Unit,
     onSplit: () -> Unit,
@@ -296,60 +303,44 @@ fun SelectionActions(
     onClose: (() -> Unit)? = null,
 ) {
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().background(KColors.Bar).horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        ActionChip(Icons.Outlined.Tune, R.string.tab_properties, onProperties, accent = true)
-        if (onEffects != null) ActionChip(Icons.Outlined.AutoAwesome, R.string.effects, onEffects)
-        KeyframeChip(hasKeyframeHere, onAddKeyframe)
-        ActionChip(Icons.Outlined.ContentCut, R.string.split, onSplit)
-        ActionChip(Icons.Outlined.CreateNewFolder, R.string.group, onGroup)
-        if (onAudio != null) ActionChip(Icons.Outlined.GraphicEq, R.string.audio_panel, onAudio)
-        if (onExtractAudio != null) ActionChip(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
-        if (onRemoveBackground != null) ActionChip(Icons.Outlined.PersonOff, R.string.remove_background, onRemoveBackground)
-        if (onCutoutBrush != null) ActionChip(Icons.Outlined.Brush, R.string.cutout_brush, onCutoutBrush)
-        if (onStabilize != null) ActionChip(Icons.Outlined.CenterFocusStrong, R.string.stabilize, onStabilize)
-        if (onRealCamera != null) ActionChip(Icons.Outlined.CameraAlt, R.string.real_camera, onRealCamera)
-        ActionChip(Icons.Outlined.Delete, R.string.delete, onDelete, danger = true)
-        ActionChip(Icons.Outlined.Repeat, R.string.loop, onLoop, accent = loop)
-        if (onClose != null) ActionChip(Icons.Outlined.Close, R.string.deselect, onClose)
+        ActionItem(Icons.Outlined.Tune, R.string.tab_properties, onProperties, active = propertiesOpen)
+        if (onEffects != null) ActionItem(Icons.Outlined.AutoAwesome, R.string.effects, onEffects)
+        ActionItem(
+            if (hasKeyframeHere) Icons.Outlined.RemoveCircleOutline else Icons.Outlined.AddCircleOutline,
+            if (hasKeyframeHere) R.string.remove_keyframe else R.string.add_keyframe, onAddKeyframe, active = hasKeyframeHere,
+        )
+        ActionItem(Icons.Outlined.ContentCut, R.string.split, onSplit)
+        ActionItem(Icons.Outlined.CreateNewFolder, R.string.group, onGroup)
+        if (onAudio != null) ActionItem(Icons.Outlined.GraphicEq, R.string.audio_panel, onAudio)
+        if (onExtractAudio != null) ActionItem(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
+        if (onRemoveBackground != null) ActionItem(Icons.Outlined.PersonOff, R.string.remove_background, onRemoveBackground)
+        if (onCutoutBrush != null) ActionItem(Icons.Outlined.Brush, R.string.cutout_brush, onCutoutBrush)
+        if (onStabilize != null) ActionItem(Icons.Outlined.CenterFocusStrong, R.string.stabilize, onStabilize)
+        if (onRealCamera != null) ActionItem(Icons.Outlined.CameraAlt, R.string.real_camera, onRealCamera)
+        ActionItem(Icons.Outlined.Repeat, R.string.loop, onLoop, active = loop)
+        ActionItem(Icons.Outlined.Delete, R.string.delete, onDelete)
+        if (onClose != null) ActionItem(Icons.Outlined.Close, R.string.deselect, onClose)
     }
 }
 
-/** One button for both: "+ ◆" adds a keyframe at the playhead; when there is one it turns into a filled "− ◆" that removes it. */
+/** An icon over a short label; purple while [active]. */
 @Composable
-private fun KeyframeChip(hasKeyframeHere: Boolean, onClick: () -> Unit) {
-    val label = stringResource(if (hasKeyframeHere) R.string.remove_keyframe else R.string.add_keyframe)
-    val fg = if (hasKeyframeHere) KColors.OnAccent else KColors.Keyframe
-    Row(
-        Modifier.heightIn(min = KDims.MinTouch).clip(KShapes.Pill)
-            .background(if (hasKeyframeHere) KColors.Keyframe else Color.Transparent)
-            .border(1.dp, KColors.Keyframe, KShapes.Pill)
-            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun ActionItem(icon: ImageVector, label: Int, onClick: () -> Unit, active: Boolean = false) {
+    val fg = if (active) KColors.Accent else KColors.TextSoft
+    Column(
+        Modifier.width(68.dp).heightIn(min = 56.dp).clip(KShapes.Tile)
+            .clickable(role = Role.Button, onClick = onClick).padding(vertical = 6.dp, horizontal = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Icon(if (hasKeyframeHere) Icons.Filled.Remove else Icons.Filled.Add, label, tint = fg, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(4.dp))
-        Text("◆", color = fg, style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-@Composable
-private fun ActionChip(icon: ImageVector, label: Int, onClick: () -> Unit, accent: Boolean = false, danger: Boolean = false) {
-    val fg = when {
-        danger -> KColors.Danger
-        accent -> KColors.White
-        else -> KColors.TextPrimary
-    }
-    Row(
-        Modifier.heightIn(min = KDims.MinTouch).clip(KShapes.Pill).background(if (accent) KColors.Primary else KColors.SurfaceAlt)
-            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(stringResource(label), color = fg, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        Icon(icon, null, tint = fg, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(label), color = fg, style = MaterialTheme.typography.labelSmall, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }

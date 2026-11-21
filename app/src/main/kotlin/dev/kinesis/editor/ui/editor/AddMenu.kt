@@ -51,7 +51,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -102,7 +102,7 @@ class AddMenuActions(
 
 private class MenuItem(val label: Int, val icon: ImageVector, val onClick: () -> Unit)
 
-private const val SHAPE_COLUMNS = 7
+private const val SHAPE_COLUMNS = 6
 private const val SHAPE_ROWS = 3
 
 /**
@@ -114,13 +114,14 @@ private const val SHAPE_ROWS = 3
 fun AddMenu(initial: AddTab, actions: AddMenuActions, onDismiss: () -> Unit) {
     var tab by remember { mutableStateOf(initial) }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = KColors.Sheet, shape = KShapes.Sheet, dragHandle = null) {
-        Row(Modifier.fillMaxWidth().height(360.dp)) {
-            Column(Modifier.weight(1f).fillMaxHeight()) {
-                ScrollableTabRow(
+        Column(Modifier.fillMaxWidth().height(340.dp)) {
+            // Tabs share the width (labels may take two lines, never cut); the X closes the menu.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TabRow(
                     selectedTabIndex = tab.ordinal,
+                    modifier = Modifier.weight(1f),
                     containerColor = KColors.Sheet,
                     contentColor = KColors.TextPrimary,
-                    edgePadding = 8.dp,
                     indicator = { pos -> TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(pos[tab.ordinal]), color = KColors.Primary) },
                     divider = {},
                 ) {
@@ -128,13 +129,23 @@ fun AddMenu(initial: AddTab, actions: AddMenuActions, onDismiss: () -> Unit) {
                         Tab(
                             selected = t == tab,
                             onClick = { tab = t },
-                            text = { Text(stringResource(t.label), maxLines = 1, style = MaterialTheme.typography.labelLarge) },
-                            selectedContentColor = KColors.Primary,
+                            text = { Text(stringResource(t.label), maxLines = 2, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall) },
+                            selectedContentColor = KColors.Accent,
                             unselectedContentColor = KColors.TextSecondary,
                         )
                     }
                 }
-                Box(Modifier.weight(1f).fillMaxWidth()) {
+                val close = stringResource(R.string.close)
+                Box(
+                    Modifier.size(48.dp).clickable(role = Role.Button, onClickLabel = close, onClick = onDismiss).semantics { contentDescription = close },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.Close, null, tint = KColors.TextSoft, modifier = Modifier.size(22.dp))
+                }
+            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(KColors.Line))
+            Row(Modifier.weight(1f).fillMaxWidth()) {
+                Box(Modifier.weight(1f).fillMaxHeight()) {
                     when (tab) {
                         AddTab.SHAPE -> ShapePages(actions.onShape)
                         AddTab.MEDIA -> ItemGrid(
@@ -176,17 +187,16 @@ fun AddMenu(initial: AddTab, actions: AddMenuActions, onDismiss: () -> Unit) {
                         )
                     }
                 }
-            }
-            // Side column: draw by hand, draw a vector path, text, close.
-            Column(
-                Modifier.width(88.dp).fillMaxHeight().background(KColors.SurfaceAlt).padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                SideItem(Icons.Filled.Gesture, R.string.draw_freehand, actions.onFreehand)
-                SideItem(Icons.Filled.Draw, R.string.draw_vector, actions.onVector)
-                SideItem(Icons.Filled.TextFields, R.string.add_text) { actions.onAction(AddAction.TEXT) }
-                SideItem(Icons.Filled.Close, R.string.close, onDismiss)
+                // Side column: draw by hand, draw a vector path, text.
+                Column(
+                    Modifier.width(80.dp).fillMaxHeight().background(KColors.SurfaceAlt).padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    SideItem(Icons.Filled.Gesture, R.string.draw_freehand, actions.onFreehand)
+                    SideItem(Icons.Filled.Draw, R.string.draw_vector, actions.onVector)
+                    SideItem(Icons.Filled.TextFields, R.string.add_text) { actions.onAction(AddAction.TEXT) }
+                }
             }
         }
     }
@@ -234,10 +244,10 @@ private fun ShapePages(onShape: (ShapePreset) -> Unit) {
     val state = rememberPagerState { pages.size }
     Column(Modifier.fillMaxSize()) {
         HorizontalPager(state, Modifier.weight(1f).fillMaxWidth()) { page ->
-            Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 4.dp), verticalArrangement = Arrangement.SpaceEvenly) {
+            Column(Modifier.fillMaxSize().padding(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (r in pages[page].chunked(SHAPE_COLUMNS)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        for (preset in r) ShapeTile(preset, Modifier.weight(1f)) { onShape(preset) }
+                    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        for (preset in r) ShapeTile(preset, Modifier.weight(1f).fillMaxHeight()) { onShape(preset) }
                         repeat(SHAPE_COLUMNS - r.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
@@ -259,13 +269,13 @@ private fun ShapePages(onShape: (ShapePreset) -> Unit) {
 private fun ShapeTile(preset: ShapePreset, modifier: Modifier, onClick: () -> Unit) {
     val label = stringResource(preset.label)
     Box(
-        modifier.padding(2.dp).aspectRatio(1f).clip(KShapes.Tile).background(KColors.Field)
+        modifier.clip(KShapes.Tile).background(KColors.Field)
             .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.fillMaxSize().padding(6.dp)) {
-            val s = size.minDimension * 0.95f
+            val s = size.minDimension
             val c = Offset(size.width / 2f, size.height / 2f)
             fun at(v: Vec2) = Offset(c.x + v.x * s, c.y + v.y * s)
             val color = KColors.TextSoft

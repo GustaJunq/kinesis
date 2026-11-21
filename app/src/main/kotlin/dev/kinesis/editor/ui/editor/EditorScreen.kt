@@ -115,9 +115,15 @@ import dev.kinesis.editor.ui.theme.KShapes
 private val PREVIEW_GUTTER = 8.dp
 private val PREVIEW_RADIUS = 24.dp
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** The editor, in its own palette (black around the preview, near-black panels, one purple for what is active). */
 @Composable
 fun EditorScreen(projectId: String, onClose: () -> Unit) {
+    dev.kinesis.editor.ui.theme.EditorTheme { EditorContent(projectId, onClose) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditorContent(projectId: String, onClose: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as Application
     val factory = remember(projectId) {
@@ -300,8 +306,15 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
 
             // Preview and timeline share the space between the bars; the handle between them moves the split.
             var splitPx by remember { mutableStateOf(1f) }
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            // The timeline keeps room for at least four layers; the preview keeps a usable minimum too.
+            val fixedPx = with(density) { (SPLIT_HANDLE_HEIGHT + TRANSPORT_BAR_HEIGHT + 2.dp).toPx() }
+            val sharedPx = (splitPx - fixedPx).coerceAtLeast(1f)
+            val maxShare = (1f - with(density) { TIMELINE_MIN_HEIGHT.toPx() } / sharedPx).coerceIn(0.05f, 0.95f)
+            val minShare = (with(density) { 120.dp.toPx() } / sharedPx).coerceIn(0.05f, maxShare)
+            val share = previewShare.coerceIn(minShare, maxShare)
             Column(Modifier.weight(1f).fillMaxWidth().onSizeChanged { splitPx = it.height.toFloat().coerceAtLeast(1f) }) {
-                Box(Modifier.weight(if (fullscreen) 1f else previewShare).fillMaxWidth()) {
+                Box(Modifier.weight(if (fullscreen) 1f else share).fillMaxWidth()) {
                     PreviewArea(
                         vm = vm, project = project, time = time, playing = playing, selection = selection,
                         mediaRevision = mediaRevision, tool3D = tool3D, onTool3D = { tool3D = it },
@@ -312,8 +325,9 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                     )
                 }
                 if (!fullscreen) {
-                    SplitHandle(onDrag = { dy -> previewShare = (previewShare + dy / splitPx).coerceIn(0.22f, 0.8f) })
+                    SplitHandle(onDrag = { dy -> previewShare = (share + dy / sharedPx).coerceIn(minShare, maxShare) })
                 }
+                PanelDivider()
                 TransportBar(
                     playing = playing,
                     canUndo = canUndo,
@@ -339,14 +353,16 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                         onEditMarker = { editingMarker = it },
                         onClipTap = { id -> vm.select(id); propsFocus = null; propsDocked = true },
                         onOpenLayers = { vm.pause(); showLayers = true },
-                        modifier = Modifier.weight(1f - previewShare).fillMaxWidth(),
+                        modifier = Modifier.weight(1f - share).fillMaxWidth().background(KColors.Bar),
                     )
                 }
             }
 
             if (!fullscreen) {
+                PanelDivider()
                 if (selectedLayer != null) {
                     SelectionActions(
+                        propertiesOpen = propsDocked,
                         onProperties = { vm.pause(); propsFocus = null; propsDocked = !propsDocked },
                         onEffects = if (selectedLayer.type.isVisual) ({ vm.pause(); showEffects = true }) else null,
                         hasKeyframeHere = vm.hasKeyframeAtPlayhead(project, time),
@@ -368,6 +384,7 @@ fun EditorScreen(projectId: String, onClose: () -> Unit) {
                         onClose = { vm.select(null) },
                     )
                     if (propsDocked) {
+                        PanelDivider()
                         // The properties take the place of the shortcut bar while a layer is selected.
                         Column(Modifier.fillMaxWidth().height(boxMaxHeight * 0.36f).background(KColors.Sheet)) {
                             PropertiesPanel(

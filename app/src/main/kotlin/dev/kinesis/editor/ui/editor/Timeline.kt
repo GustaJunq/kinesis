@@ -131,12 +131,11 @@ fun layerColor(type: LayerType): Color = when (type) {
 
 /** Clip colour by kind: text, shapes, pictures and video, sound (with its waveform), groups, 3D and scene objects. */
 fun clipColor(type: LayerType): Color = when (type) {
-    LayerType.TEXT -> KColors.ClipTextStart
-    LayerType.SHAPE -> KColors.ClipPink
+    LayerType.TEXT -> KColors.ClipText
+    LayerType.SHAPE, LayerType.OBJECT3D, LayerType.MODEL3D -> KColors.ClipShape
     LayerType.IMAGE, LayerType.VIDEO -> KColors.ClipMedia
-    LayerType.AUDIO -> KColors.ClipTeal
+    LayerType.AUDIO -> KColors.ClipSound
     LayerType.GROUP -> KColors.ClipGroup
-    LayerType.OBJECT3D, LayerType.MODEL3D -> KColors.ClipViolet
     LayerType.CAMERA, LayerType.LIGHT, LayerType.NULL -> KColors.ClipScene
 }
 
@@ -566,7 +565,7 @@ private fun ClipView(
             .background(SolidColor(color), alpha = if (layer.visible) 1f else 0.3f)
             .border(
                 width = if (selected || inMulti) 2.dp else 0.dp,
-                color = if (selected) KColors.Primary else if (inMulti) KColors.Keyframe else Color.Transparent,
+                color = if (selected || inMulti) KColors.Primary else Color.Transparent,
                 shape = shape,
             )
             .pointerInput(layer.id) { detectTapGestures(onTap = { onClipTap(layer.id) }, onLongPress = { vm.select(layer.id, additive = true) }) }
