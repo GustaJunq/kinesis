@@ -751,4 +751,5 @@
     <string name="le_width">Largura</string>
     <string name="le_color">Cor</string>
     <string name="le_saved_hint">Toque longo numa cor salva para removê-la</string>
+    <string name="le_height">Altura</string>
 </resources>

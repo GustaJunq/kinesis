@@ -39,6 +39,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.FirstPage
 import androidx.compose.material.icons.filled.LastPage
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.outlined.Animation
@@ -55,6 +57,7 @@ import androidx.compose.material.icons.outlined.Opacity
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Rotate90DegreesCw
 import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -122,7 +125,7 @@ import kotlin.math.floor
 import dev.kinesis.core.math.Color as KColor
 
 /** Pages of the layer editor: a grid of categories, each opening its own page. */
-enum class EditPage { HOME, COLOR, BORDER, BLEND, MOVE, SHAPE, TEXT, CONTENT, EFFECTS, MASK, TRANSITION, LAYER }
+enum class EditPage { HOME, PROPS, COLOR, BORDER, BLEND, MOVE, SHAPE, TEXT, CONTENT, EFFECTS, MASK, TRANSITION, LAYER }
 
 private val TileShape = RoundedCornerShape(10.dp)
 
@@ -198,6 +201,9 @@ fun LayerEditor(
                     }
                 }
             }
+            EditPage.PROPS -> SubPage(vm, layer, local, null, onEditCurve, back) {
+                ScrollPage { PropList(vm, layer, local, onEditCurve) { id -> !id.startsWith("effects.") && !id.startsWith("masks.") } }
+            }
             EditPage.EFFECTS -> SubPage(vm, layer, local, null, onEditCurve, back) { ScrollPage { EffectsBlock(vm, layer, local, onEditCurve, onAddEffect) } }
             EditPage.MASK -> SubPage(vm, layer, local, null, onEditCurve, back) { ScrollPage { MasksBlock(vm, layer, local, onEditCurve); MatteBlock(vm, project, layer) } }
             EditPage.TRANSITION -> SubPage(vm, layer, local, null, onEditCurve, back) { ScrollPage { TransitionsBlock(vm, layer) } }
@@ -220,6 +226,7 @@ private fun tilesFor(layer: Layer): List<Tile> = buildList {
         LayerType.TEXT -> add(Tile(Lucide.Type, R.string.le_edit_text, EditPage.TEXT))
         else -> add(Tile(Lucide.Component, R.string.le_content, EditPage.CONTENT))
     }
+    add(Tile(Icons.Outlined.Tune, R.string.tab_properties, EditPage.PROPS))
     if (layer.type.isVisual) add(Tile(Lucide.Sparkles, R.string.effects, EditPage.EFFECTS))
     if (layer.type.is2DVisual) add(Tile(Icons.Outlined.CropFree, R.string.le_masks, EditPage.MASK))
     if (layer.type.isVisual) add(Tile(Icons.Outlined.SwapHoriz, R.string.le_transitions, EditPage.TRANSITION))
@@ -687,45 +694,120 @@ private fun MovePage(vm: EditorViewModel, project: KnsProject, layer: Layer, loc
             val l = LayerTree.find(vm.current, layer.id) ?: return null
             return l to prop.valueAt(l, vm.localTime(l))
         }
-        Column(Modifier.fillMaxSize().padding(8.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-                val axes = if (comps.size == 1) listOf(toolLabel(name)) else listOf("X", "Y", "Z")
-                comps.forEachIndexed { i, c ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(Modifier.width(92.dp).height(40.dp).clip(TileShape).background(KColors.SurfaceAlt), contentAlignment = Alignment.Center) {
-                            ScrubNumber(c, { x ->
-                                val (_, v) = current() ?: return@ScrubNumber
-                                vm.setProperty(layer.id, prop, withComponent(v, i, x) as Any, key)
-                            }, { vm.endGesture() }, Modifier.padding(horizontal = 6.dp), step = step, display = display, suffix = suffix, tint = KColors.Accent)
-                        }
-                        Text(axes[i], style = MaterialTheme.typography.labelSmall, color = KColors.TextSecondary)
+        val set = { v: Any -> vm.setProperty(layer.id, prop, v, key) }
+        val done = { vm.endGesture() }
+        when {
+            name == "rotation" && value is Float -> RotationDial(value, display, { set(it) }, done)
+            name == "scale" && value is Vec2 -> ScaleControls(value, step, display, suffix, { set(it) }, done)
+            else -> Column(Modifier.fillMaxSize().padding(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+                    val axes = if (comps.size == 1) listOf(toolLabel(name)) else listOf("X", "Y", "Z")
+                    comps.forEachIndexed { i, c ->
+                        ValueBox(c, axes[i], step, display, suffix, { x -> val (_, v) = current() ?: return@ValueBox; set(withComponent(v, i, x) as Any) }, done)
                     }
                 }
+                // Drag pad: one screen pixel moves the layer about one composition pixel.
+                val bracket = KColors.TextSecondary
+                Box(
+                    Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)
+                        .drawBehind {
+                            val l = 18.dp.toPx(); val w = 2.dp.toPx()
+                            for ((x, y) in listOf(0f to 0f, size.width to 0f, 0f to size.height, size.width to size.height)) {
+                                val sx = if (x == 0f) 1f else -1f; val sy = if (y == 0f) 1f else -1f
+                                drawLine(bracket, Offset(x, y), Offset(x + sx * l, y), w)
+                                drawLine(bracket, Offset(x, y), Offset(x, y + sy * l), w)
+                            }
+                        }
+                        .pointerInput(raw.id, layer.id) {
+                            detectDragGestures(onDragEnd = done, onDragCancel = done) { change, d ->
+                                change.consume()
+                                val (_, v) = current() ?: return@detectDragGestures
+                                val next = dragged(name, v, d.x, d.y, 1f) ?: return@detectDragGestures
+                                set(next)
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) { Text(stringResource(dragHint(name)), style = MaterialTheme.typography.bodyLarge, color = KColors.TextSecondary, textAlign = TextAlign.Center) }
             }
-            // Drag pad: dragging anywhere in it moves, turns or resizes the layer.
-            var padWidth by remember { mutableStateOf(1f) }
-            val compWidth = project.composition.width.toFloat()
-            val bracket = KColors.TextSecondary
+        }
+    }
+}
+
+@Composable
+private fun ValueBox(value: Float, label: String, step: Float, display: Float, suffix: String, onChange: (Float) -> Unit, onDone: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.width(92.dp).height(40.dp).clip(TileShape).background(KColors.SurfaceAlt), contentAlignment = Alignment.Center) {
+            ScrubNumber(value, onChange, onDone, Modifier.padding(horizontal = 6.dp), step = step, display = display, suffix = suffix, tint = KColors.Accent)
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = KColors.TextSecondary)
+    }
+}
+
+/** A dial: drag the knob around the ring; the arc shows the angle, the value in the middle can be typed. */
+@Composable
+private fun RotationDial(value: Float, display: Float, onChange: (Float) -> Unit, onDone: () -> Unit) {
+    val current by rememberUpdatedState(value)
+    val track = KColors.Line
+    val arc = KColors.Primary
+    val knob = KColors.TextPrimary
+    Box(Modifier.fillMaxSize().padding(8.dp), contentAlignment = Alignment.Center) {
+        Canvas(
+            Modifier.fillMaxHeight().aspectRatio(1f).pointerInput(Unit) {
+                var last = 0f
+                fun angleOf(p: Offset): Float = Math.toDegrees(kotlin.math.atan2((p.y - size.height / 2f).toDouble(), (p.x - size.width / 2f).toDouble())).toFloat()
+                detectDragGestures(
+                    onDragStart = { last = angleOf(it) },
+                    onDragEnd = onDone, onDragCancel = onDone,
+                ) { change, _ ->
+                    change.consume()
+                    val a = angleOf(change.position)
+                    var d = a - last
+                    if (d > 180f) d -= 360f
+                    if (d < -180f) d += 360f
+                    last = a
+                    onChange(current + d)
+                }
+            },
+        ) {
+            val stroke = 4.dp.toPx()
+            val r = size.minDimension / 2f - 14.dp.toPx()
+            val c = Offset(size.width / 2f, size.height / 2f)
+            drawCircle(track, r, c, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+            val sweep = ((value % 360f) + 360f) % 360f
+            drawArc(arc, -90f, sweep, false, Offset(c.x - r, c.y - r), androidx.compose.ui.geometry.Size(r * 2, r * 2), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+            val rad = Math.toRadians((value - 90f).toDouble())
+            drawCircle(knob, 12.dp.toPx(), Offset(c.x + r * kotlin.math.cos(rad).toFloat(), c.y + r * kotlin.math.sin(rad).toFloat()))
+        }
+        Box(Modifier.width(120.dp).height(52.dp).clip(TileShape).background(KColors.SurfaceAlt), contentAlignment = Alignment.Center) {
+            ScrubNumber(value, onChange, onDone, Modifier.padding(horizontal = 6.dp), step = 1f, display = display, suffix = "°", tint = KColors.Accent)
+        }
+    }
+}
+
+/** Width and height with a link between them: linked, one ruler scales both; unlinked, one ruler each. */
+@Composable
+private fun ScaleControls(value: Vec2, step: Float, display: Float, suffix: String, onChange: (Vec2) -> Unit, onDone: () -> Unit) {
+    var linked by rememberSaveable { mutableStateOf(true) }
+    val cur by rememberUpdatedState(value)
+    fun setX(x: Float) = onChange(if (linked && cur.x != 0f) Vec2(x, cur.y * x / cur.x) else if (linked) Vec2(x, x) else Vec2(x, cur.y))
+    fun setY(y: Float) = onChange(if (linked && cur.y != 0f) Vec2(cur.x * y / cur.y, y) else if (linked) Vec2(y, y) else Vec2(cur.x, y))
+    Column(Modifier.fillMaxSize().padding(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.Top) {
+            ValueBox(value.x, stringResource(R.string.le_width), step, display, suffix, ::setX, onDone)
             Box(
-                Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp).onSizeChanged { padWidth = it.width.toFloat().coerceAtLeast(1f) }
-                    .drawBehind {
-                        val l = 18.dp.toPx(); val w = 2.dp.toPx()
-                        for ((x, y) in listOf(0f to 0f, size.width to 0f, 0f to size.height, size.width to size.height)) {
-                            val sx = if (x == 0f) 1f else -1f; val sy = if (y == 0f) 1f else -1f
-                            drawLine(bracket, Offset(x, y), Offset(x + sx * l, y), w)
-                            drawLine(bracket, Offset(x, y), Offset(x, y + sy * l), w)
-                        }
-                    }
-                    .pointerInput(raw.id, layer.id) {
-                        detectDragGestures(onDragEnd = { vm.endGesture() }, onDragCancel = { vm.endGesture() }) { change, d ->
-                            change.consume()
-                            val (_, v) = current() ?: return@detectDragGestures
-                            val next = dragged(name, v, d.x, d.y, compWidth / padWidth) ?: return@detectDragGestures
-                            vm.setProperty(layer.id, prop, next, key)
-                        }
-                    },
+                Modifier.size(40.dp).clip(TileShape).background(if (linked) KColors.Line else KColors.SurfaceAlt).clickable { linked = !linked }
+                    .semantics { contentDescription = "link" },
                 contentAlignment = Alignment.Center,
-            ) { Text(stringResource(dragHint(name)), style = MaterialTheme.typography.bodyLarge, color = KColors.TextSecondary, textAlign = TextAlign.Center) }
+            ) { Icon(if (linked) Icons.Filled.Link else Icons.Filled.LinkOff, null, tint = if (linked) KColors.Accent else KColors.TextSoft) }
+            ValueBox(value.y, stringResource(R.string.le_height), step, display, suffix, ::setY, onDone)
+        }
+        Spacer(Modifier.height(6.dp))
+        if (linked) {
+            TickRuler(value.x, 0f, 40f, 0.01f, ::setX, onDone, Modifier.weight(1f).fillMaxWidth())
+        } else {
+            TickRuler(value.x, 0f, 40f, 0.01f, ::setX, onDone, Modifier.weight(1f).fillMaxWidth())
+            Box(Modifier.fillMaxWidth().height(1.dp).background(KColors.Line))
+            TickRuler(value.y, 0f, 40f, 0.01f, ::setY, onDone, Modifier.weight(1f).fillMaxWidth())
         }
     }
 }

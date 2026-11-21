@@ -751,4 +751,5 @@
     <string name="le_width">Width</string>
     <string name="le_color">Color</string>
     <string name="le_saved_hint">Long-press a saved color to remove it</string>
+    <string name="le_height">Height</string>
 </resources>

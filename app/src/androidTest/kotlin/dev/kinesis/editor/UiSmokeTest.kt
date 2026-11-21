@@ -120,8 +120,10 @@ class UiSmokeTest {
                 // Drag on the pad, then each tool of the right rail (rotation, scale, anchor) with a drag of its own.
                 for (tool in listOf("position", "rotation", "scale", "anchor")) {
                     click(tool)
-                    rule.onNodeWithText(tool.let { mapOf("position" to "Swipe here to move the layer", "rotation" to "Swipe here to rotate the layer", "scale" to "Swipe here to resize the layer", "anchor" to "Swipe here to move the anchor point")[it]!! })
-                        .performTouchInput { down(center); repeat(10) { moveBy(androidx.compose.ui.geometry.Offset(16f, -6f)) }; up() }
+                    if (tool == "position" || tool == "anchor") {
+                        rule.onNodeWithText(if (tool == "position") "Swipe here to move the layer" else "Swipe here to move the anchor point")
+                            .performTouchInput { down(center); repeat(10) { moveBy(androidx.compose.ui.geometry.Offset(16f, -6f)) }; up() }
+                    }
                     rule.waitForIdle()
                     shot("ui-layer-move-$tool")
                 }
