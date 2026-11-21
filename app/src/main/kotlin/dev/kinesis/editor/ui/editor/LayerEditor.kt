@@ -271,7 +271,7 @@ private fun androidx.compose.foundation.layout.RowScope.CategoryTile(icon: Image
     ) {
         Icon(icon, null, tint = KColors.TextPrimary, modifier = Modifier.size(26.dp))
         Spacer(Modifier.height(6.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = KColors.TextSoft, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = KColors.TextSoft, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 

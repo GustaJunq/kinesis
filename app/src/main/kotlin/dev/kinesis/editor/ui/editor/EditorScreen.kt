@@ -388,7 +388,7 @@ private fun EditorContent(projectId: String, onClose: () -> Unit) {
                     if (propsDocked) {
                         PanelDivider()
                         // The properties take the place of the shortcut bar while a layer is selected.
-                        Column(Modifier.fillMaxWidth().height(boxMaxHeight * 0.36f).background(KColors.Sheet)) {
+                        Column(Modifier.fillMaxWidth().height(boxMaxHeight * 0.45f).background(KColors.Sheet)) {
                             PropertiesPanel(
                                 vm, project, time, selection,
                                 onEditCurve = { curveTarget = it },
