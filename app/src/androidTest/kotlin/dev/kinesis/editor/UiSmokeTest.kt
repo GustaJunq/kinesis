@@ -1,5 +1,6 @@
 package dev.kinesis.editor
 
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performTouchInput
@@ -115,6 +116,16 @@ class UiSmokeTest {
         for ((tile, name) in listOf("Color & fill" to "color", "Border & shadow" to "border", "Blending & opacity" to "blend", "Motion & transform" to "move")) {
             click(tile)
             shot("ui-layer-$name")
+            if (name == "move") {
+                // Drag on the pad, then each tool of the right rail (rotation, scale, anchor) with a drag of its own.
+                for (tool in listOf("position", "rotation", "scale", "anchor")) {
+                    click(tool)
+                    rule.onNodeWithText(tool.let { mapOf("position" to "Swipe here to move the layer", "rotation" to "Swipe here to rotate the layer", "scale" to "Swipe here to resize the layer", "anchor" to "Swipe here to move the anchor point")[it]!! })
+                        .performTouchInput { swipe(center, center + androidx.compose.ui.geometry.Offset(160f, -60f), 400) }
+                    rule.waitForIdle()
+                    shot("ui-layer-move-$tool")
+                }
+            }
             click("Back")
         }
         shot("ui-editor-after-ops")
