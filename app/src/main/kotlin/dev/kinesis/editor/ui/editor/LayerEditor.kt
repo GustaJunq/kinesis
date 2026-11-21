@@ -317,7 +317,7 @@ private fun SubPage(
         Box(Modifier.weight(1f).fillMaxHeight()) { content() }
         if (rightRail != null) {
             Box(Modifier.width(1.dp).fillMaxHeight().background(KColors.Line))
-            Column(Modifier.width(64.dp).fillMaxHeight().padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) { rightRail() }
+            Column(Modifier.width(60.dp).fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) { rightRail() }
         }
     }
 }
@@ -675,7 +675,7 @@ private fun MovePage(vm: EditorViewModel, project: KnsProject, layer: Layer, loc
         tools.forEachIndexed { i, (n, _) ->
             val on = i == tool
             Box(
-                Modifier.size(52.dp).clip(TileShape).background(if (on) KColors.Background else Color.Transparent).clickable { tool = i }
+                Modifier.size(46.dp).clip(TileShape).background(if (on) KColors.Background else Color.Transparent).clickable { tool = i }
                     .semantics { contentDescription = n },
                 contentAlignment = Alignment.Center,
             ) { Icon(toolIcon(n), toolLabel(n), tint = if (on) KColors.Accent else KColors.TextPrimary) }
@@ -738,10 +738,10 @@ private fun MovePage(vm: EditorViewModel, project: KnsProject, layer: Layer, loc
 @Composable
 private fun ValueBox(value: Float, label: String, step: Float, display: Float, suffix: String, onChange: (Float) -> Unit, onDone: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.width(92.dp).height(40.dp).clip(TileShape).background(KColors.SurfaceAlt), contentAlignment = Alignment.Center) {
-            ScrubNumber(value, onChange, onDone, Modifier.padding(horizontal = 6.dp), step = step, display = display, suffix = suffix, tint = KColors.Accent)
+        Box(Modifier.width(84.dp).height(40.dp).clip(TileShape).background(KColors.SurfaceAlt), contentAlignment = Alignment.Center) {
+            ScrubNumber(value, onChange, onDone, Modifier.padding(horizontal = 4.dp), step = step, display = display, suffix = suffix, tint = KColors.Accent)
         }
-        Text(label, style = MaterialTheme.typography.labelSmall, color = KColors.TextSecondary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = KColors.TextSecondary, maxLines = 1, softWrap = false)
     }
 }
 
@@ -812,10 +812,10 @@ private fun ScaleControls(value: Vec2, step: Float, display: Float, suffix: Stri
     fun setX(x: Float) = onChange(if (linked && cur.x != 0f) Vec2(x, cur.y * x / cur.x) else if (linked) Vec2(x, x) else Vec2(x, cur.y))
     fun setY(y: Float) = onChange(if (linked && cur.y != 0f) Vec2(cur.x * y / cur.y, y) else if (linked) Vec2(y, y) else Vec2(cur.x, y))
     Column(Modifier.fillMaxSize().padding(8.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.Top) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.Top) {
             ValueBox(value.x, stringResource(R.string.le_width), step, display, suffix, ::setX, onDone)
             Box(
-                Modifier.size(40.dp).clip(TileShape).background(if (linked) KColors.Line else KColors.SurfaceAlt).clickable { linked = !linked }
+                Modifier.size(36.dp).clip(TileShape).background(if (linked) KColors.Line else KColors.SurfaceAlt).clickable { linked = !linked }
                     .semantics { contentDescription = "link" },
                 contentAlignment = Alignment.Center,
             ) { Icon(if (linked) Icons.Filled.Link else Icons.Filled.LinkOff, null, tint = if (linked) KColors.Accent else KColors.TextSoft) }
