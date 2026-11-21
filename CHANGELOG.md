@@ -2,6 +2,16 @@
 
 Todas as versões do Kinesis Editor. As notas completas de cada release ficam em [docs/releases/](docs/releases).
 
+## 0.2.6
+
+> 0.2.2–0.2.4 foram builds internas de debug, não publicadas.
+
+### Corrigido
+- **Timeline:** arrastar na horizontal em qualquer ponto da área das camadas (em cima de um clipe ou no espaço vazio) volta a mover o tempo sob o playhead fixo, igual à régua; soltar com velocidade continua rolando com inércia. O eixo trava depois do primeiro movimento: horizontal faz scrub, vertical rola a lista de camadas. Mover um clipe passa a ser toque longo + arrastar; as pontas de um clipe selecionado continuam cortando na hora.
+
+### Adicionado
+- **Efeitos customizados (.knsfx).** Um arquivo `.knsfx` (ZIP com `manifest.json`, `params.xml`, um script `animate()` e/ou um fragment shader) vira um efeito como os nativos: aparece em Efeitos → Efeitos customizados, tem a interface de parâmetros gerada a partir do `params.xml`, com keyframe por parâmetro, e funciona igual na prévia e na exportação. Importa pelo botão "Importar efeito (.knsfx)" ou abrindo o arquivo no gerenciador de arquivos. Cada projeto guarda uma cópia dos efeitos que usa (`effects/` no `.knsproj`), então abre em outro aparelho sem o efeito instalado. Exemplos em `examples/knsfx/` e formato em [docs/knsfx.md](docs/knsfx.md).
+
 ## 0.2.5
 
 ### Alterado

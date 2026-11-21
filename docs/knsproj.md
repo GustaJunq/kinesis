@@ -10,6 +10,8 @@ pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplica
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
 - **Exemplos:** [`.claude/skills/knsproj/examples/`](../.claude/skills/knsproj/examples)
 
+> **Efeitos customizados (0.2.6):** um efeito em `effects[]` pode ter como `type` o id de um pacote `.knsfx` (domínio reverso, por exemplo `dev.autor.efeito`). O pacote vai dentro do `.knsproj` em `effects/<id>.knsfx`. Veja [knsfx.md](knsfx.md).
+
 ## 1. Contêiner
 
 Um `.knsproj` é um arquivo ZIP com esta estrutura:
