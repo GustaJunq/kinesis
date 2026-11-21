@@ -23,6 +23,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.Brush
 import androidx.compose.material.icons.outlined.CameraAlt
@@ -39,6 +44,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -78,218 +94,192 @@ fun CircleButton(icon: ImageVector, label: String, onClick: () -> Unit, modifier
     }
 }
 
-/** Back, project settings, the title with "W×H · fps" (tap the title to rename), and Export. */
+/** Back, the project name (edited in place), project settings and export. */
 @Composable
 fun EditorTopBar(
     title: String,
-    width: Int,
-    height: Int,
-    fps: Double,
     onClose: () -> Unit,
-    onRename: () -> Unit,
+    onRename: (String) -> Unit,
     onSettings: () -> Unit,
     onExport: () -> Unit,
 ) {
+    var text by remember(title) { mutableStateOf(title) }
+    var focused by remember { mutableStateOf(false) }
+    val focus = LocalFocusManager.current
     Row(
         Modifier.fillMaxWidth().height(KDims.TopBar).padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CircleButton(Lucide.ArrowLeft, stringResource(R.string.close), onClose)
+        val label = stringResource(R.string.edit_title)
+        BasicTextField(
+            value = text,
+            onValueChange = { text = it.take(80) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleMedium.copy(color = KColors.TextPrimary),
+            cursorBrush = SolidColor(KColors.Primary),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                .semantics { contentDescription = label }
+                .onFocusChanged { f ->
+                    // Saved when the field loses focus (done, back or a tap elsewhere).
+                    if (focused && !f.isFocused && text != title) onRename(text)
+                    focused = f.isFocused
+                },
+            decorationBox = { inner ->
+                Column {
+                    inner()
+                    Spacer(Modifier.height(4.dp))
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(if (focused) KColors.Primary else KColors.Line))
+                }
+            },
+        )
         CircleButton(Lucide.Settings, stringResource(R.string.settings), onSettings)
-        Column(Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable(onClickLabel = stringResource(R.string.edit_title), role = Role.Button, onClick = onRename),
-            )
-            val fpsText = if (fps == fps.toInt().toDouble()) fps.toInt().toString() else String.format(Locale.US, "%.2f", fps)
-            Text("${width}×$height · $fpsText fps", style = KType.MonoSmall, color = KColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
         Box(
             Modifier.heightIn(min = KDims.MinTouch).clickable(role = Role.Button, onClick = onExport),
             contentAlignment = Alignment.Center,
         ) {
             Row(
-                Modifier.height(40.dp).clip(KShapes.Pill).background(KColors.Primary).padding(horizontal = 18.dp),
+                Modifier.height(40.dp).clip(KShapes.Pill).background(KColors.Primary).padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.export), color = KColors.White, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                Text(stringResource(R.string.export), color = KColors.OnPrimary, style = MaterialTheme.typography.labelLarge, maxLines = 1)
             }
         }
     }
 }
 
-/** Marker · undo, timecode, redo, duplicate · the switch of the view pill: round buttons aligned with the edges of the timeline. */
+/** Height of [TransportBar]. */
+val TRANSPORT_BAR_HEIGHT = 48.dp
+
+/** Height of [ShortcutBar]: the add shortcuts and the round "+". */
+val SHORTCUT_BAR_HEIGHT = 68.dp
+
+/** What the snackbar keeps clear of at the bottom. */
+val EDITOR_BOTTOM_HEIGHT = SHORTCUT_BAR_HEIGHT
+
 @Composable
-fun EditorControls(
-    time: Double,
-    fps: Double,
+private fun TransportIcon(icon: ImageVector, label: String, onClick: () -> Unit, enabled: Boolean = true, tint: Color = KColors.TextPrimary) {
+    Box(
+        Modifier.size(width = 40.dp, height = TRANSPORT_BAR_HEIGHT)
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, label, tint = if (enabled) tint else KColors.Disabled, modifier = Modifier.size(22.dp))
+    }
+}
+
+/** Undo, redo · go to the start, play, go to the end · marker, duplicate, full screen. */
+@Composable
+fun TransportBar(
+    playing: Boolean,
     canUndo: Boolean,
     canRedo: Boolean,
     hasSelection: Boolean,
-    onMarker: () -> Unit,
+    fullscreen: Boolean,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
+    onStart: () -> Unit,
+    onPlay: () -> Unit,
+    onEnd: () -> Unit,
+    onMarker: () -> Unit,
     onDuplicate: () -> Unit,
-    viewPillShown: Boolean,
-    onToggleViewPill: () -> Unit,
+    onFullscreen: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = TIMELINE_SIDE - 4.dp),
+        Modifier.fillMaxWidth().height(TRANSPORT_BAR_HEIGHT).background(KColors.Bar).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CircleButton(Lucide.Bookmark, stringResource(R.string.add_marker), onMarker)
+        TransportIcon(Lucide.Undo2, stringResource(R.string.undo), onUndo, enabled = canUndo)
+        TransportIcon(Lucide.Redo2, stringResource(R.string.redo), onRedo, enabled = canRedo)
         Spacer(Modifier.weight(1f))
-        CircleButton(Lucide.Undo2, stringResource(R.string.undo), onUndo, enabled = canUndo)
-        Text(
-            formatTime(time, fps), style = KType.MonoLarge, color = KColors.TextPrimary,
-            modifier = Modifier.widthIn(min = 72.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
-        CircleButton(Lucide.Redo2, stringResource(R.string.redo), onRedo, enabled = canRedo)
-        CircleButton(Lucide.Copy, stringResource(R.string.duplicate), onDuplicate, enabled = hasSelection)
+        TransportIcon(Lucide.SkipBack, stringResource(R.string.go_to_start), onStart)
+        Box(
+            Modifier.size(TRANSPORT_BAR_HEIGHT).clickable(
+                role = Role.Button, onClickLabel = stringResource(if (playing) R.string.pause else R.string.play), onClick = onPlay,
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(Modifier.size(42.dp).clip(CircleShape).background(KColors.Primary), contentAlignment = Alignment.Center) {
+                Icon(
+                    if (playing) Lucide.Pause else Lucide.Play, stringResource(if (playing) R.string.pause else R.string.play),
+                    tint = KColors.OnPrimary, modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+        TransportIcon(Lucide.SkipForward, stringResource(R.string.go_to_end), onEnd)
         Spacer(Modifier.weight(1f))
-        CircleButton(
-            if (viewPillShown) Lucide.PanelRightClose else Lucide.PanelRightOpen,
-            stringResource(if (viewPillShown) R.string.hide_view_pill else R.string.show_view_pill), onToggleViewPill,
+        TransportIcon(Lucide.Bookmark, stringResource(R.string.add_marker), onMarker)
+        TransportIcon(Lucide.Copy, stringResource(R.string.duplicate), onDuplicate, enabled = hasSelection)
+        TransportIcon(
+            if (fullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
+            stringResource(if (fullscreen) R.string.exit_fullscreen else R.string.fullscreen), onFullscreen,
         )
     }
 }
 
-enum class EditorTool { LAYERS, SHAPES, TEXT, MEDIA, MODEL3D, EFFECTS, MOTION, AUDIO, CAMERA, CAPTIONS, ELEMENTS, PLUGINS }
+/** Shortcuts to add a shape, media, sound, text or an element, and the round "+" that opens the whole add menu. */
+@Composable
+fun ShortcutBar(
+    onShape: () -> Unit,
+    onMedia: () -> Unit,
+    onAudio: () -> Unit,
+    onText: () -> Unit,
+    onElement: () -> Unit,
+    onAdd: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().height(SHORTCUT_BAR_HEIGHT).background(KColors.Bar).padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier.weight(1f).fillMaxHeight().clip(KShapes.Pill).background(KColors.SurfaceAlt).testTag("tool-bar"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShortcutItem(Lucide.Shapes, R.string.shortcut_shape, onShape, Modifier.weight(1f))
+            ShortcutItem(Lucide.Image, R.string.tool_media, onMedia, Modifier.weight(1f))
+            ShortcutItem(Lucide.Music, R.string.tool_audio, onAudio, Modifier.weight(1f))
+            ShortcutItem(Lucide.Type, R.string.tool_text, onText, Modifier.weight(1f))
+            ShortcutItem(Lucide.Component, R.string.shortcut_element, onElement, Modifier.weight(1f))
+        }
+        Spacer(Modifier.width(8.dp))
+        val add = stringResource(R.string.add)
+        Box(
+            Modifier.size(54.dp).clip(CircleShape).background(KColors.Primary)
+                .clickable(role = Role.Button, onClickLabel = add, onClick = onAdd),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.Add, add, tint = KColors.OnPrimary, modifier = Modifier.size(28.dp))
+        }
+    }
+}
 
-private class ToolSpec(val tool: EditorTool, val icon: ImageVector, val label: Int)
-
-private val TOOLS = listOf(
-    ToolSpec(EditorTool.LAYERS, Lucide.Layers, R.string.tool_layers),
-    ToolSpec(EditorTool.SHAPES, Lucide.Shapes, R.string.tool_shapes),
-    ToolSpec(EditorTool.TEXT, Lucide.Type, R.string.tool_text),
-    ToolSpec(EditorTool.MEDIA, Lucide.Image, R.string.tool_media),
-    ToolSpec(EditorTool.MODEL3D, Lucide.Box, R.string.tool_3d),
-    ToolSpec(EditorTool.EFFECTS, Lucide.Sparkles, R.string.effects),
-    ToolSpec(EditorTool.MOTION, Lucide.Activity, R.string.tool_motion),
-    ToolSpec(EditorTool.AUDIO, Lucide.Music, R.string.tool_audio),
-    ToolSpec(EditorTool.CAMERA, Lucide.Camera, R.string.tool_camera),
-    ToolSpec(EditorTool.CAPTIONS, Lucide.Captions, R.string.captions),
-    ToolSpec(EditorTool.ELEMENTS, Lucide.Component, R.string.elements),
-    ToolSpec(EditorTool.PLUGINS, Lucide.Plug, R.string.plugins),
-)
-
-private val TRANSPORT_HEIGHT = 56.dp
-private val TRANSPORT_GAP = 8.dp
-private val BAR_HEIGHT = 64.dp
-
-/** Total height of [EditorBottomBar]: the three round buttons, the gap, the tool bar and the scroll indicator. */
-val EDITOR_BOTTOM_HEIGHT = TRANSPORT_HEIGHT + TRANSPORT_GAP + BAR_HEIGHT + 10.dp
+@Composable
+private fun ShortcutItem(icon: ImageVector, label: Int, onClick: () -> Unit, modifier: Modifier) {
+    Column(
+        modifier.fillMaxHeight().clip(KShapes.Pill).clickable(role = Role.Button, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(icon, null, tint = KColors.TextPrimary, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.height(2.dp))
+        Text(stringResource(label), color = KColors.TextPrimary, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
 
 /**
- * Previous · play · next as three separate round buttons above the tool bar. The tool bar (skewed, its active item too)
- * scrolls sideways and says so: its last item fades out, a chevron sits at the end and a thin indicator runs below.
- * [active] is the tool whose panel is open (or the first one).
+ * Actions on the selected layer (shown only while a layer is selected): one row of icons with a small label, all of the
+ * same weight. Properties is purple while they are open.
  */
-@Composable
-fun EditorBottomBar(
-    playing: Boolean,
-    canNavigate: Boolean,
-    active: EditorTool,
-    enabled: (EditorTool) -> Boolean,
-    onPrev: () -> Unit,
-    onPlay: () -> Unit,
-    onNext: () -> Unit,
-    onTool: (EditorTool) -> Unit,
-) {
-    val scroll = rememberScrollState()
-    var viewport by remember { mutableIntStateOf(0) }
-    val sideInset = KSkew.Bar.inset(BAR_HEIGHT)
-    Column(Modifier.fillMaxWidth().height(EDITOR_BOTTOM_HEIGHT), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(
-            Modifier.height(TRANSPORT_HEIGHT),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            CircleButton(Lucide.SkipBack, stringResource(R.string.prev_keyframe), onPrev, enabled = canNavigate)
-            Box(
-                Modifier.size(TRANSPORT_HEIGHT).clickable(
-                    role = Role.Button, onClickLabel = stringResource(if (playing) R.string.pause else R.string.play), onClick = onPlay,
-                ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(Modifier.size(52.dp).clip(CircleShape).background(KColors.Primary), contentAlignment = Alignment.Center) {
-                    Icon(
-                        if (playing) Lucide.Pause else Lucide.Play, stringResource(if (playing) R.string.pause else R.string.play),
-                        tint = KColors.White, modifier = Modifier.size(26.dp),
-                    )
-                }
-            }
-            CircleButton(Lucide.SkipForward, stringResource(R.string.next_keyframe), onNext, enabled = canNavigate)
-        }
-        Spacer(Modifier.height(TRANSPORT_GAP))
-        // Tool bar
-        Box(
-            Modifier.fillMaxWidth().height(BAR_HEIGHT).padding(horizontal = 4.dp).testTag("tool-bar")
-                .clip(KSkew.Bar).background(KColors.SurfaceAlt).onSizeChanged { viewport = it.width },
-        ) {
-            Row(
-                Modifier.fillMaxHeight().horizontalScroll(scroll).padding(start = sideInset + 4.dp, end = sideInset + 36.dp, top = 6.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                for (spec in TOOLS) ToolItem(spec, spec.tool == active, enabled(spec.tool)) { onTool(spec.tool) }
-            }
-            val fadeAlpha by animateFloatAsState(if (scroll.canScrollForward) 1f else 0f, label = "toolbar-fade")
-            if (fadeAlpha > 0f) {
-                Box(
-                    Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(88.dp)
-                        .background(Brush.horizontalGradient(listOf(Color.Transparent, KColors.SurfaceAlt.copy(alpha = fadeAlpha)))),
-                )
-                // Only a hint: it takes no touches, so the tools under it can still be tapped.
-                Icon(
-                    Lucide.ChevronRight, null, tint = KColors.TextPrimary.copy(alpha = fadeAlpha),
-                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = sideInset + 12.dp).size(22.dp),
-                )
-            }
-        }
-        // Scroll indicator
-        val maxScroll = scroll.maxValue
-        if (maxScroll > 0 && viewport > 0) {
-            val track = 64.dp
-            val fraction = (viewport.toFloat() / (viewport + maxScroll)).coerceIn(0.1f, 1f)
-            val progress = scroll.value.toFloat() / maxScroll
-            Box(Modifier.padding(top = 5.dp).width(track).height(3.dp).clip(KShapes.Pill).background(KColors.LineStrong)) {
-                Box(
-                    Modifier.offset(x = track * ((1f - fraction) * progress)).width(track * fraction).fillMaxHeight()
-                        .clip(KShapes.Pill).background(KColors.Primary),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ToolItem(spec: ToolSpec, active: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    val fg = when {
-        !enabled -> KColors.Disabled
-        active -> KColors.White
-        else -> KColors.TextPrimary
-    }
-    // The skewed pill is only the background; the icon and the label stay upright.
-    Box(
-        Modifier.widthIn(min = 68.dp).fillMaxHeight().clip(KSkew.Pill)
-            .background(if (active) KColors.Primary else Color.Transparent)
-            .clickable(enabled = enabled, role = Role.Tab, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(Modifier.padding(horizontal = 14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(spec.icon, null, tint = fg, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.height(2.dp))
-            Text(stringResource(spec.label), color = fg, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-        }
-    }
-}
-
-/** Actions on the selected layer (shown only while a layer is selected). */
 @Composable
 fun SelectionActions(
     onProperties: () -> Unit,
-    /** Whether the selected layer has a keyframe at the playhead (the "+ ◆" chip then removes it). */
+    /** Whether the properties are docked under this row. */
+    propertiesOpen: Boolean = false,
+    /** Opens the effect picker for the selected layer (visual layers only). */
+    onEffects: (() -> Unit)? = null,
+    /** Whether the selected layer has a keyframe at the playhead (the keyframe item then removes it). */
     hasKeyframeHere: Boolean,
     onAddKeyframe: () -> Unit,
     onSplit: () -> Unit,
@@ -309,60 +299,48 @@ fun SelectionActions(
     onRealCamera: (() -> Unit)? = null,
     /** Shown for video layers: cut out any object by painting over it. */
     onCutoutBrush: (() -> Unit)? = null,
+    /** Clears the selection (back to the shortcut bar). */
+    onClose: (() -> Unit)? = null,
 ) {
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().background(KColors.Bar).horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        ActionChip(Icons.Outlined.Tune, R.string.tab_properties, onProperties, accent = true)
-        KeyframeChip(hasKeyframeHere, onAddKeyframe)
-        ActionChip(Icons.Outlined.ContentCut, R.string.split, onSplit)
-        ActionChip(Icons.Outlined.CreateNewFolder, R.string.group, onGroup)
-        if (onAudio != null) ActionChip(Icons.Outlined.GraphicEq, R.string.audio_panel, onAudio)
-        if (onExtractAudio != null) ActionChip(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
-        if (onRemoveBackground != null) ActionChip(Icons.Outlined.PersonOff, R.string.remove_background, onRemoveBackground)
-        if (onCutoutBrush != null) ActionChip(Icons.Outlined.Brush, R.string.cutout_brush, onCutoutBrush)
-        if (onStabilize != null) ActionChip(Icons.Outlined.CenterFocusStrong, R.string.stabilize, onStabilize)
-        if (onRealCamera != null) ActionChip(Icons.Outlined.CameraAlt, R.string.real_camera, onRealCamera)
-        ActionChip(Icons.Outlined.Delete, R.string.delete, onDelete, danger = true)
-        ActionChip(Icons.Outlined.Repeat, R.string.loop, onLoop, accent = loop)
+        ActionItem(Icons.Outlined.Tune, R.string.tab_properties, onProperties, active = propertiesOpen)
+        if (onEffects != null) ActionItem(Icons.Outlined.AutoAwesome, R.string.effects, onEffects)
+        ActionItem(
+            if (hasKeyframeHere) Icons.Outlined.RemoveCircleOutline else Icons.Outlined.AddCircleOutline,
+            if (hasKeyframeHere) R.string.remove_keyframe else R.string.add_keyframe, onAddKeyframe, active = hasKeyframeHere,
+        )
+        ActionItem(Icons.Outlined.ContentCut, R.string.split, onSplit)
+        ActionItem(Icons.Outlined.CreateNewFolder, R.string.group, onGroup)
+        if (onAudio != null) ActionItem(Icons.Outlined.GraphicEq, R.string.audio_panel, onAudio)
+        if (onExtractAudio != null) ActionItem(Icons.Outlined.MusicNote, R.string.extract_audio, onExtractAudio)
+        if (onRemoveBackground != null) ActionItem(Icons.Outlined.PersonOff, R.string.remove_background, onRemoveBackground)
+        if (onCutoutBrush != null) ActionItem(Icons.Outlined.Brush, R.string.cutout_brush, onCutoutBrush)
+        if (onStabilize != null) ActionItem(Icons.Outlined.CenterFocusStrong, R.string.stabilize, onStabilize)
+        if (onRealCamera != null) ActionItem(Icons.Outlined.CameraAlt, R.string.real_camera, onRealCamera)
+        ActionItem(Icons.Outlined.Repeat, R.string.loop, onLoop, active = loop)
+        ActionItem(Icons.Outlined.Delete, R.string.delete, onDelete)
+        if (onClose != null) ActionItem(Icons.Outlined.Close, R.string.deselect, onClose)
     }
 }
 
-/** One button for both: "+ ◆" adds a keyframe at the playhead; when there is one it turns into a filled "− ◆" that removes it. */
+/** An icon over a short label; purple while [active]. */
 @Composable
-private fun KeyframeChip(hasKeyframeHere: Boolean, onClick: () -> Unit) {
-    val label = stringResource(if (hasKeyframeHere) R.string.remove_keyframe else R.string.add_keyframe)
-    val fg = if (hasKeyframeHere) KColors.OnAccent else KColors.Keyframe
-    Row(
-        Modifier.heightIn(min = KDims.MinTouch).clip(KShapes.Pill)
-            .background(if (hasKeyframeHere) KColors.Keyframe else Color.Transparent)
-            .border(1.dp, KColors.Keyframe, KShapes.Pill)
-            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun ActionItem(icon: ImageVector, label: Int, onClick: () -> Unit, active: Boolean = false) {
+    val fg = if (active) KColors.Accent else KColors.TextSoft
+    Column(
+        Modifier.width(68.dp).heightIn(min = 56.dp).clip(KShapes.Tile)
+            .clickable(role = Role.Button, onClick = onClick).padding(vertical = 6.dp, horizontal = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Icon(if (hasKeyframeHere) Icons.Filled.Remove else Icons.Filled.Add, label, tint = fg, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(4.dp))
-        Text("◆", color = fg, style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-@Composable
-private fun ActionChip(icon: ImageVector, label: Int, onClick: () -> Unit, accent: Boolean = false, danger: Boolean = false) {
-    val fg = when {
-        danger -> KColors.Danger
-        accent -> KColors.White
-        else -> KColors.TextPrimary
-    }
-    Row(
-        Modifier.heightIn(min = KDims.MinTouch).clip(KShapes.Pill).background(if (accent) KColors.Primary else KColors.SurfaceAlt)
-            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(stringResource(label), color = fg, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        Icon(icon, null, tint = fg, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(label), color = fg, style = MaterialTheme.typography.labelSmall, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }

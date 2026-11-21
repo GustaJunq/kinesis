@@ -1,5 +1,7 @@
 package dev.kinesis.editor.ui.editor
 
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.gestures.detectTapGestures
 import android.opengl.GLSurfaceView
 import androidx.compose.foundation.Canvas
 import androidx.compose.material.icons.Icons
@@ -109,6 +111,19 @@ fun Viewport(
     tool3D: Tool3D,
     onRenderError: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** Zoom and pan of the canvas (preview only); a pinch away from the selected layer changes them. */
+    canvasZoom: Float = 1f,
+    canvasPan: Offset = Offset.Zero,
+    onCanvasView: (Float, Offset) -> Unit = { _, _ -> },
+    /** Rule-of-thirds guides over the composition frame. */
+    showGrid: Boolean = false,
+    /** Selection outlines, handles, null outlines and light bulbs. */
+    showOverlays: Boolean = true,
+    /** While set, touches draw a path instead of editing: one stroke by hand, or points tapped one by one. */
+    drawMode: DrawMode? = null,
+    /** The drawn points in composition pixels (origin at the centre) and whether the path closes. */
+    onDrawn: (List<Vec2>, Boolean) -> Unit = { _, _ -> },
+    onDrawCancel: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -161,7 +176,10 @@ fun Viewport(
 
     // Push state to the GL thread after every successful composition.
     SideEffect {
-        renderer.state = PreviewState(project, time, playing, mediaRevision, AppSettings.previewQuality3D, AppSettings.previewScale, editorCamera, livePose)
+        renderer.state = PreviewState(
+            project, time, playing, mediaRevision, AppSettings.previewQuality3D, AppSettings.previewScale, editorCamera, livePose,
+            viewZoom = canvasZoom, viewPanX = canvasPan.x, viewPanY = canvasPan.y,
+        )
         glView.requestRender()
     }
 
@@ -181,7 +199,7 @@ fun Viewport(
 
     var sizeW by remember { mutableIntStateOf(1) }
     var sizeH by remember { mutableIntStateOf(1) }
-    val vp = ViewportRect.fit(sizeW, sizeH, project.composition.width, project.composition.height, paddingPx)
+    val vp = ViewportRect.fit(sizeW, sizeH, project.composition.width, project.composition.height, paddingPx).zoomed(canvasZoom, canvasPan.x, canvasPan.y)
     val scale = vp.width / project.composition.width
 
     fun toView(p: Vec2) = Offset(vp.left + (p.x + project.composition.width / 2f) * scale, vp.top + (p.y + project.composition.height / 2f) * scale)
@@ -190,6 +208,9 @@ fun Viewport(
     val currentMode by rememberUpdatedState(view.mode)
     val currentVp by rememberUpdatedState(vp)
     val currentTool by rememberUpdatedState(tool3D)
+    val currentZoom by rememberUpdatedState(canvasZoom)
+    val currentPan by rememberUpdatedState(canvasPan)
+    val canvasView by rememberUpdatedState(onCanvasView)
     val touchSlop = LocalViewConfiguration.current.touchSlop
     val handleRadius = with(density) { 28.dp.toPx() }
     val lightMargin = with(density) { 22.dp.toPx() }
@@ -215,6 +236,9 @@ fun Viewport(
                             ?.first
                         var gesture: Gesture? = null
                         var nav: NavGesture? = null
+                        var canvas = false
+                        val zoom0 = currentZoom
+                        val pan0 = currentPan
                         var moved = false
                         var pan = Offset.Zero
                         var zoom = 1f
@@ -230,7 +254,13 @@ fun Viewport(
                                 when (currentMode) {
                                     EditorViewMode.EDITOR -> nav = NavGesture(vm, s, p0.composition.height)
                                     EditorViewMode.INSIDE -> gesture = startGesture(vm, currentScene, toComp(down.position), s, handleRadius, currentTool, geometry, inside = true)
-                                    EditorViewMode.CAMERA -> {
+                                    EditorViewMode.CAMERA -> if (
+                                        event.changes.count { it.pressed } > 1 && lightHit == null &&
+                                        vm.selection.value.let { sel -> sel == null || geometry.hitTest(currentScene, toComp(down.position), sel) != sel }
+                                    ) {
+                                        // A pinch away from the selected layer zooms and pans the canvas.
+                                        canvas = true
+                                    } else {
                                         if (lightHit != null) {
                                             vm.select(lightHit.layerId)
                                         } else if (vm.selection.value == null) {
@@ -243,6 +273,7 @@ fun Viewport(
                             if (moved) {
                                 nav?.update(pan, zoom, event.changes.count { it.pressed })
                                 gesture?.update(Vec2(pan.x / s, pan.y / s), zoom, rotation)
+                                if (canvas) canvasView((zoom0 * zoom).coerceIn(0.25f, 8f), pan0 + pan)
                                 event.changes.forEach { if (it.positionChanged()) it.consume() }
                             }
                         }
@@ -266,6 +297,21 @@ fun Viewport(
                 size = androidx.compose.ui.geometry.Size(vp.width, vp.height),
                 style = Stroke(1f),
             )
+            if (showGrid) {
+                // Thirds and the centre cross of the composition.
+                val g = Color.White.copy(alpha = 0.22f)
+                for (k in 1..2) {
+                    val gx = vp.left + vp.width * k / 3f
+                    val gy = vp.top + vp.height * k / 3f
+                    drawLine(g, Offset(gx, vp.top), Offset(gx, vp.top + vp.height), strokeWidth = 1f)
+                    drawLine(g, Offset(vp.left, gy), Offset(vp.left + vp.width, gy), strokeWidth = 1f)
+                }
+                val c = Offset(vp.left + vp.width / 2f, vp.top + vp.height / 2f)
+                val arm = 10.dp.toPx()
+                drawLine(g, Offset(c.x - arm, c.y), Offset(c.x + arm, c.y), strokeWidth = 1f)
+                drawLine(g, Offset(c.x, c.y - arm), Offset(c.x, c.y + arm), strokeWidth = 1f)
+            }
+            if (!showOverlays) return@Canvas
             if (view.mode == EditorViewMode.EDITOR) drawEditorGizmos(scene, sceneOfCamera, project, ::toView, density.density)
             // Null objects are not in the video: show them as outlines so they can be seen and tapped.
             geometry.topDown(scene).forEach { n ->
@@ -338,6 +384,89 @@ fun Viewport(
                 }
                 null -> Unit
             }
+        }
+        if (drawMode != null) DrawOverlay(drawMode, vp, project.composition.width, project.composition.height, onDrawn, onDrawCancel)
+    }
+}
+
+/** Ways of drawing a path on the preview. */
+enum class DrawMode { FREEHAND, VECTOR }
+
+/**
+ * Captures touches while drawing. By hand: one stroke, thinned to points a few pixels apart. Vector: each tap adds a
+ * point; a tap on the first point closes the path, Done keeps it open.
+ */
+@Composable
+private fun DrawOverlay(mode: DrawMode, vp: ViewportRect, compW: Int, compH: Int, onDrawn: (List<Vec2>, Boolean) -> Unit, onCancel: () -> Unit) {
+    val density = LocalDensity.current
+    val points = remember(mode) { androidx.compose.runtime.mutableStateListOf<Offset>() }
+    val drawn by rememberUpdatedState(onDrawn)
+    val currentVp by rememberUpdatedState(vp)
+    val minStep = with(density) { 4.dp.toPx() }
+    val closeRadius = with(density) { 24.dp.toPx() }
+    fun toComp(o: Offset): Vec2 {
+        val v = currentVp
+        val s = v.width / compW
+        return Vec2((o.x - v.left) / s - compW / 2f, (o.y - v.top) / s - compH / 2f)
+    }
+    Box(Modifier.fillMaxSize()) {
+        Canvas(
+            Modifier.fillMaxSize().pointerInput(mode) {
+                if (mode == DrawMode.FREEHAND) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        points.clear()
+                        points += down.position
+                        while (true) {
+                            val e = awaitPointerEvent()
+                            val c = e.changes.firstOrNull() ?: break
+                            if (!c.pressed) break
+                            if ((c.position - points.last()).getDistance() >= minStep) points += c.position
+                            c.consume()
+                        }
+                        if (points.size >= 2) drawn(points.take(400).map(::toComp), false)
+                        points.clear()
+                    }
+                } else {
+                    detectTapGestures { pos ->
+                        if (points.size >= 3 && (pos - points.first()).getDistance() <= closeRadius) {
+                            drawn(points.map(::toComp), true)
+                            points.clear()
+                        } else {
+                            points += pos
+                        }
+                    }
+                }
+            },
+        ) {
+            if (points.size >= 2) {
+                val path = Path().apply {
+                    moveTo(points[0].x, points[0].y)
+                    for (i in 1 until points.size) lineTo(points[i].x, points[i].y)
+                }
+                drawPath(path, KColors.Accent, style = Stroke(3.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+            }
+            if (mode == DrawMode.VECTOR) {
+                points.forEachIndexed { i, p ->
+                    drawCircle(Color.White, (if (i == 0) 7 else 5).dp.toPx(), p)
+                    drawCircle(KColors.Accent, (if (i == 0) 5 else 3).dp.toPx(), p)
+                }
+            }
+        }
+        Row(
+            Modifier.align(Alignment.TopCenter).padding(8.dp).clip(KShapes.Pill).background(KColors.Bar.copy(alpha = 0.92f)).padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(if (mode == DrawMode.FREEHAND) R.string.draw_freehand_hint else R.string.draw_vector_hint),
+                color = KColors.TextPrimary, fontSize = 12.sp, modifier = Modifier.weight(1f, fill = false),
+            )
+            if (mode == DrawMode.VECTOR) {
+                TextButton(onClick = { if (points.size >= 2) drawn(points.map(::toComp), false); points.clear() }, enabled = points.size >= 2) {
+                    Text(stringResource(R.string.draw_done), color = KColors.Accent)
+                }
+            }
+            TextButton(onClick = { points.clear(); onCancel() }) { Text(stringResource(R.string.draw_cancel), color = KColors.TextSecondary) }
         }
     }
 }

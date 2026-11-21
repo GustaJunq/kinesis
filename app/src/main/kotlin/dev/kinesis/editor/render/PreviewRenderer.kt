@@ -30,6 +30,10 @@ data class PreviewState(
     val editorCamera: CameraState? = null,
     /** Real Camera: the pose being recorded, drawn instead of the camera's own until the take is applied. */
     val livePose: RealCamera.LivePose? = null,
+    /** Zoom of the preview canvas (1 = the composition fits the view) and its pan in view pixels. Preview only. */
+    val viewZoom: Float = 1f,
+    val viewPanX: Float = 0f,
+    val viewPanY: Float = 0f,
 )
 
 /** Letterboxed area of the composition inside the view, in view pixels (origin top-left). */
@@ -43,6 +47,16 @@ data class ViewportRect(val left: Float, val top: Float, val width: Float, val h
             val h = compH * s
             return ViewportRect((viewW - w) / 2f, (viewH - h) / 2f, w, h)
         }
+    }
+
+    /** This rect scaled by [zoom] around its centre, then moved by ([panX], [panY]) view pixels. */
+    fun zoomed(zoom: Float, panX: Float, panY: Float): ViewportRect {
+        if (zoom == 1f && panX == 0f && panY == 0f) return this
+        val cx = left + width / 2f
+        val cy = top + height / 2f
+        val w = width * zoom
+        val h = height * zoom
+        return ViewportRect(cx - w / 2f + panX, cy - h / 2f + panY, w, h)
     }
 }
 
@@ -131,7 +145,7 @@ class PreviewRenderer(
                 cacheProject = s.project
             }
             val p = s.project
-            val vp = ViewportRect.fit(viewW, viewH, p.composition.width, p.composition.height, padding)
+            val vp = ViewportRect.fit(viewW, viewH, p.composition.width, p.composition.height, padding).zoomed(s.viewZoom, s.viewPanX, s.viewPanY)
             // Render at the on-screen size (never above the composition size); lighter while playing.
             val quality = (if (s.playing) 0.75f else 1f) * s.scale.coerceIn(0.1f, 1f)
             val outW = min(p.composition.width.toFloat(), vp.width * quality).roundToInt().coerceAtLeast(16)

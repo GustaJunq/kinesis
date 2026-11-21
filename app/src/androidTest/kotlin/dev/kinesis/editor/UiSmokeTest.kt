@@ -74,10 +74,15 @@ class UiSmokeTest {
         click("Create")
         rule.waitUntil(20_000) { rule.onAllNodesWithContentDescription("Undo").fetchSemanticsNodes().isNotEmpty() }
 
-        tool("Text", false)
-        tool("3D", true)
+        // Shortcut bar → text; the "+" menu → a 3D cube and a star (a new layer is selected: close it first).
+        click("Text")
+        click("Deselect")
+        click("Add")
+        click("3D model")
         click("Cube")
-        tool("Shapes", false)
+        click("Deselect")
+        click("Shape")
+        shot("ui-add-menu")
         click("Star")
         shot("ui-editor-timeline")
 
@@ -87,7 +92,7 @@ class UiSmokeTest {
         shot("ui-editor-after-ops")
 
         // Effect picker: categories, one category, add an effect (opens its parameters).
-        tool("Effects", true)
+        click("Effects")
         Thread.sleep(3000) // previews render in the background
         shot("ui-effects-categories")
         click("Distort")
