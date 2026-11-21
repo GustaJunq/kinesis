@@ -514,10 +514,13 @@
         },
         "opacity": {
           "$ref": "#/$defs/animFloat"
+        },
+        "skew": {
+          "$ref": "#/$defs/animVec2"
         }
       },
       "additionalProperties": false,
-      "description": "2D transform: position of the anchor in the parent space; scale 1 = 100%; rotation in degrees clockwise; opacity 0..1."
+      "description": "2D transform: position of the anchor in the parent space; scale 1 = 100%; rotation in degrees clockwise; opacity 0..1; skew [x, y] in degrees (shear, 0 = none)."
     },
     "transform3d": {
       "type": "object",

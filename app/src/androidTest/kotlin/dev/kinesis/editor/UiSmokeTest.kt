@@ -1,5 +1,6 @@
 package dev.kinesis.editor
 
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performTouchInput
@@ -107,6 +108,28 @@ class UiSmokeTest {
         click("Properties")
         shot("ui-editor-properties")
         rule.onNodeWithContentDescription("Undo").assertExists()
+
+        // Layer editor: a fresh shape, its category grid and the color, border, blending and motion pages.
+        click("Star") // the star's clip in the timeline: selects it and opens its editor
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("Move the playhead", substring = true).fetchSemanticsNodes().isEmpty() }
+        shot("ui-layer-grid")
+        for ((tile, name) in listOf("Color & fill" to "color", "Border & shadow" to "border", "Blending & opacity" to "blend", "Motion & transform" to "move")) {
+            click(tile)
+            shot("ui-layer-$name")
+            if (name == "move") {
+                // Drag on the pad, then each tool of the right rail (rotation, scale, anchor) with a drag of its own.
+                for (tool in listOf("position", "rotation", "scale", "skew", "anchor")) {
+                    click(tool)
+                    if (tool == "position" || tool == "anchor") {
+                        rule.onNodeWithText(if (tool == "position") "Swipe here to move the layer" else "Swipe here to move the anchor point")
+                            .performTouchInput { down(center); repeat(10) { moveBy(androidx.compose.ui.geometry.Offset(16f, -6f)) }; up() }
+                    }
+                    rule.waitForIdle()
+                    shot("ui-layer-move-$tool")
+                }
+            }
+            click("Back")
+        }
         shot("ui-editor-after-ops")
     }
 }

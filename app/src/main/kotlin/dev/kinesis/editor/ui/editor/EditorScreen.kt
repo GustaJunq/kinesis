@@ -178,6 +178,8 @@ private fun EditorContent(projectId: String, onClose: () -> Unit) {
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(vm) { vm.notices.collect { snackbar.showSnackbar(it.text) } }
+    // A notice about the previous layer goes away when another layer is picked (it would cover the layer editor).
+    LaunchedEffect(vm.selection.collectAsState().value) { snackbar.currentSnackbarData?.dismiss() }
     DisposableEffect(vm) { onDispose { vm.pause(); vm.flushSave() } }
     val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle, vm) {
@@ -361,7 +363,8 @@ private fun EditorContent(projectId: String, onClose: () -> Unit) {
             if (!fullscreen) {
                 PanelDivider()
                 if (selectedLayer != null) {
-                    SelectionActions(
+                    // While the layer editor is open it has its own actions (keyframe on its rail, split in its grid).
+                    if (!propsDocked) SelectionActions(
                         propertiesOpen = propsDocked,
                         onProperties = { vm.pause(); propsFocus = null; propsDocked = !propsDocked },
                         onEffects = if (selectedLayer.type.isVisual) ({ vm.pause(); showEffects = true }) else null,
@@ -384,7 +387,6 @@ private fun EditorContent(projectId: String, onClose: () -> Unit) {
                         onClose = { vm.select(null) },
                     )
                     if (propsDocked) {
-                        PanelDivider()
                         // The properties take the place of the shortcut bar while a layer is selected.
                         Column(Modifier.fillMaxWidth().height(boxMaxHeight * 0.36f).background(KColors.Sheet)) {
                             PropertiesPanel(

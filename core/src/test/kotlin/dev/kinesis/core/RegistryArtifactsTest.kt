@@ -534,6 +534,12 @@ class RegistryArtifactsTest {
         val mprops = LinkedHashMap<String, JsonElement>()
         for ((k, v) in media.getValue("properties").jsonObject) mprops[if (k == "roto") "cutout" else k] = v
         defs["mediaContent"] = JsonObject(media + ("properties" to JsonObject(mprops)))
+        // 0.2.5: 2D layers can be skewed (an optional field; older files read as no skew).
+        val t2 = defs.getValue("transform2d").jsonObject
+        defs["transform2d"] = JsonObject(
+            t2 + ("properties" to JsonObject(t2.getValue("properties").jsonObject + ("skew" to ref("animVec2")))) +
+                ("description" to str("2D transform: position of the anchor in the parent space; scale 1 = 100%; rotation in degrees clockwise; opacity 0..1; skew [x, y] in degrees (shear, 0 = none).")),
+        )
         val props = LinkedHashMap<String, JsonElement>()
         for ((k, v) in v11.getValue("properties").jsonObject) props[k] = if (k == "formatVersion") obj("const" to JsonPrimitive(12)) else v
         val m = LinkedHashMap(v11)

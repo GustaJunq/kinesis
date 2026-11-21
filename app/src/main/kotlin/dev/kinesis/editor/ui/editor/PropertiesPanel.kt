@@ -139,30 +139,6 @@ private val SYSTEM_FONTS = listOf(
     "serif", "monospace", "serif-monospace", "casual", "cursive", "sans-serif-smallcaps",
 )
 
-enum class PropTab(val label: Int) {
-    TRANSFORM(R.string.ptab_transform), TEXT(R.string.ptab_text), EFFECTS(R.string.effects), MASK(R.string.ptab_mask), TRANSITION(R.string.ptab_transition),
-}
-
-/** Tabs offered for [layer] (the text tab only for text layers, masks only for 2D layers, ...). */
-fun propTabs(layer: Layer): List<PropTab> = buildList {
-    add(PropTab.TRANSFORM)
-    if (layer.type == LayerType.TEXT) add(PropTab.TEXT)
-    if (layer.type.isVisual) add(PropTab.EFFECTS)
-    if (layer.type.is2DVisual) add(PropTab.MASK)
-    if (layer.type.isVisual) add(PropTab.TRANSITION)
-}
-
-/** The tab that contains the panel item [key] (see [propertyItemKeys]). */
-private fun tabOfItem(key: String?): PropTab? = when (key) {
-    "effects" -> PropTab.EFFECTS
-    "masks", "matte" -> PropTab.MASK
-    "transitions" -> PropTab.TRANSITION
-    "animators", "content" -> PropTab.TEXT
-    else -> null
-}
-
-private fun isTextSection(id: String) = id == "text"
-
 @Composable
 fun PropertiesPanel(
     vm: EditorViewModel,
@@ -184,54 +160,7 @@ fun PropertiesPanel(
         }
         return
     }
-    val tabs = propTabs(layer)
-    var tab by rememberSaveable(layer.id, focusSection) { mutableStateOf(tabOfItem(focusSection)?.takeIf { it in tabs } ?: PropTab.TRANSFORM) }
-    if (tab !in tabs) tab = PropTab.TRANSFORM
-    val listState = rememberLazyListState()
-    val local = time - LayerTree.containerOffset(project, layer.id) - layer.start
-
-    Column(modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = KDims.Gutter, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            for (entry in tabs) PillChip(stringResource(entry.label), entry == tab, { tab = entry })
-        }
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = listState, contentPadding = PaddingValues(KDims.Gutter, 4.dp, KDims.Gutter, 64.dp)) {
-            when (tab) {
-                PropTab.TRANSFORM -> {
-                    item(key = "header") { LayerHeader(vm, layer) }
-                    if (layer.type != LayerType.TEXT) item(key = "content") { ContentControls(vm, project, layer, onPickTexture, onPickFont) }
-                    for (section in LayerProps.sections(layer)) {
-                        if (section.id.startsWith("effects.") || section.id.startsWith("masks.") || isTextSection(section.id)) continue
-                        item(key = "section:${section.id}") {
-                            SectionTitle(stringResource(sectionTitleRes(section.id)))
-                            section.props.forEach { PropRow(vm, layer, it, local, onEditCurve) }
-                        }
-                    }
-                    item(key = "layer") { LayerSettings(vm, project, layer) }
-                }
-                PropTab.TEXT -> {
-                    item(key = "content") { ContentControls(vm, project, layer, onPickTexture, onPickFont) }
-                    for (section in LayerProps.sections(layer)) {
-                        if (!isTextSection(section.id)) continue
-                        item(key = "section:${section.id}") {
-                            SectionTitle(stringResource(sectionTitleRes(section.id)))
-                            section.props.forEach { PropRow(vm, layer, it, local, onEditCurve) }
-                        }
-                    }
-                    item(key = "animators") { TextAnimatorsBlock(vm, layer) }
-                    item(key = "expressionAnimators") { TextExpressionAnimatorsBlock(vm, layer) }
-                }
-                PropTab.EFFECTS -> item(key = "effects") { EffectsBlock(vm, layer, local, onEditCurve, onAddEffect) }
-                PropTab.MASK -> {
-                    item(key = "masks") { MasksBlock(vm, layer, local, onEditCurve) }
-                    item(key = "matte") { MatteBlock(vm, project, layer) }
-                }
-                PropTab.TRANSITION -> item(key = "transitions") { TransitionsBlock(vm, layer) }
-            }
-        }
-    }
+    LayerEditor(vm, project, time, layer, onEditCurve, onPickTexture, onPickFont, onAddEffect, focusSection, modifier)
 }
 
 /** Keys of the panel items for [layer] (used to choose the tab a shortcut opens). */
@@ -442,7 +371,7 @@ private fun unitSuffix(u: PropUnit) = when (u) {
 // ---------------------------------------------------------------------------------------- header & content
 
 @Composable
-private fun LayerHeader(vm: EditorViewModel, layer: Layer) {
+internal fun LayerHeader(vm: EditorViewModel, layer: Layer) {
     var renaming by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(layerColor(layer.type)))
@@ -464,7 +393,7 @@ private fun LayerHeader(vm: EditorViewModel, layer: Layer) {
 }
 
 @Composable
-private fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: Layer, onPickTexture: (String) -> Unit, onPickFont: () -> Unit) {
+internal fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: Layer, onPickTexture: (String) -> Unit, onPickFont: () -> Unit) {
     val id = layer.id
     Column(Modifier.fillMaxWidth()) {
         when (layer.type) {
@@ -698,7 +627,7 @@ private fun Text3DControls(vm: EditorViewModel, project: KnsProject, id: String,
 }
 
 @Composable
-private fun PathPointsEditor(vm: EditorViewModel, id: String, path: dev.kinesis.core.model.PathSpec) {
+internal fun PathPointsEditor(vm: EditorViewModel, id: String, path: dev.kinesis.core.model.PathSpec) {
     fun upd(key: String? = null, f: (dev.kinesis.core.model.PathSpec) -> dev.kinesis.core.model.PathSpec) =
         vm.updateLayer(id, key) { l -> l.updateShape { sh -> sh.copy(path = f(sh.path ?: dev.kinesis.core.model.PathSpec())) } }
     SmallLabel(stringResource(R.string.path_hint))
@@ -721,7 +650,7 @@ private fun PathPointsEditor(vm: EditorViewModel, id: String, path: dev.kinesis.
 }
 
 @Composable
-private fun GradientEditor(vm: EditorViewModel, id: String, g: Gradient) {
+internal fun GradientEditor(vm: EditorViewModel, id: String, g: Gradient) {
     var picking by remember { mutableStateOf(-1) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ChoiceChips(
@@ -774,7 +703,7 @@ private fun MediaControls(vm: EditorViewModel, project: KnsProject, layer: Layer
 // ---------------------------------------------------------------------------------------- effects & masks
 
 @Composable
-private fun EffectsBlock(vm: EditorViewModel, layer: Layer, local: Double, onEditCurve: (CurveTarget) -> Unit, onAddEffect: () -> Unit) {
+internal fun EffectsBlock(vm: EditorViewModel, layer: Layer, local: Double, onEditCurve: (CurveTarget) -> Unit, onAddEffect: () -> Unit) {
     val pt = isPortuguese()
     SectionTitle(stringResource(R.string.section_effects)) {
         IconButton(onClick = onAddEffect, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.Add, stringResource(R.string.add_effect)) }
@@ -859,7 +788,7 @@ private fun StopsEditor(vm: EditorViewModel, label: String, stops: List<Gradient
 }
 
 @Composable
-private fun MasksBlock(vm: EditorViewModel, layer: Layer, local: Double, onEditCurve: (CurveTarget) -> Unit) {
+internal fun MasksBlock(vm: EditorViewModel, layer: Layer, local: Double, onEditCurve: (CurveTarget) -> Unit) {
     var menu by remember { mutableStateOf(false) }
     SectionTitle(stringResource(R.string.section_masks)) {
         Box {
@@ -897,7 +826,7 @@ private fun MasksBlock(vm: EditorViewModel, layer: Layer, local: Double, onEditC
 }
 
 @Composable
-private fun MatteBlock(vm: EditorViewModel, project: KnsProject, layer: Layer) {
+internal fun MatteBlock(vm: EditorViewModel, project: KnsProject, layer: Layer) {
     val siblings = LayerTree.siblings(project, layer.id).filter { it.id != layer.id && it.type.isVisual }
     SectionTitle(stringResource(R.string.track_matte))
     val options = listOf<String?>(null) + siblings.map { it.id }
@@ -913,7 +842,7 @@ private fun MatteBlock(vm: EditorViewModel, project: KnsProject, layer: Layer) {
 }
 
 @Composable
-private fun TransitionsBlock(vm: EditorViewModel, layer: Layer) {
+internal fun TransitionsBlock(vm: EditorViewModel, layer: Layer) {
     SectionTitle(stringResource(R.string.transitions))
     TransitionEditor(stringResource(R.string.transition_in), layer.transitionIn, layer.duration, { vm.endGesture() }) { t -> vm.updateLayer(layer.id, "trin:${layer.id}") { it.copy(transitionIn = t) } }
     TransitionEditor(stringResource(R.string.transition_out), layer.transitionOut, layer.duration, { vm.endGesture() }) { t -> vm.updateLayer(layer.id, "trout:${layer.id}") { it.copy(transitionOut = t) } }
@@ -936,7 +865,7 @@ private fun TransitionEditor(label: String, t: Transition?, layerDuration: Doubl
 }
 
 @Composable
-private fun TextAnimatorsBlock(vm: EditorViewModel, layer: Layer) {
+internal fun TextAnimatorsBlock(vm: EditorViewModel, layer: Layer) {
     val t = layer.text ?: return
     var menu by remember { mutableStateOf(false) }
     fun upd(f: (List<TextAnimator>) -> List<TextAnimator>) = vm.updateLayer(layer.id) { l -> l.updateText { c -> c.copy(animators = f(c.animators)) } }
@@ -983,7 +912,7 @@ private fun TextAnimatorsBlock(vm: EditorViewModel, layer: Layer) {
 // ---------------------------------------------------------------------------------------- layer & composition
 
 @Composable
-private fun LayerSettings(vm: EditorViewModel, project: KnsProject, layer: Layer) {
+internal fun LayerSettings(vm: EditorViewModel, project: KnsProject, layer: Layer) {
     val id = layer.id
     SectionTitle(stringResource(R.string.section_layer))
     Row(Modifier.horizontalScroll(rememberScrollState())) {

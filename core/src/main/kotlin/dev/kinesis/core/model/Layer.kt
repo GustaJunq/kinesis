@@ -142,6 +142,8 @@ data class Transform2D(
     val rotation: AnimFloat = anim(0f),
     /** 0..1 */
     val opacity: AnimFloat = anim(1f),
+    /** Shear in degrees: x slants the layer sideways, y slants it up and down (0 = none). */
+    val skew: AnimVec2 = anim(Vec2.ZERO),
 )
 
 /** 3D transform. Pixels, +x right, +y down, +z away from the viewer; rotations in degrees applied X, then Y, then Z. */

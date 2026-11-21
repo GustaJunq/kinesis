@@ -76,7 +76,12 @@ data class Affine2D(
         }
 
         /** Layer transform: `T(position) · R(rotation) · S(scale) · T(-anchor)`. */
-        fun layer(position: Vec2, anchor: Vec2, scale: Vec2, rotation: Float): Affine2D =
-            translate(position) * rotate(rotation) * scale(scale.x, scale.y) * translate(-anchor.x, -anchor.y)
+        fun layer(position: Vec2, anchor: Vec2, scale: Vec2, rotation: Float, skew: Vec2 = Vec2.ZERO): Affine2D =
+            translate(position) * rotate(rotation) * skew(skew.x, skew.y) * scale(scale.x, scale.y) * translate(-anchor.x, -anchor.y)
+
+        /** Shear by [xDegrees] (sideways) and [yDegrees] (up and down); identity at 0. */
+        fun skew(xDegrees: Float, yDegrees: Float): Affine2D =
+            if (xDegrees == 0f && yDegrees == 0f) Affine2D()
+            else Affine2D(a = 1f, b = kotlin.math.tan(Math.toRadians(yDegrees.toDouble())).toFloat(), c = kotlin.math.tan(Math.toRadians(xDegrees.toDouble())).toFloat(), d = 1f)
     }
 }

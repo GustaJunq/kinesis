@@ -713,6 +713,22 @@ class EditorViewModel(app: Application, val projectId: String) : AndroidViewMode
     fun trimLayerEnd(id: String, newDuration: Double, coalesceKey: String) =
         edit(coalesceKey) { TimelineOps.trimEnd(it, id, newDuration) }
 
+    /** Cuts the layer so it starts at the playhead (nothing happens when the playhead is outside the clip). */
+    fun trimStartToPlayhead(id: String) {
+        val l = LayerTree.find(current, id) ?: return
+        val local = localTime(l)
+        if (local <= 0.0 || local >= l.duration) { notify("Move the playhead inside the clip to trim it"); return }
+        edit { TimelineOps.trimStart(it, id, local) }
+    }
+
+    /** Cuts the layer so it ends at the playhead. */
+    fun trimEndToPlayhead(id: String) {
+        val l = LayerTree.find(current, id) ?: return
+        val local = localTime(l)
+        if (local <= 0.0 || local >= l.duration) { notify("Move the playhead inside the clip to trim it"); return }
+        edit { TimelineOps.trimEnd(it, id, local) }
+    }
+
     fun reorder(id: String, newIndex: Int) = edit { TimelineOps.reorder(it, id, newIndex) }
 
     /** Moves a layer one step up (towards the top of the stack) or down. */
