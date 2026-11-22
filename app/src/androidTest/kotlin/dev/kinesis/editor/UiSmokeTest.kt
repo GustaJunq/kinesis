@@ -105,15 +105,29 @@ class UiSmokeTest {
         InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
         rule.waitForIdle()
         Thread.sleep(500)
-        click("Properties")
+        // Back from the effect's page returns to the layer editor's grid (still open, with the action bar hidden);
+        // when the editor was closed instead, Properties opens it.
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText("Opacity & more", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() ||
+                rule.onAllNodesWithText("Properties", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        if (rule.onAllNodesWithText("Opacity & more", useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) click("Properties")
         shot("ui-editor-properties")
         rule.onNodeWithContentDescription("Undo").assertExists()
 
         // Layer editor: a fresh shape, its category grid and the color, border, blending and motion pages.
-        click("Star") // the star's clip in the timeline: selects it and opens its editor
+        // Close the editor and the selection (Back twice), add a fresh shape and open its editor.
+        repeat(2) {
+            InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+            rule.waitForIdle()
+            Thread.sleep(400)
+        }
+        click("Shape")
+        click("Flower")
+        click("Properties")
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Move the playhead", substring = true).fetchSemanticsNodes().isEmpty() }
         shot("ui-layer-grid")
-        for ((tile, name) in listOf("Color & fill" to "color", "Border & shadow" to "border", "Blending & opacity" to "blend", "Motion & transform" to "move")) {
+        for ((tile, name) in listOf("Color & fill" to "color", "Border & shadow" to "border", "Opacity & more" to "blend", "Motion & transform" to "move")) {
             click(tile)
             shot("ui-layer-$name")
             if (name == "move") {

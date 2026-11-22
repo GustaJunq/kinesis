@@ -102,6 +102,15 @@ data class EffectParam(
     val unit: ParamUnit = ParamUnit.NONE,
     val choices: List<EffectChoice> = emptyList(),
     val visibleWhen: Pair<String, String>? = null,
+    /** UI step of a number (custom effects); null = the slider's own resolution. */
+    val step: Float? = null,
+    /** Values a number snaps to in the UI (custom effects: `ticks`). */
+    val ticks: List<Float> = emptyList(),
+    /**
+     * Custom effects (`enableTargets` / `enabled`): the parameter is editable only while the choice parameter
+     * `first` has one of the values in `second` (an empty name means never). Null: always editable.
+     */
+    val enabledWhen: Pair<String, Set<String>>? = null,
 ) {
     val defaultFloat: Float get() = (default as Number).toFloat()
     val defaultColor: Color get() = default as Color
@@ -121,6 +130,9 @@ data class EffectParam(
 
     /** True when a choice/boolean parameter can be shown given the effect's other values. */
     fun isVisible(choiceOf: (String) -> String): Boolean = visibleWhen?.let { (p, v) -> choiceOf(p) == v } ?: true
+
+    /** True when the parameter can be edited given the effect's choice values (see [enabledWhen]). */
+    fun isEnabled(choiceOf: (String) -> String): Boolean = enabledWhen?.let { (p, set) -> p.isNotEmpty() && choiceOf(p) in set } ?: true
 }
 
 /** Where an effect produces a visible result. */
@@ -138,6 +150,8 @@ data class EffectSpec(
     val target: EffectTarget = EffectTarget.ANY,
     /** Reads the composite of the layers below (see `Glass`). */
     val needsBackdrop: Boolean = false,
+    /** Set for effects imported from a `.knsfx` package (see `docs/knsfx.md`). */
+    val knsfx: dev.kinesis.core.knsfx.KnsfxPackage? = null,
 ) {
     private val byName = params.associateBy { it.name }
     fun param(name: String): EffectParam = byName[name] ?: error("effect '$id' has no parameter '$name'")
@@ -808,8 +822,26 @@ object EffectRegistry {
 
     private val byId = all.associateBy { it.id }
 
-    fun get(id: String): EffectSpec? = byId[id]
-    fun require(id: String): EffectSpec = byId[id] ?: throw IllegalArgumentException("unknown effect type '$id'")
+    /** Effects imported from `.knsfx` packages, by id (reverse-domain ids, so they never clash with built-in ones). */
+    private val custom = java.util.concurrent.ConcurrentHashMap<String, EffectSpec>()
+
+    fun get(id: String): EffectSpec? = byId[id] ?: custom[id]
+    fun require(id: String): EffectSpec = get(id) ?: throw IllegalArgumentException("unknown effect type '$id'")
+
+    /** Custom effects currently known (installed or embedded in an open project), by name. */
+    val customSpecs: List<EffectSpec> get() = custom.values.sortedBy { it.nameEn.lowercase() }
+
+    fun registerCustom(spec: EffectSpec) {
+        require(spec.id !in byId) { "'${spec.id}' is a built-in effect" }
+        custom[spec.id] = spec
+    }
+
+    fun unregisterCustom(id: String) { custom.remove(id) }
+
+    /** True for ids that can name a custom effect (reverse domain: `dev.author.name`). */
+    fun isCustomId(id: String): Boolean = CUSTOM_ID.matches(id)
+
+    private val CUSTOM_ID = Regex("^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$", RegexOption.IGNORE_CASE)
 
     fun inCategory(category: EffectCategory): List<EffectSpec> =
         if (category == EffectCategory.ALL) all else all.filter { it.category == category }

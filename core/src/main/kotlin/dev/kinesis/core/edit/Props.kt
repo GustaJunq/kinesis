@@ -59,6 +59,10 @@ data class FloatKind(
     val display: Float = 1f,
     /** Values are whole numbers (counts, seeds). */
     val integer: Boolean = false,
+    /** Values the slider snaps to when dragged close (custom effects' `ticks`). */
+    val ticks: List<Float> = emptyList(),
+    /** Step of the typed/scrubbed value (custom effects' `step`); null = the default. */
+    val step: Float? = null,
 ) : PropKind
 
 data class Vec2Kind(val unit: PropUnit = PropUnit.PX, val display: Float = 1f, val sliderMin: Float = -2000f, val sliderMax: Float = 2000f) : PropKind
@@ -310,6 +314,8 @@ object LayerProps {
         max = p.max ?: Float.POSITIVE_INFINITY,
         display = p.unit.display,
         integer = p.type == ParamType.INTEGER,
+        ticks = p.ticks,
+        step = p.step,
     )
 
     private fun maskProps(i: Int): List<AnimProp<*>> {

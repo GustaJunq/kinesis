@@ -2448,6 +2448,20 @@
           "additionalProperties": false,
           "required": ["type"],
           "description": "Copy Background (Utility & expression). Copies the background (the layers below) into the layer, which turns it into an adjustment layer: the effects after it act on the background pixels covered by the opaque parts of the layer. The layer's masks, feather and opacity cut out the region."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": ["type"],
+          "description": "Custom effect from a .knsfx package (see docs/knsfx.md); its parameters follow the package's params.xml."
         }
       ]
     },
@@ -2937,6 +2951,9 @@
         },
         "dof": {
           "$ref": "#/$defs/depthOfField"
+        },
+        "affects2D": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false

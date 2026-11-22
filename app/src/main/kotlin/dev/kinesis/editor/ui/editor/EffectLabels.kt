@@ -19,7 +19,10 @@ fun EffectChoice.label(pt: Boolean) = if (pt) namePt else nameEn
 
 /** Label of an effect parameter from its property label key `fx.<type>.<param>`. */
 fun effectParamLabel(key: String, pt: Boolean): String? {
-    val parts = key.split('.')
-    if (parts.size != 3 || parts[0] != "fx") return null
-    return EffectRegistry.get(parts[1])?.paramOrNull(parts[2])?.label(pt)
+    // "fx.<effect id>.<param>": custom effect ids have dots of their own (dev.author.effect), so split at the ends.
+    if (!key.startsWith("fx.")) return null
+    val rest = key.removePrefix("fx.")
+    val dot = rest.lastIndexOf('.')
+    if (dot <= 0) return null
+    return EffectRegistry.get(rest.substring(0, dot))?.paramOrNull(rest.substring(dot + 1))?.label(pt)
 }

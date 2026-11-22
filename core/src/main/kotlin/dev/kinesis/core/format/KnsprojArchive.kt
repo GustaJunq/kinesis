@@ -1,5 +1,7 @@
 package dev.kinesis.core.format
 
+import dev.kinesis.core.knsfx.KnsfxPackage
+import dev.kinesis.core.knsfx.KnsfxRegistry
 import dev.kinesis.core.model.Asset
 import dev.kinesis.core.model.KnsProject
 import java.io.ByteArrayOutputStream
@@ -24,6 +26,8 @@ object KnsprojArchive {
     const val PROJECT_ENTRY = "project.json"
     const val ASSETS_DIR = "assets/"
     const val THUMBNAIL_ENTRY = "thumbnail.jpg"
+    /** Custom effects used by the project: `effects/<id>.knsfx` (see `docs/knsfx.md`). */
+    const val EFFECTS_DIR = "effects/"
     const val MIME_TYPE = "application/vnd.kinesis.project+zip"
     const val EXTENSION = "knsproj"
 
@@ -43,7 +47,14 @@ object KnsprojArchive {
      * Writes [project] and its assets to [out]. Missing asset files raise an [IOException] so that
      * exported projects are always complete.
      */
-    fun write(project: KnsProject, assets: AssetSource, out: OutputStream, thumbnailJpeg: ByteArray? = null) {
+    fun write(
+        project: KnsProject,
+        assets: AssetSource,
+        out: OutputStream,
+        thumbnailJpeg: ByteArray? = null,
+        /** Bytes of a custom effect's `.knsfx`, so the project opens where the effect is not installed. */
+        effects: (id: String) -> ByteArray? = { KnsfxRegistry.bytes(it) },
+    ) {
         val zip = ZipOutputStream(out)
         zip.setLevel(6)
         val jsonBytes = KnsprojJson.encode(project).toByteArray(Charsets.UTF_8)
@@ -81,6 +92,13 @@ object KnsprojArchive {
             zip.closeEntry()
         }
 
+        for (id in KnsfxRegistry.usedIn(project)) {
+            val bytes = effects(id) ?: continue
+            zip.putNextEntry(ZipEntry("$EFFECTS_DIR$id.${KnsfxPackage.EXTENSION}").apply { time = FIXED_TIME })
+            zip.write(bytes)
+            zip.closeEntry()
+        }
+
         if (thumbnailJpeg != null) {
             zip.putNextEntry(ZipEntry(THUMBNAIL_ENTRY).apply { time = FIXED_TIME })
             zip.write(thumbnailJpeg)
@@ -102,7 +120,8 @@ object KnsprojArchive {
      * Throws [KnsprojFormatException] for invalid containers.
      */
     fun read(input: InputStream, sink: EntrySink): ReadResult {
-        var project: KnsProject? = null
+        // project.json is decoded at the end: the custom effects it uses (effects/*.knsfx) are written after it.
+        var projectJson: ByteArray? = null
         val entries = LinkedHashSet<String>()
         var total = 0L
         var count = 0
@@ -119,8 +138,11 @@ object KnsprojArchive {
                     ?: throw KnsprojFormatException("Unsafe entry name in archive: '${entry.name}'")
                 val limited = LimitedInputStream(zip, MAX_TOTAL_BYTES - total)
                 if (name == PROJECT_ENTRY) {
-                    val bytes = readLimited(limited, MAX_PROJECT_JSON_BYTES)
-                    project = KnsprojJson.decode(bytes.toString(Charsets.UTF_8))
+                    projectJson = readLimited(limited, MAX_PROJECT_JSON_BYTES)
+                } else if (name.startsWith(EFFECTS_DIR) && name.endsWith(".${KnsfxPackage.EXTENSION}")) {
+                    val bytes = readLimited(limited, KnsfxPackage.MAX_BYTES.toLong())
+                    KnsfxRegistry.registerEmbedded(bytes)
+                    sink.accept(name, bytes.inputStream())
                 } else {
                     sink.accept(name, limited)
                     // Drain whatever the sink did not read so the size accounting stays correct.
@@ -131,7 +153,8 @@ object KnsprojArchive {
                 zip.closeEntry()
             }
         }
-        val p = project ?: throw KnsprojFormatException("project.json not found in archive")
+        val json = projectJson ?: throw KnsprojFormatException("project.json not found in archive")
+        val p = KnsprojJson.decode(json.toString(Charsets.UTF_8))
         return ReadResult(p, entries)
     }
 

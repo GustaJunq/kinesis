@@ -137,6 +137,29 @@ class ShaderLibrary(private val assets: AssetManager) {
     fun get(vertex: String, fragment: String): Program =
         programs.getOrPut("$vertex|$fragment") { Program(source(vertex), source(fragment), "$vertex+$fragment") }
 
+    private val failedCustom = HashSet<String>()
+
+    /**
+     * The program of a custom (.knsfx) effect's shader, compiled once per package version. Null when it does not
+     * compile on this device (it was checked on import, so this is rare); the effect then passes the layer through.
+     */
+    fun custom(pkg: dev.kinesis.core.knsfx.KnsfxPackage): Program? {
+        val key = "knsfx:${pkg.sha256}"
+        programs[key]?.let { return it }
+        if (key in failedCustom) return null
+        return try {
+            Program(source("knsfx.vert"), dev.kinesis.core.knsfx.KnsfxShader.prepare(pkg.shader ?: return null), pkg.id).also { programs[key] = it }
+        } catch (e: GlException) {
+            failedCustom += key
+            null
+        }
+    }
+
+    /** Compiles [fragment] with the custom-effect vertex shader and throws [GlException] with the log on error. */
+    fun checkCustom(fragment: String) {
+        Program(source("knsfx.vert"), dev.kinesis.core.knsfx.KnsfxShader.prepare(fragment), "knsfx").release()
+    }
+
     fun release() {
         programs.values.forEach { it.release() }
         programs.clear()

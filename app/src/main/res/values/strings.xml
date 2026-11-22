@@ -755,4 +755,21 @@
     <string name="prop_skew">Skew</string>
     <string name="le_skew_x">Skew X</string>
     <string name="le_skew_y">Skew Y</string>
+    <string name="fx_custom">Custom effects</string>
+    <string name="fx_import_knsfx">Import effect (.knsfx)</string>
+    <string name="fx_custom_empty">No custom effects yet. Import a .knsfx file to add one.</string>
+    <string name="fx_custom_remove">Remove</string>
+    <string name="fx_custom_remove_q">Remove "%1$s"? Projects that use it keep their own copy.</string>
+    <string name="fx_import_title">Import effect</string>
+    <string name="fx_import_checking">Checking the effect…</string>
+    <string name="fx_import_failed">This effect cannot be imported</string>
+    <string name="fx_import_replace">"%1$s" is already installed (version %2$s). Replace it with version %3$s?</string>
+    <string name="fx_import_replace_ok">Replace</string>
+    <string name="fx_import_done">Effect "%1$s" installed. Find it in Effects → Custom effects.</string>
+    <string name="fx_import_log">Compiler log</string>
+    <string name="fx_by">by %1$s</string>
+    <string name="fx_script_off">"%1$s" was turned off on this layer: %2$s</string>
+    <string name="camera_affects_2d">Also moves 2D layers</string>
+    <string name="camera_affects_2d_hint">Pan, zoom (z), roll and field of view of the camera move the 2D layers too; tilting keeps them flat.</string>
+    <string name="le_opacity_more">Opacity &amp; more</string>
 </resources>

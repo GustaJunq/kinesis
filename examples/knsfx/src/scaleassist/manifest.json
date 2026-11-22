@@ -1,0 +1,14 @@
+{
+  "format": "knsfx",
+  "formatVersion": 1,
+  "id": "dev.kinesis.examples.scaleassist",
+  "name": "Scale Assist",
+  "description": "Multiplica a escala da camada por eixo, com amortecimento no outro eixo.",
+  "author": "Kinesis",
+  "version": "1.0.0",
+  "category": "transform",
+  "tags": ["transform", "scale"],
+  "minKinesis": "0.2.6",
+  "params": "params.xml",
+  "script": "effect.js"
+}

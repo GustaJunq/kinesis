@@ -454,6 +454,11 @@ data class CameraContent(
     val fov: AnimFloat = anim(DEFAULT_FOV),
     /** Depth of field: 3D layers away from the focus distance are blurred. */
     val dof: DepthOfField? = null,
+    /**
+     * The camera also moves the 2D layers: its pan (x, y), dolly (z), roll and field of view act on the 2D plane as
+     * if it were at z = 0; tilts (x/y rotation) are approximated around the centre (2D layers stay flat).
+     */
+    val affects2D: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_FOV = 40f

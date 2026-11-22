@@ -10,6 +10,8 @@ pode ser criado, lido e validado por qualquer ferramenta, sem depender do aplica
 - **Implementação de referência:** módulo [`core`](../core) (Kotlin), usado pelo app Android
 - **Exemplos:** [`.claude/skills/knsproj/examples/`](../.claude/skills/knsproj/examples)
 
+> **Efeitos customizados (0.2.6):** um efeito em `effects[]` pode ter como `type` o id de um pacote `.knsfx` (domínio reverso, por exemplo `dev.autor.efeito`). O pacote vai dentro do `.knsproj` em `effects/<id>.knsfx`. Veja [knsfx.md](knsfx.md).
+
 ## 1. Contêiner
 
 Um `.knsproj` é um arquivo ZIP com esta estrutura:
@@ -410,6 +412,7 @@ Não suportado na versão 1: skinning, animações internas do glTF, morph targe
     para baixo). **Posição e rotação são independentes**: mover a câmera não a gira e girá-la não a move. É o modo
     das câmeras novas do app (`"position": [0, 0, -d]`, `"rotation": [0, 0, 0]` equivale à câmera padrão).
 - `fov`: campo de visão vertical em graus.
+- `affects2D` (opcional, padrão `false`; 0.2.6): a câmera também move as camadas 2D. Posição x/y, distância (zoom), giro em z e `fov` agem no plano 2D como se ele estivesse em z = 0; inclinações em x/y são aproximadas em torno do centro (as camadas 2D continuam planas).
 - `dof` (opcional): **profundidade de campo** — `{"enabled": true, "focusDistance": 2600, "range": 300, "blur": 24}`.
   `focusDistance` (px, distância da câmera ao plano em foco), `range` (px de nitidez total em torno dele) e `blur`
   (raio máximo do desfoque, em px da composição) são animáveis. Só as camadas 3D são desfocadas. O app pode

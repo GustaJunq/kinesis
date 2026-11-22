@@ -14,8 +14,8 @@ android {
         applicationId = "io.github.gustajunq.kinesis"
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "0.2.5"
+        versionCode = 20
+        versionName = "0.2.6"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // The native libraries (ours and MediaPipe's) are built for these ABIs only.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
