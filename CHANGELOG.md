@@ -8,6 +8,7 @@ Todas as versões do Kinesis Editor. As notas completas de cada release ficam em
 
 ### Corrigido
 - **Timeline:** arrastar na horizontal em qualquer ponto da área das camadas (em cima de um clipe ou no espaço vazio) volta a mover o tempo sob o playhead fixo, igual à régua; soltar com velocidade continua rolando com inércia. O eixo trava depois do primeiro movimento: horizontal faz scrub, vertical rola a lista de camadas. Mover um clipe passa a ser toque longo + arrastar; as pontas de um clipe selecionado continuam cortando na hora.
+- **Editor da camada mais enxuto:** seis categorias (Cor e preenchimento, Borda e sombra, Movimento e transformação, Editar forma ou texto, Efeitos, Opacidade e mais) e os atalhos de cortar e dividir. "Opacidade e mais" reúne opacidade, modo de mistura, máscaras, track matte, transições e os ajustes da camada; a lista "Propriedades" saiu.
 - **Editor da camada:** tocar num espaço vazio da timeline (fora de um clipe, ou abaixo das camadas) fecha o editor e tira a seleção, sem precisar do Voltar do Android.
 - **Efeitos customizados:** os parâmetros mostram o nome do `params.xml` (apareciam como "Valor").
 

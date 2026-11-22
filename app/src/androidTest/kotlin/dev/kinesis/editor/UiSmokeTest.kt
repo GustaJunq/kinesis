@@ -113,7 +113,7 @@ class UiSmokeTest {
         click("Star") // the star's clip in the timeline: selects it and opens its editor
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Move the playhead", substring = true).fetchSemanticsNodes().isEmpty() }
         shot("ui-layer-grid")
-        for ((tile, name) in listOf("Color & fill" to "color", "Border & shadow" to "border", "Blending & opacity" to "blend", "Motion & transform" to "move")) {
+        for ((tile, name) in listOf("Color & fill" to "color", "Border & shadow" to "border", "Opacity & more" to "blend", "Motion & transform" to "move")) {
             click(tile)
             shot("ui-layer-$name")
             if (name == "move") {

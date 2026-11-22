@@ -943,8 +943,7 @@ internal fun LayerSettings(vm: EditorViewModel, project: KnsProject, layer: Laye
         ScrubNumber(layer.duration.toFloat(), { v -> vm.trimLayerEnd(id, project.composition.snap(v.toDouble()).coerceAtLeast(project.composition.frameDuration), "dur:$id") }, { vm.endGesture() }, Modifier.weight(1f), step = 0.1f, min = 0.02f, suffix = " s")
     }
     if (layer.type.isVisual) {
-        SmallLabel(stringResource(R.string.blend_mode))
-        ChoiceChips(BlendMode.entries.map { it to stringResource(blendRes(it)) }, layer.blendMode, { b -> vm.updateLayer(id) { it.copy(blendMode = b) } })
+        // The blend mode is set above it, on the same page ("Opacidade e mais").
         SwitchRow(stringResource(R.string.motion_blur), layer.motionBlur) { v -> vm.updateLayer(id) { it.copy(motionBlur = v) } }
     }
     if (layer.type != LayerType.AUDIO) {

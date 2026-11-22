@@ -133,10 +133,10 @@ private val TileShape = RoundedCornerShape(10.dp)
 /** The page a shortcut opens (see [propertyItemKeys]). */
 private fun pageOf(focus: String?, layer: Layer): EditPage = when (focus) {
     "effects" -> EditPage.EFFECTS
-    "masks", "matte" -> EditPage.MASK
-    "transitions" -> EditPage.TRANSITION
+    "masks", "matte" -> EditPage.BLEND
+    "transitions" -> EditPage.BLEND
     "animators", "content" -> if (layer.type == LayerType.TEXT) EditPage.TEXT else if (layer.type == LayerType.SHAPE) EditPage.SHAPE else EditPage.CONTENT
-    "layer" -> EditPage.LAYER
+    "layer" -> EditPage.BLEND
     else -> EditPage.HOME
 }
 
@@ -182,7 +182,14 @@ fun LayerEditor(
                 val width = LayerProps.find(layer, "shape.stroke.width") ?: LayerProps.find(layer, "text.stroke.width")
                 SubPage(vm, layer, local, width, onEditCurve, back) { BorderPage(vm, layer, local) }
             }
-            EditPage.BLEND -> SubPage(vm, layer, local, opacityProp(layer), onEditCurve, back) { BlendPage(vm, layer, local) }
+            EditPage.BLEND -> SubPage(vm, layer, local, opacityProp(layer), onEditCurve, back) {
+                BlendPage(vm, layer, local) {
+                    if (layer.type.is2DVisual) { MasksBlock(vm, layer, local, onEditCurve); MatteBlock(vm, project, layer) }
+                    if (layer.type.isVisual) TransitionsBlock(vm, layer)
+                    LayerHeader(vm, layer)
+                    LayerSettings(vm, project, layer)
+                }
+            }
             EditPage.MOVE -> MovePage(vm, project, layer, local, onEditCurve, back)
             EditPage.SHAPE -> SubPage(vm, layer, local, null, onEditCurve, back) { ScrollPage { ShapePage(vm, layer, local, onEditCurve) } }
             EditPage.TEXT -> SubPage(vm, layer, local, null, onEditCurve, back) {
@@ -220,18 +227,15 @@ private class Tile(val icon: ImageVector, val label: Int, val page: EditPage)
 private fun tilesFor(layer: Layer): List<Tile> = buildList {
     if (colorPropId(layer) != null) add(Tile(Icons.Outlined.FormatColorFill, R.string.le_color_fill, EditPage.COLOR))
     if (layer.type.is2DVisual) add(Tile(Icons.Outlined.BorderStyle, R.string.le_border_shadow, EditPage.BORDER))
-    if (layer.type.isVisual && opacityProp(layer) != null) add(Tile(Lucide.Layers, R.string.le_blend_opacity, EditPage.BLEND))
     if (moveProps(layer).isNotEmpty()) add(Tile(Lucide.Move3d, R.string.le_motion, EditPage.MOVE))
     when (layer.type) {
         LayerType.SHAPE -> add(Tile(Lucide.Shapes, R.string.le_edit_shape, EditPage.SHAPE))
         LayerType.TEXT -> add(Tile(Lucide.Type, R.string.le_edit_text, EditPage.TEXT))
         else -> add(Tile(Lucide.Component, R.string.le_content, EditPage.CONTENT))
     }
-    add(Tile(Icons.Outlined.Tune, R.string.tab_properties, EditPage.PROPS))
     if (layer.type.isVisual) add(Tile(Lucide.Sparkles, R.string.effects, EditPage.EFFECTS))
-    if (layer.type.is2DVisual) add(Tile(Icons.Outlined.CropFree, R.string.le_masks, EditPage.MASK))
-    if (layer.type.isVisual) add(Tile(Icons.Outlined.SwapHoriz, R.string.le_transitions, EditPage.TRANSITION))
-    add(Tile(Icons.Outlined.Info, R.string.section_layer, EditPage.LAYER))
+    // Opacity, blending, masks, transitions and the layer's settings share one page.
+    add(Tile(Lucide.Layers, R.string.le_opacity_more, EditPage.BLEND))
 }
 
 @Composable
@@ -610,7 +614,7 @@ private fun TickRuler(value: Float, min: Float, max: Float, unitsPerTick: Float,
 // ---------------------------------------------------------------------------------------- blending & opacity
 
 @Composable
-private fun BlendPage(vm: EditorViewModel, layer: Layer, local: Double) {
+private fun BlendPage(vm: EditorViewModel, layer: Layer, local: Double, more: @Composable () -> Unit = {}) {
     val id = layer.id
     ScrollPage {
         Spacer(Modifier.height(6.dp))
@@ -632,9 +636,12 @@ private fun BlendPage(vm: EditorViewModel, layer: Layer, local: Double) {
             }
         }
         val pick = { b: BlendMode -> vm.updateLayer(id) { it.copy(blendMode = b) } }
-        BlendRow(stringResource(blendRes(BlendMode.NORMAL)), layer.blendMode == BlendMode.NORMAL) { pick(BlendMode.NORMAL) }
-        BlendGroup(stringResource(R.string.le_darken), listOf(BlendMode.MULTIPLY), layer.blendMode, pick)
-        BlendGroup(stringResource(R.string.le_lighten), listOf(BlendMode.ADD, BlendMode.SCREEN), layer.blendMode, pick)
+        if (layer.type.isVisual) BlendRow(stringResource(blendRes(BlendMode.NORMAL)), layer.blendMode == BlendMode.NORMAL) { pick(BlendMode.NORMAL) }
+        if (layer.type.isVisual) {
+            BlendGroup(stringResource(R.string.le_darken), listOf(BlendMode.MULTIPLY), layer.blendMode, pick)
+            BlendGroup(stringResource(R.string.le_lighten), listOf(BlendMode.ADD, BlendMode.SCREEN), layer.blendMode, pick)
+        }
+        more()
     }
 }
 
