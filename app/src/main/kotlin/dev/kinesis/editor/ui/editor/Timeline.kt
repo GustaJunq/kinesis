@@ -180,6 +180,8 @@ fun Timeline(
     onClipTap: (String) -> Unit = { vm.select(it) },
     /** The layers list (rename, lock, parent...). */
     onOpenLayers: () -> Unit = {},
+    /** A tap on empty timeline space (no clip): closes the layer editor and clears the selection. */
+    onEmptyTap: () -> Unit = { vm.select(null) },
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -225,8 +227,10 @@ fun Timeline(
                     flingJob = flingScope.launch {
                         var last = 0f
                         AnimationState(0f, velocity).animateDecay(exponentialDecay()) {
+                            val delta = value - last
+                            if (delta == 0f) return@animateDecay // the first frame starts at 0
                             val before = vm.time.value
-                            scrub(value - last)
+                            scrub(delta)
                             last = value
                             if (vm.time.value == before) cancelAnimation() // reached the start or the end
                         }
@@ -296,9 +300,10 @@ fun Timeline(
                             trackWidthPx = trackWidthPx,
                             audioRevision = audioRevision,
                             onClipTap = onClipTap,
+                            onEmptyTap = onEmptyTap,
                         )
                     }
-                    item { Spacer(Modifier.height(48.dp)) }
+                    item { Spacer(Modifier.fillMaxWidth().height(160.dp).pointerInput(Unit) { detectTapGestures { onEmptyTap() } }) }
                 }
             }
         }
@@ -451,6 +456,7 @@ private fun LayerRow(
     trackWidthPx: Float,
     audioRevision: Int,
     onClipTap: (String) -> Unit,
+    onEmptyTap: () -> Unit,
 ) {
     val layer = row.layer
     val density = LocalDensity.current
@@ -501,7 +507,7 @@ private fun LayerRow(
                 .clip(RoundedCornerShape(topEnd = LANE_RADIUS, bottomEnd = LANE_RADIUS))
                 .background(KColors.Lane)
                 .clipToBounds()
-                .pointerInput(layer.id) { detectTapGestures(onTap = { onClipTap(layer.id) }, onLongPress = { vm.select(layer.id, additive = true) }) },
+                .pointerInput(layer.id) { detectTapGestures(onTap = { onEmptyTap() }, onLongPress = { vm.select(layer.id, additive = true) }) },
         ) {
             ClipView(vm, project, row, selected, inMulti, scale, trackWidthPx, audioRevision, onClipTap)
             // ≡ handle: drag up or down to move the layer among its siblings.

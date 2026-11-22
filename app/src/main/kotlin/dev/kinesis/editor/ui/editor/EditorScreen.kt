@@ -354,6 +354,7 @@ private fun EditorContent(projectId: String, onClose: () -> Unit) {
                         vm, project, time, playing, selection, multi,
                         onEditMarker = { editingMarker = it },
                         onClipTap = { id -> vm.select(id); propsFocus = null; propsDocked = true },
+                        onEmptyTap = { propsDocked = false; vm.select(null) },
                         onOpenLayers = { vm.pause(); showLayers = true },
                         modifier = Modifier.weight(1f - share).fillMaxWidth().background(KColors.Bar),
                     )
