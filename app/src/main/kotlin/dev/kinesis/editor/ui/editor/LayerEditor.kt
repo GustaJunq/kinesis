@@ -258,8 +258,8 @@ private fun HomeGrid(vm: EditorViewModel, layer: Layer, onOpen: (EditPage) -> Un
         }
         for (row in tilesFor(layer).chunked(3)) {
             Row(Modifier.fillMaxWidth().height(76.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // An incomplete last row stretches its tiles across the whole width (no empty gaps).
                 for (t in row) CategoryTile(t.icon, stringResource(t.label)) { onOpen(t.page) }
-                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
