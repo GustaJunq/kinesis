@@ -49,7 +49,7 @@ object SceneEvaluator {
         val comp = project.composition
         val camera = evaluateCamera(project, time)
         val (ambient, lights) = evaluateLights(project, time)
-        val nodes = evaluateContainer(project.layers, time, Affine2D.IDENTITY, camera, comp)
+        val nodes = evaluateContainer(project.layers, time, Affine2D.IDENTITY, camera, comp, view2D = cameraView2D(camera, comp))
         return FrameScene(time, comp.width, comp.height, comp.background, camera, ambient, lights, nodes, comp.environment)
     }
 
@@ -61,7 +61,10 @@ object SceneEvaluator {
         containerMatrix: Affine2D,
         camera: CameraState,
         comp: Composition,
+        /** Top level only: the camera's effect on 2D layers (3D layers already go through the camera). */
+        view2D: Affine2D = Affine2D.IDENTITY,
     ): List<RenderNode> {
+        fun matrixFor(l: Layer) = if (l.type.isRendered3D || l.is3DLayer) containerMatrix else view2D * containerMatrix
         val byId = layers.associateBy { it.id }
         // Layers used as track mattes are hidden; they are only drawn into the matte.
         val matteSources = layers.mapNotNullTo(HashSet()) { l -> l.matte?.layer?.takeIf { l.visible } }
@@ -74,7 +77,7 @@ object SceneEvaluator {
                 val source = byId[m.layer]
                 val inverted = m.mode == MatteMode.ALPHA_INVERTED || m.mode == MatteMode.LUMA_INVERTED
                 val node = if (source != null && containerTime >= source.start && containerTime < source.end) {
-                    evaluateLayer(source, byId, containerTime, containerMatrix, camera, comp, null)
+                    evaluateLayer(source, byId, containerTime, matrixFor(source), camera, comp, null)
                 } else {
                     null
                 }
@@ -82,7 +85,7 @@ object SceneEvaluator {
                 if (node == null && !inverted) continue
                 if (node != null) matte = MatteRef(node, m.mode)
             }
-            evaluateLayer(layer, byId, containerTime, containerMatrix, camera, comp, matte)?.let { result += it }
+            evaluateLayer(layer, byId, containerTime, matrixFor(layer), camera, comp, matte)?.let { result += it }
         }
         return result
     }
@@ -424,10 +427,12 @@ object SceneEvaluator {
         var forward: Vec3? = null
         var up = Vec3(0f, -1f, 0f)
         var dof: ResolvedDof? = null
+        var affects2D = false
         if (active != null) {
             val (layer0, containerTime, siblings) = active
             val layer = resolved(layer0, siblings, containerTime)
             val cam = layer.camera ?: CameraContent()
+            affects2D = cam.affects2D
             val t = layer.localTime(containerTime)
             fov = cam.fov.at(t).clamp(1f, 170f)
             val parent = parentMatrix3D(layer, siblings, containerTime)
@@ -448,7 +453,35 @@ object SceneEvaluator {
         }
         val view = Mat4.lookAt(position, forward?.let { position + it } ?: target, up)
         val projection = Mat4.perspective(fov, comp.aspect, NEAR_PLANE, FAR_PLANE)
-        return CameraState(position, target, fov, view, projection, comp.width, comp.height, dof, up)
+        return CameraState(position, target, fov, view, projection, comp.width, comp.height, dof, up, affects2D)
+    }
+
+    /**
+     * How the active camera moves the 2D plane (z = 0), as a 2D transform in composition pixels: the plane seen by the
+     * camera compared with the plane seen by the default camera (which shows it 1:1). Pan, dolly, roll and field of view
+     * are exact; tilts are linearised around the centre. Identity when the option is off or the plane is behind the camera.
+     */
+    fun cameraView2D(camera: CameraState, comp: Composition): Affine2D {
+        if (!camera.affects2D) return Affine2D.IDENTITY
+        val d = defaultCameraDistance(comp.height, CameraContent.DEFAULT_FOV)
+        val defView = Mat4.lookAt(Vec3(0f, 0f, -d), Vec3.ZERO, Vec3(0f, -1f, 0f))
+        val defProj = Mat4.perspective(CameraContent.DEFAULT_FOV, comp.aspect, NEAR_PLANE, FAR_PLANE)
+        val k = comp.height / 4f
+        fun fit(m: Mat4): Affine2D? {
+            fun ndc(x: Float, y: Float): Vec2? {
+                val h = m.transformHomogeneous(Vec3(x, y, 0f))
+                if (h[3] <= 1e-3f) return null
+                return Vec2(h[0] / h[3], h[1] / h[3])
+            }
+            val p0 = ndc(0f, 0f) ?: return null
+            val px = ndc(k, 0f) ?: return null
+            val py = ndc(0f, k) ?: return null
+            return Affine2D(a = (px.x - p0.x) / k, b = (px.y - p0.y) / k, c = (py.x - p0.x) / k, d = (py.y - p0.y) / k, tx = p0.x, ty = p0.y)
+        }
+        val cam = fit(camera.projection * camera.view) ?: return Affine2D.IDENTITY
+        val def = fit(defProj * defView)?.inverse() ?: return Affine2D.IDENTITY
+        val center = Vec2(comp.width / 2f, comp.height / 2f)
+        return Affine2D.translate(center) * def * cam * Affine2D.translate(-center.x, -center.y)
     }
 
     fun evaluateLights(project: KnsProject, time: Double): Pair<Color, List<LightState>> {

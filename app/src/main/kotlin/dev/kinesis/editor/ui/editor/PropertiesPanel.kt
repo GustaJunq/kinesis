@@ -551,6 +551,10 @@ internal fun ContentControls(vm: EditorViewModel, project: KnsProject, layer: La
                     SmallLabel(stringResource(if (c.aim == CameraAim.ROTATION) R.string.camera_rotation_hint else R.string.camera_orbit_hint))
                     TextButton(onClick = { vm.updateLayer(id) { it.updateCamera { c -> c.copy(position = null) } } }) { Text(stringResource(R.string.camera_reset)) }
                 }
+                SwitchRow(stringResource(R.string.camera_affects_2d), c.affects2D) { on ->
+                    vm.updateLayer(id) { it.updateCamera { cam -> cam.copy(affects2D = on) } }
+                }
+                if (c.affects2D) SmallLabel(stringResource(R.string.camera_affects_2d_hint))
                 SwitchRow(stringResource(R.string.depth_of_field), c.dof?.enabled == true) { on ->
                     vm.updateLayer(id) { it.updateCamera { cam -> cam.copy(dof = (cam.dof ?: DepthOfField()).copy(enabled = on)) } }
                 }

@@ -2951,6 +2951,9 @@
         },
         "dof": {
           "$ref": "#/$defs/depthOfField"
+        },
+        "affects2D": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false

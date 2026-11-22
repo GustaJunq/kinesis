@@ -547,6 +547,11 @@ class RegistryArtifactsTest {
             "description" to str("Custom effect from a .knsfx package (see docs/knsfx.md); its parameters follow the package's params.xml."),
         )
         defs["effect"] = JsonObject(effect + ("oneOf" to JsonArray(effect.getValue("oneOf").jsonArray + custom)))
+        // 0.2.6: the camera can move the 2D layers too (optional; off when absent).
+        val cam = defs.getValue("cameraContent").jsonObject
+        defs["cameraContent"] = JsonObject(
+            cam + ("properties" to JsonObject(cam.getValue("properties").jsonObject + ("affects2D" to obj("type" to str("boolean"))))),
+        )
         // 0.2.5: 2D layers can be skewed (an optional field; older files read as no skew).
         val t2 = defs.getValue("transform2d").jsonObject
         defs["transform2d"] = JsonObject(

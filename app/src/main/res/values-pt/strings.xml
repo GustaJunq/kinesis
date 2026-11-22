@@ -769,4 +769,6 @@
     <string name="fx_import_log">Log do compilador</string>
     <string name="fx_by">por %1$s</string>
     <string name="fx_script_off">"%1$s" foi desligado nesta camada: %2$s</string>
+    <string name="camera_affects_2d">Mover camadas 2D também</string>
+    <string name="camera_affects_2d_hint">Movimento, zoom (z), giro e campo de visão da câmera também movem as camadas 2D; inclinar a câmera mantém elas planas.</string>
 </resources>

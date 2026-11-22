@@ -58,6 +58,8 @@ class CameraState(
     val dof: ResolvedDof? = null,
     /** World direction that points up on screen. */
     val up: Vec3 = Vec3(0f, -1f, 0f),
+    /** The active camera moves the 2D layers too (see `CameraContent.affects2D`). */
+    val affects2D: Boolean = false,
 ) {
     val viewProjection: Mat4 = projection * view
 

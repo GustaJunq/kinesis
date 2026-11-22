@@ -8,9 +8,12 @@ Todas as versões do Kinesis Editor. As notas completas de cada release ficam em
 
 ### Corrigido
 - **Timeline:** arrastar na horizontal em qualquer ponto da área das camadas (em cima de um clipe ou no espaço vazio) volta a mover o tempo sob o playhead fixo, igual à régua; soltar com velocidade continua rolando com inércia. O eixo trava depois do primeiro movimento: horizontal faz scrub, vertical rola a lista de camadas. Mover um clipe passa a ser toque longo + arrastar; as pontas de um clipe selecionado continuam cortando na hora.
+- **Editor da camada:** tocar num espaço vazio da timeline (fora de um clipe, ou abaixo das camadas) fecha o editor e tira a seleção, sem precisar do Voltar do Android.
+- **Efeitos customizados:** os parâmetros mostram o nome do `params.xml` (apareciam como "Valor").
 
 ### Adicionado
 - **Efeitos customizados (.knsfx).** Um arquivo `.knsfx` (ZIP com `manifest.json`, `params.xml`, um script `animate()` e/ou um fragment shader) vira um efeito como os nativos: aparece em Efeitos → Efeitos customizados, tem a interface de parâmetros gerada a partir do `params.xml`, com keyframe por parâmetro, e funciona igual na prévia e na exportação. Importa pelo botão "Importar efeito (.knsfx)" ou abrindo o arquivo no gerenciador de arquivos. Cada projeto guarda uma cópia dos efeitos que usa (`effects/` no `.knsproj`), então abre em outro aparelho sem o efeito instalado. Exemplos em `examples/knsfx/` e formato em [docs/knsfx.md](docs/knsfx.md).
+- **Câmera move camadas 2D:** opção "Mover camadas 2D também" no objeto de câmera. Movimento X/Y, zoom pela distância (Z), giro em Z e campo de visão passam a agir nas camadas 2D, como se elas estivessem no plano z = 0; inclinar a câmera em X/Y é aproximado (as camadas 2D continuam planas). Campo opcional `camera.affects2D` no `.knsproj`.
 
 ## 0.2.5
 

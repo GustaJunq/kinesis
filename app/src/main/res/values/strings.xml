@@ -769,4 +769,6 @@
     <string name="fx_import_log">Compiler log</string>
     <string name="fx_by">by %1$s</string>
     <string name="fx_script_off">"%1$s" was turned off on this layer: %2$s</string>
+    <string name="camera_affects_2d">Also moves 2D layers</string>
+    <string name="camera_affects_2d_hint">Pan, zoom (z), roll and field of view of the camera move the 2D layers too; tilting keeps them flat.</string>
 </resources>
